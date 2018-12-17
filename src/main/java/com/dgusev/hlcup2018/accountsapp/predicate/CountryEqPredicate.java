@@ -9,11 +9,16 @@ public class CountryEqPredicate implements Predicate<AccountDTO> {
     private String country;
 
     public CountryEqPredicate(String country) {
+        PredicateStatistics.cne.incrementAndGet();
         this.country = country;
     }
 
     @Override
     public boolean test(AccountDTO accountDTO) {
         return accountDTO.country != null && accountDTO.country.equals(country);
+    }
+
+    public String  getCounty() {
+        return country;
     }
 }

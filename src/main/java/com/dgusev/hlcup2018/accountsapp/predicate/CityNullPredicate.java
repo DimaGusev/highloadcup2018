@@ -9,6 +9,7 @@ public class CityNullPredicate implements Predicate<AccountDTO> {
     private int nill;
 
     public CityNullPredicate(int nill) {
+        PredicateStatistics.cin.incrementAndGet();
         this.nill = nill;
     }
 

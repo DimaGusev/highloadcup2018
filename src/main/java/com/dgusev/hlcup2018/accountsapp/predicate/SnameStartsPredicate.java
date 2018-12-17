@@ -9,6 +9,7 @@ public class SnameStartsPredicate implements Predicate<AccountDTO> {
     private String start;
 
     public SnameStartsPredicate(String start) {
+        PredicateStatistics.sns.incrementAndGet();
         this.start = start;
     }
 

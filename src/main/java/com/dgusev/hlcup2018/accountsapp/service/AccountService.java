@@ -1,12 +1,15 @@
 package com.dgusev.hlcup2018.accountsapp.service;
 
+import com.dgusev.hlcup2018.accountsapp.index.*;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
+import com.dgusev.hlcup2018.accountsapp.predicate.CountryEqPredicate;
 import com.dgusev.hlcup2018.accountsapp.predicate.SexEqPredicate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -16,12 +19,26 @@ public class AccountService {
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
     private static final String EMAIL_REG = "[0-9a-zA-z]+@[0-9a-zA-z]+\\.[0-9a-zA-z]+";
 
+
     @Autowired
     private NowProvider nowProvider;
 
+    @Autowired
+    private Dictionary dictionary;
+
+    @Autowired
+    private IndexHolder indexHolder;
+
     private List<AccountDTO> accountDTOList = new ArrayList<>();
+    private Map<Integer, AccountDTO> accountIdMap = new HashMap<>();
+
+    public static AtomicLong atomicLong = new AtomicLong();
 
     public List<AccountDTO> filter(List<Predicate<AccountDTO>> predicates, int limit) {
+        if (limit == 0) {
+            return new ArrayList<>();
+        }
+
         Predicate<AccountDTO> accountPredicate = null;
         if (predicates.isEmpty()) {
             accountPredicate = foo -> true;
@@ -31,7 +48,68 @@ public class AccountService {
                 accountPredicate = accountPredicate.and(predicates.get(i));
             }
         }
-        return accountDTOList.stream().filter(accountPredicate).sorted(Comparator.comparingInt(a -> ((AccountDTO)a).id).reversed()).limit(limit).collect(Collectors.toList());
+        CountryEqPredicate countryEqPredicate = null;
+        SexEqPredicate sexEqPredicate = null;
+        for (Predicate<AccountDTO> dtoPredicate: predicates) {
+            if (dtoPredicate instanceof CountryEqPredicate) {
+                countryEqPredicate = (CountryEqPredicate) dtoPredicate;
+            } else if (dtoPredicate instanceof SexEqPredicate) {
+                sexEqPredicate = (SexEqPredicate) dtoPredicate;
+            }
+        }
+        //if (true) {
+        //    return filterSeqScan(accountPredicate, limit);
+       // }
+        if (countryEqPredicate != null || sexEqPredicate != null) {
+            List<AccountDTO> result = new ArrayList<>();
+            int count = 0;
+            List<IndexScan> indexScanList = new ArrayList<>();
+            if (countryEqPredicate != null) {
+                indexScanList.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
+            }
+            if (sexEqPredicate != null) {
+                indexScanList.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));
+            }
+            IndexScan indexScan = new CompositeIndexScan(indexScanList);
+            while (true) {
+                int next = indexScan.getNext();
+                if (next == -1) {
+                    break;
+                }
+                atomicLong.incrementAndGet();
+                AccountDTO accountDTO = findById(next);
+                if (accountPredicate.test(accountDTO)) {
+                    result.add(accountDTO);
+                    count++;
+                    if (count == limit) {
+                        break;
+                    }
+                }
+            }
+            return result;
+        } else {
+            return filterSeqScan(accountPredicate, limit);
+        }
+    }
+
+    private List<AccountDTO> filterSeqScan(Predicate<AccountDTO> predicate, int limit) {
+
+        List<AccountDTO> result = new ArrayList<>();
+        int count = 0;
+        if (limit == 0) {
+            return new ArrayList<>();
+        }
+        for (AccountDTO accountDTO: accountDTOList) {
+            atomicLong.incrementAndGet();
+            if (predicate.test(accountDTO)) {
+                result.add(accountDTO);
+                count++;
+                if (count == limit) {
+                    break;
+                }
+            }
+        }
+        return result;
     }
 
     public List<Group> group(List<String> keys, List<Predicate<AccountDTO>> predicates, int order, int limit) {
@@ -44,65 +122,155 @@ public class AccountService {
                 accountPredicate = accountPredicate.and(predicates.get(i));
             }
         }
-        HashMap<List<String>, Integer> groupMap = new HashMap<>();
-        for (AccountDTO accountDTO : accountDTOList) {
-            if (accountPredicate.test(accountDTO)) {
-                List<String> group = new ArrayList<>();
-                for (String key: keys) {
-                    if (key.equals("sex")) {
-                        group.add(accountDTO.sex);
-                    } else if (key.equals("status")) {
-                        group.add(accountDTO.status);
-                    } else if (key.equals("interests")) {
 
-                    } else if (key.equals("country")) {
-                        group.add(accountDTO.country);
-                    } else if (key.equals("city")) {
-                        group.add(accountDTO.city);
-                    } else {
-                        throw new BadRequest();
-                    }
-                }
-                if (keys.contains("interests")) {
-                    if (accountDTO.interests == null || accountDTO.interests.size() == 0) {
-                        group.add(null);
-                        incrementGroup(groupMap, group);
-                    } else {
-                        for (String interes: accountDTO.interests) {
-                            List<String> newGroup = new ArrayList<>(group);
-                            newGroup.add(interes);
-                            incrementGroup(groupMap, newGroup);
-                        }
-                    }
-
-                } else {
-                    incrementGroup(groupMap, group);
-                }
-
+        CountryEqPredicate countryEqPredicate = null;
+        SexEqPredicate sexEqPredicate = null;
+        for (Predicate<AccountDTO> dtoPredicate: predicates) {
+            if (dtoPredicate instanceof CountryEqPredicate) {
+                countryEqPredicate = (CountryEqPredicate) dtoPredicate;
+            } else if (dtoPredicate instanceof SexEqPredicate) {
+                sexEqPredicate = (SexEqPredicate) dtoPredicate;
             }
         }
-        return groupMap.entrySet().stream().map(e -> {
-            Group group = new Group();
-            group.count = e.getValue();
-            group.values = e.getKey();
-            return group;
-        }).sorted((g1,g2) -> {
-            if (order == 1) {
-                int cc = Integer.compare(g1.count, g2.count);
-                if (cc == 0) {
-                    return compareGroups(g1.values, g2.values);
-                } else {
-                    return cc;
+        IndexScan indexScan = null;
+        if (countryEqPredicate != null || sexEqPredicate != null) {
+            List<AccountDTO> result = new ArrayList<>();
+            int count = 0;
+            List<IndexScan> indexScanList = new ArrayList<>();
+            if (countryEqPredicate != null) {
+                indexScanList.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
+            }
+            if (sexEqPredicate != null) {
+                indexScanList.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));
+            }
+            indexScan = new CompositeIndexScan(indexScanList);
+            HashMap<List<String>, Integer> groupMap = new HashMap<>();
+
+            while (true) {
+                int next = indexScan.getNext();
+                if (next == -1) {
+                    break;
                 }
-            } else {
-                int cc = Integer.compare(g2.count, g1.count);
-                if (cc == 0) {
-                    return compareGroups(g2.values, g1.values);
-                } else {
-                    return cc;
+                AccountDTO accountDTO = findById(next);
+                if (accountPredicate.test(accountDTO)) {
+                    List<String> group = new ArrayList<>();
+                    for (String key : keys) {
+                        if (key.equals("sex")) {
+                            group.add(accountDTO.sex);
+                        } else if (key.equals("status")) {
+                            group.add(accountDTO.status);
+                        } else if (key.equals("interests")) {
+
+                        } else if (key.equals("country")) {
+                            group.add(accountDTO.country);
+                        } else if (key.equals("city")) {
+                            group.add(accountDTO.city);
+                        } else {
+                            throw new BadRequest();
+                        }
+                    }
+                    if (keys.contains("interests")) {
+                        if (accountDTO.interests == null || accountDTO.interests.size() == 0) {
+                            group.add(null);
+                            incrementGroup(groupMap, group);
+                        } else {
+                            for (String interes : accountDTO.interests) {
+                                List<String> newGroup = new ArrayList<>(group);
+                                newGroup.add(interes);
+                                incrementGroup(groupMap, newGroup);
+                            }
+                        }
+
+                    } else {
+                        incrementGroup(groupMap, group);
+                    }
+
                 }
             }
-        }).limit(limit).collect(Collectors.toList());
+            return groupMap.entrySet().stream().map(e -> {
+                Group group = new Group();
+                group.count = e.getValue();
+                group.values = e.getKey();
+                return group;
+            }).sorted((g1, g2) -> {
+                if (order == 1) {
+                    int cc = Integer.compare(g1.count, g2.count);
+                    if (cc == 0) {
+                        return compareGroups(g1.values, g2.values);
+                    } else {
+                        return cc;
+                    }
+                } else {
+                    int cc = Integer.compare(g2.count, g1.count);
+                    if (cc == 0) {
+                        return compareGroups(g2.values, g1.values);
+                    } else {
+                        return cc;
+                    }
+                }
+            }).limit(limit).collect(Collectors.toList());
+        } else {
+            HashMap<List<String>, Integer> groupMap = new HashMap<>();
+
+            for (AccountDTO accountDTO : accountDTOList) {
+                if (accountPredicate.test(accountDTO)) {
+                    List<String> group = new ArrayList<>();
+                    for (String key : keys) {
+                        if (key.equals("sex")) {
+                            group.add(accountDTO.sex);
+                        } else if (key.equals("status")) {
+                            group.add(accountDTO.status);
+                        } else if (key.equals("interests")) {
+
+                        } else if (key.equals("country")) {
+                            group.add(accountDTO.country);
+                        } else if (key.equals("city")) {
+                            group.add(accountDTO.city);
+                        } else {
+                            throw new BadRequest();
+                        }
+                    }
+                    if (keys.contains("interests")) {
+                        if (accountDTO.interests == null || accountDTO.interests.size() == 0) {
+                            group.add(null);
+                            incrementGroup(groupMap, group);
+                        } else {
+                            for (String interes : accountDTO.interests) {
+                                List<String> newGroup = new ArrayList<>(group);
+                                newGroup.add(interes);
+                                incrementGroup(groupMap, newGroup);
+                            }
+                        }
+
+                    } else {
+                        incrementGroup(groupMap, group);
+                    }
+
+                }
+            }
+            return groupMap.entrySet().stream().map(e -> {
+                Group group = new Group();
+                group.count = e.getValue();
+                group.values = e.getKey();
+                return group;
+            }).sorted((g1, g2) -> {
+                if (order == 1) {
+                    int cc = Integer.compare(g1.count, g2.count);
+                    if (cc == 0) {
+                        return compareGroups(g1.values, g2.values);
+                    } else {
+                        return cc;
+                    }
+                } else {
+                    int cc = Integer.compare(g2.count, g1.count);
+                    if (cc == 0) {
+                        return compareGroups(g2.values, g1.values);
+                    } else {
+                        return cc;
+                    }
+                }
+            }).limit(limit).collect(Collectors.toList());
+        }
     }
 
     private void incrementGroup(HashMap<List<String>, Integer> groupMap, List<String> group) {
@@ -224,14 +392,7 @@ public class AccountService {
             double s2 = getSimilarity(accountDTO, a2);
             return Double.compare(s1, s2);
         }).flatMap(a -> a.likes != null ? a.likes.stream().sorted(Comparator.comparingInt(l -> l.id)) : new ArrayList<AccountDTO.Like>().stream())
-                 .filter(l -> !likes.contains(l.id)).limit(limit).map(l-> {
-                     for (AccountDTO ac: accountDTOList) {
-                         if (ac.id == l.id) {
-                             return ac;
-                         }
-                     }
-                     return null;
-         }).collect(Collectors.toList());
+                 .filter(l -> !likes.contains(l.id)).limit(limit).map(l-> accountIdMap.get(l.id)).collect(Collectors.toList());
     }
 
     private double getSimilarity(AccountDTO a1, AccountDTO a2) {
@@ -282,7 +443,17 @@ public class AccountService {
     }
 
     public void load(AccountDTO accountDTO) {
-        accountDTOList.add(accountDTO);
+        if (accountDTOList.isEmpty()) {
+            accountDTOList.add(accountDTO);
+        } else {
+            for (int i = 0; i < accountDTOList.size(); i++) {
+                if (accountDTO.id > accountDTOList.get(i).id) {
+                    accountDTOList.add(i, accountDTO);
+                    break;
+                }
+            }
+        }
+        accountIdMap.put(accountDTO.id, accountDTO);
     }
 
 
@@ -310,7 +481,8 @@ public class AccountService {
                 throw new BadRequest();
             }
         }
-        accountDTOList.add(accountDTO);
+        this.load(accountDTO);
+        indexHolder.init(accountDTOList);
     }
 
     public void update(AccountDTO accountDTO) {
@@ -383,6 +555,7 @@ public class AccountService {
         if (accountDTO.likes != null) {
             oldAcc.likes = accountDTO.likes;
         }
+        indexHolder.init(accountDTOList);
     }
 
 
@@ -406,13 +579,12 @@ public class AccountService {
 
     }
 
-    private AccountDTO findById(int id) {
-        for (AccountDTO accountDTO : accountDTOList) {
-            if (accountDTO.id == id) {
-                return accountDTO;
-            }
-        }
-        return null;
+    public AccountDTO findById(int id) {
+        return accountIdMap.get(id);
+    }
+
+    public void finishLoad() {
+        indexHolder.init(this.accountDTOList);
     }
 
 }

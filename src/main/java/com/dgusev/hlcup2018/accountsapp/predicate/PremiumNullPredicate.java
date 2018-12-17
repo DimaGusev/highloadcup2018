@@ -9,6 +9,7 @@ public class PremiumNullPredicate implements Predicate<AccountDTO> {
     private int nill;
 
     public PremiumNullPredicate(int nill) {
+        PredicateStatistics.prnu.incrementAndGet();
         this.nill = nill;
     }
 

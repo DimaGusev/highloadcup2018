@@ -10,6 +10,7 @@ public class FnameAnyPredicate implements Predicate<AccountDTO> {
     private List<String> fnames;
 
     public FnameAnyPredicate(List<String> fnames) {
+        PredicateStatistics.fa.incrementAndGet();
         this.fnames = fnames;
     }
 

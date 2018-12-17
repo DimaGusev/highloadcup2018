@@ -10,6 +10,7 @@ public class CityAnyPredicate implements Predicate<AccountDTO> {
     private List<String> cities;
 
     public CityAnyPredicate(List<String> cities) {
+        PredicateStatistics.cia.incrementAndGet();
         this.cities = cities;
     }
 

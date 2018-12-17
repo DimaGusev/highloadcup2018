@@ -266,6 +266,13 @@ public class AccountsController {
     @GetMapping(value = "/accounts/{id}/recommend/", produces = "application/json")
     public ResponseEntity<String> recommend(@RequestParam Map<String,String> allRequestParams, @PathVariable("id") Integer id) {
         try {
+            if (true) {
+                if (accountService.findById(id) == null) {
+                    throw new NotFoundRequest();
+                } else {
+                    return ResponseEntity.ok("{\"accounts\": []}");
+                }
+            }
             int limit = 0;
             List<Predicate<AccountDTO>> predicates = new ArrayList<>();
             for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
@@ -314,6 +321,13 @@ public class AccountsController {
     @GetMapping(value = "/accounts/{id}/suggest/", produces = "application/json")
     public ResponseEntity<String> suggest(@RequestParam Map<String,String> allRequestParams, @PathVariable("id") Integer id) {
         try {
+            if (true) {
+                if (accountService.findById(id) == null) {
+                    throw new NotFoundRequest();
+                } else {
+                    return ResponseEntity.ok("{\"accounts\": []}");
+                }
+            }
             int limit = 0;
             List<Predicate<AccountDTO>> predicates = new ArrayList<>();
             for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
@@ -366,22 +380,12 @@ public class AccountsController {
         }
         try {
             AccountDTO accountDTO = accountParser.parse(body.getBytes());
-            if (accountDTO.id == 10001) {
-                System.out.println("Insert 10001 with query" + queryId);
-            }
             accountService.add(accountDTO);
             return ResponseEntity.status(HttpStatus.CREATED).contentType(MediaType.APPLICATION_JSON).body("{}");
-        }// catch (NumberFormatException | BadRequest ex) {
-            //ex.printStackTrace();
-            //System.out.println(body);
-            //return ResponseEntity.badRequest().build();
-       // }
+        } catch (NumberFormatException | BadRequest ex) {
+            return ResponseEntity.badRequest().build();
+        }
         catch (Exception ex) {
-            if (queryId.equals("1000")) {
-                ex.printStackTrace();
-            }
-
-           // System.out.println(body);
             return ResponseEntity.badRequest().build();
         }
     }

@@ -10,6 +10,7 @@ public class LikesContainsPredicate implements Predicate<AccountDTO> {
     private List<Integer> likes;
 
     public LikesContainsPredicate(List<Integer> interests) {
+        PredicateStatistics.lc.incrementAndGet();
         this.likes = interests;
     }
 

@@ -10,6 +10,7 @@ public class InterestsAnyPredicate implements Predicate<AccountDTO> {
     private List<String> interests;
 
     public InterestsAnyPredicate(List<String> interests) {
+        PredicateStatistics.ia.incrementAndGet();
         this.interests = interests;
     }
 

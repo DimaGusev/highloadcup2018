@@ -9,6 +9,7 @@ public class StatusNEqPredicate implements Predicate<AccountDTO> {
     private String status;
 
     public StatusNEqPredicate(String status) {
+        PredicateStatistics.sne.incrementAndGet();
         this.status = status;
     }
 

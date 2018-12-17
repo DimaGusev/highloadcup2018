@@ -9,6 +9,7 @@ public class EmailDomainPredicate implements Predicate<AccountDTO> {
     private String domain;
 
     public EmailDomainPredicate(String domain) {
+        PredicateStatistics.ed.incrementAndGet();
         this.domain = domain;
     }
 

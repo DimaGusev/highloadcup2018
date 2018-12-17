@@ -54,9 +54,8 @@ public class DataLoader implements CommandLineRunner {
         Statistics statistics = new Statistics();
         int count = 0;
         byte[] buf = new byte[1000000];
-        int cnt = 0;
+       // for (Integer k = 0; k < 50; k++) {
             for (Map.Entry<Integer, ZipEntry> entry : accountsFileTreeMap.entrySet()) {
-                cnt++;
                 Integer n = entry.getKey();
                 ZipEntry z = entry.getValue();
                 try {
@@ -85,6 +84,11 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
+                           /* accountDTO.id = Integer.valueOf(k.toString() + Integer.toString(accountDTO.id));
+                            accountDTO.email = k.toString() + accountDTO.email;
+                            if (accountDTO.phone != null) {
+                                accountDTO.phone = k.toString() + accountDTO.phone;
+                            } */
                             accountService.load(accountDTO);
                             statistics.analyze(accountDTO);
                             count++;
@@ -92,26 +96,15 @@ public class DataLoader implements CommandLineRunner {
 
                     }
                     inputStream.close();
-                    System.out.println("Finish load data " + new Date());
-                    if (cnt%10 ==0) {
-                        System.out.println(statistics);
-                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+      //  }
         System.out.println("Finish load " + count + " accounts " + new Date());
         System.out.println(statistics);
+        accountService.finishLoad();
+        System.out.println("Indexes created");
 
-    }
-
-    private byte[] readFile(InputStream inputStream) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream));
-        StringBuilder stringBuilder = new StringBuilder();
-        String line = null;
-        while ((line = reader.readLine()) != null) {
-            stringBuilder.append(line);
-        }
-        return stringBuilder.toString().getBytes();
     }
 }

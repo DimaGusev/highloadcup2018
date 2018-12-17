@@ -9,6 +9,7 @@ public class StatusEqPredicate implements Predicate<AccountDTO> {
     private String status;
 
     public StatusEqPredicate(String status) {
+        PredicateStatistics.ste.incrementAndGet();
         this.status = status;
     }
 

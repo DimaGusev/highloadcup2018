@@ -10,6 +10,7 @@ public class JoinedYearPredicate implements Predicate<AccountDTO> {
     private int year;
 
     public JoinedYearPredicate(int birth) {
+        PredicateStatistics.jy.incrementAndGet();
         this.year = birth;
     }
 

@@ -9,6 +9,7 @@ public class EmailEqPredicate implements Predicate<AccountDTO> {
     private String email;
 
     public EmailEqPredicate(String email) {
+        PredicateStatistics.ee.incrementAndGet();
         this.email = email;
     }
 

@@ -9,6 +9,7 @@ public class SnameEqPredicate implements Predicate<AccountDTO> {
     private String sname;
 
     public SnameEqPredicate(String sname) {
+        PredicateStatistics.sne.incrementAndGet();
         this.sname = sname;
     }
 

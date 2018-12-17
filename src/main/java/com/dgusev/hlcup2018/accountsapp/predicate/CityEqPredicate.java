@@ -9,6 +9,7 @@ public class CityEqPredicate implements Predicate<AccountDTO> {
     private String city;
 
     public CityEqPredicate(String city) {
+        PredicateStatistics.cie.incrementAndGet();
         this.city = city;
     }
 

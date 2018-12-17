@@ -9,6 +9,7 @@ public class BirthLtPredicate implements Predicate<AccountDTO> {
     private int birth;
 
     public BirthLtPredicate(int birth) {
+        PredicateStatistics.blt.incrementAndGet();
         this.birth = birth;
     }
 

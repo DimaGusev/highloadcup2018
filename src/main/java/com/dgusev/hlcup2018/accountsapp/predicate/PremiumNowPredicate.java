@@ -9,6 +9,7 @@ public class PremiumNowPredicate implements Predicate<AccountDTO> {
     private int now;
 
     public PremiumNowPredicate(int now) {
+        PredicateStatistics.prn.incrementAndGet();
         this.now = now;
     }
 

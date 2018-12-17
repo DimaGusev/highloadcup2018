@@ -1,0 +1,58 @@
+package com.dgusev.hlcup2018.accountsapp.index;
+
+import java.util.Arrays;
+import java.util.List;
+
+public class CompositeIndexScan implements IndexScan {
+
+    private List<IndexScan> indexScans;
+    private int[] state;
+
+    public CompositeIndexScan(List<IndexScan> indexScans) {
+        this.indexScans = indexScans;
+        state = new int[indexScans.size()];
+        for (int i = 0; i < indexScans.size(); i++) {
+            state[i] = indexScans.get(i).getNext();
+        }
+    }
+
+    public int getNext() {
+        while (true) {
+            boolean equals = true;
+            int min = Integer.MAX_VALUE;
+            int minIndex = -1;
+            int prev = -1;
+            for (int i = 0; i< state.length; i++) {
+                if (state[i] < min) {
+                    min = state[i];
+                    minIndex = i;
+                }
+                if (prev != -1) {
+                    if (state[i] != prev) {
+                        equals = false;
+                    }
+                }
+                prev = state[i];
+            }
+
+            if (equals) {
+                int result = state[0];
+                for (int i = 0; i < indexScans.size(); i++) {
+                    state[i] = indexScans.get(i).getNext();
+                }
+                return result;
+            }
+
+            for (int i = 0; i < indexScans.size(); i++) {
+                if (i != minIndex) {
+                    state[i] = indexScans.get(i).getNext();
+                    if (state[i] == -1) {
+                        return -1;
+                    }
+                }
+            }
+        }
+    }
+
+
+}

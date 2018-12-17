@@ -9,6 +9,7 @@ public class SnameNullPredicate implements Predicate<AccountDTO> {
     private int nill;
 
     public SnameNullPredicate(int nill) {
+        PredicateStatistics.snn.incrementAndGet();
         this.nill = nill;
     }
 

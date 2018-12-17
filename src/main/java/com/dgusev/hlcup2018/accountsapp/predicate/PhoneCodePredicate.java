@@ -9,6 +9,7 @@ public class PhoneCodePredicate implements Predicate<AccountDTO> {
     private String code;
 
     public PhoneCodePredicate(String code) {
+        PredicateStatistics.pc.incrementAndGet();
         this.code = code;
     }
 

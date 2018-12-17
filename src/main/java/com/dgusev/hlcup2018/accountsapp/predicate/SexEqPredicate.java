@@ -9,11 +9,16 @@ public class SexEqPredicate implements Predicate<AccountDTO> {
     private String sex;
 
     public SexEqPredicate(String sex) {
+        PredicateStatistics.sexe.incrementAndGet();
         this.sex = sex;
     }
 
     @Override
     public boolean test(AccountDTO accountDTO) {
         return accountDTO.sex.equals(sex);
+    }
+
+    public String getSex() {
+        return sex;
     }
 }

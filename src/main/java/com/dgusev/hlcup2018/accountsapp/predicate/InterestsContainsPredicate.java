@@ -10,6 +10,7 @@ public class InterestsContainsPredicate implements Predicate<AccountDTO> {
     private List<String> interests;
 
     public InterestsContainsPredicate(List<String> interests) {
+        PredicateStatistics.ic.incrementAndGet();
         this.interests = interests;
     }
 
