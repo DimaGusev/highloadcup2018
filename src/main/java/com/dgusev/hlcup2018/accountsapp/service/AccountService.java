@@ -38,39 +38,12 @@ public class AccountService {
         if (limit == 0) {
             return new ArrayList<>();
         }
-
-        Predicate<AccountDTO> accountPredicate = null;
-        if (predicates.isEmpty()) {
-            accountPredicate = foo -> true;
-        } else {
-            accountPredicate = predicates.get(0);
-            for (int i = 1; i < predicates.size(); i++) {
-                accountPredicate = accountPredicate.and(predicates.get(i));
-            }
-        }
-        CountryEqPredicate countryEqPredicate = null;
-        SexEqPredicate sexEqPredicate = null;
-        for (Predicate<AccountDTO> dtoPredicate: predicates) {
-            if (dtoPredicate instanceof CountryEqPredicate) {
-                countryEqPredicate = (CountryEqPredicate) dtoPredicate;
-            } else if (dtoPredicate instanceof SexEqPredicate) {
-                sexEqPredicate = (SexEqPredicate) dtoPredicate;
-            }
-        }
-        //if (true) {
-        //    return filterSeqScan(accountPredicate, limit);
-       // }
-        if (countryEqPredicate != null || sexEqPredicate != null) {
+        Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
+        List<IndexScan> indexScans = getAvailableIndexScan(predicates);
+        if (!indexScans.isEmpty()) {
             List<AccountDTO> result = new ArrayList<>();
             int count = 0;
-            List<IndexScan> indexScanList = new ArrayList<>();
-            if (countryEqPredicate != null) {
-                indexScanList.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
-            }
-            if (sexEqPredicate != null) {
-                indexScanList.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));
-            }
-            IndexScan indexScan = new CompositeIndexScan(indexScanList);
+            IndexScan indexScan = new CompositeIndexScan(indexScans);
             while (true) {
                 int next = indexScan.getNext();
                 if (next == -1) {
@@ -113,39 +86,12 @@ public class AccountService {
     }
 
     public List<Group> group(List<String> keys, List<Predicate<AccountDTO>> predicates, int order, int limit) {
-        Predicate<AccountDTO> accountPredicate = null;
-        if (predicates.isEmpty()) {
-            accountPredicate = foo -> true;
-        } else {
-            accountPredicate = predicates.get(0);
-            for (int i = 1; i < predicates.size(); i++) {
-                accountPredicate = accountPredicate.and(predicates.get(i));
-            }
-        }
+        Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
+        List<IndexScan> indexScans = getAvailableIndexScan(predicates);
 
-        CountryEqPredicate countryEqPredicate = null;
-        SexEqPredicate sexEqPredicate = null;
-        for (Predicate<AccountDTO> dtoPredicate: predicates) {
-            if (dtoPredicate instanceof CountryEqPredicate) {
-                countryEqPredicate = (CountryEqPredicate) dtoPredicate;
-            } else if (dtoPredicate instanceof SexEqPredicate) {
-                sexEqPredicate = (SexEqPredicate) dtoPredicate;
-            }
-        }
-        IndexScan indexScan = null;
-        if (countryEqPredicate != null || sexEqPredicate != null) {
-            List<AccountDTO> result = new ArrayList<>();
-            int count = 0;
-            List<IndexScan> indexScanList = new ArrayList<>();
-            if (countryEqPredicate != null) {
-                indexScanList.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
-            }
-            if (sexEqPredicate != null) {
-                indexScanList.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));
-            }
-            indexScan = new CompositeIndexScan(indexScanList);
+        if (!indexScans.isEmpty()) {
+            IndexScan indexScan = new CompositeIndexScan(indexScans);
             HashMap<List<String>, Integer> groupMap = new HashMap<>();
-
             while (true) {
                 int next = indexScan.getNext();
                 if (next == -1) {
@@ -180,7 +126,6 @@ public class AccountService {
                                 incrementGroup(groupMap, newGroup);
                             }
                         }
-
                     } else {
                         incrementGroup(groupMap, group);
                     }
@@ -457,7 +402,7 @@ public class AccountService {
     }
 
 
-    public void add(AccountDTO accountDTO) {
+    public synchronized void add(AccountDTO accountDTO) {
         if (accountDTO.id == -1 || accountDTO.email == null || accountDTO.sex == null || accountDTO.birth == Integer.MIN_VALUE || accountDTO.joined == Integer.MIN_VALUE || accountDTO.status == null) {
             throw new BadRequest();
         }
@@ -485,7 +430,7 @@ public class AccountService {
         indexHolder.init(accountDTOList);
     }
 
-    public void update(AccountDTO accountDTO) {
+    public synchronized void update(AccountDTO accountDTO) {
         if (accountDTO.sex != null && !ALLOWED_SEX.contains(accountDTO.sex)) {
             throw new BadRequest();
         }
@@ -559,7 +504,7 @@ public class AccountService {
     }
 
 
-    public void like(List<LikeRequest> likeRequests) {
+    public synchronized void like(List<LikeRequest> likeRequests) {
         for (LikeRequest likeRequest: likeRequests) {
             if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || findById(likeRequest.likee) == null || findById(likeRequest.liker) == null) {
                 throw new BadRequest();
@@ -568,6 +513,12 @@ public class AccountService {
 
         for (LikeRequest likeRequest: likeRequests) {
             AccountDTO accountDTO = findById(likeRequest.liker);
+            if (accountDTO == null) {
+                throw new BadRequest();
+            }
+            if (findById(likeRequest.likee) == null) {
+                throw new BadRequest();
+            }
             if (accountDTO.likes == null) {
                 accountDTO.likes = new ArrayList<>();
             }
@@ -585,6 +536,34 @@ public class AccountService {
 
     public void finishLoad() {
         indexHolder.init(this.accountDTOList);
+    }
+
+
+    private List<IndexScan> getAvailableIndexScan(List<Predicate<AccountDTO>> predicates) {
+        List<IndexScan> indexScans = new ArrayList<>();
+        for (Predicate<AccountDTO> predicate: predicates) {
+            if (predicate instanceof CountryEqPredicate) {
+                CountryEqPredicate countryEqPredicate = (CountryEqPredicate) predicate;
+                indexScans.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
+            } else if (predicate instanceof SexEqPredicate) {
+                SexEqPredicate sexEqPredicate = (SexEqPredicate) predicate;
+                indexScans.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));
+            }
+        }
+        return indexScans;
+    }
+
+    private Predicate<AccountDTO> andPredicates(List<Predicate<AccountDTO>> predicates) {
+        Predicate<AccountDTO> accountPredicate = null;
+        if (predicates.isEmpty()) {
+            accountPredicate = foo -> true;
+        } else {
+            accountPredicate = predicates.get(0);
+            for (int i = 1; i < predicates.size(); i++) {
+                accountPredicate = accountPredicate.and(predicates.get(i));
+            }
+        }
+        return accountPredicate;
     }
 
 }

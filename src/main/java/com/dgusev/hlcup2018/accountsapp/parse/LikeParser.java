@@ -11,6 +11,9 @@ import java.util.List;
 public class LikeParser {
 
     public List<LikeRequest> parse(byte[] array) {
+        if (array.length < 2) {
+            throw new BadRequest();
+        }
         List<LikeRequest> requests =  new ArrayList<>();
         int currentIndex = indexOf(array, 0, '[');
         while (true) {

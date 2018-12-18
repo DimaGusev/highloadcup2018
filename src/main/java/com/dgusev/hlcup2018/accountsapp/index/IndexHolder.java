@@ -14,7 +14,7 @@ public class IndexHolder {
     public Map<String, ArrayList<Integer>> countryIndex;
     public Map<String, ArrayList<Integer>> sexIndex;
 
-    public void init(List<AccountDTO> accountDTOList) {
+    public synchronized void init(List<AccountDTO> accountDTOList) {
         countryIndex = new HashMap<>();
         sexIndex = new HashMap<>();
         sexIndex.put("m", new ArrayList<>());

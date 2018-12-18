@@ -1,6 +1,7 @@
 package com.dgusev.hlcup2018.accountsapp.init;
 
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.netty.NettyServer;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,9 @@ import java.util.zip.ZipFile;
 
 @Component
 public class DataLoader implements CommandLineRunner {
+
+    @Autowired
+    private NettyServer nettyServer;
 
     @Autowired
     private AccountParser accountParser;
@@ -105,6 +109,7 @@ public class DataLoader implements CommandLineRunner {
         System.out.println(statistics);
         accountService.finishLoad();
         System.out.println("Indexes created");
+        nettyServer.start();
 
     }
 }

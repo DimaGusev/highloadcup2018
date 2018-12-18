@@ -1,10 +1,12 @@
 package com.dgusev.hlcup2018.accountsapp.parse;
 
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Date;
 
 @Component
 public class AccountParser {
@@ -23,6 +25,9 @@ public class AccountParser {
 
 
     public AccountDTO parse(byte[] array) {
+        if (array.length < 2) {
+            throw new BadRequest();
+        }
         AccountDTO accountDTO = new AccountDTO();
         int currentIndex = indexOf(array, 0, '{');
         while (true) {
@@ -385,182 +390,187 @@ public class AccountParser {
                    }
                }
 
-           } else if (field.equals("premium")) {
-               int colon = indexOf(array, toField + 1, ':');
-               while (array[colon] != '{') {
-                   colon++;
-               }
-               int end = colon;
-               while (array[end] != '}') {
-                   end++;
-               }
-               if (end - colon == 1) {
-                   accountDTO.premiumStart = 0;
-                   accountDTO.premiumFinish = 0;
-               } else {
-                   while (true) {
-                       if (array[colon] == '}') {
-                           break;
-                       }
-                       int fromSubField = indexOf(array, colon, '"');
-                       int toSubField = indexOf(array, fromSubField + 1, '"');
-                       String subField = new String(array, fromSubField + 1, toSubField - fromSubField - 1 );
-                       if (subField.equals("start")) {
-                           int nextColon = indexOf(array, toSubField + 1, ':');
-                           int nextComma = indexOf(array, nextColon + 1, ',');
-                           int nextClose = indexOf(array, nextColon + 1, '}');
-                           if (nextComma == -1) {
-                               colon = indexOf(array, nextColon + 1, '}');
-                           } else {
-                               if (nextClose < nextComma) {
-                                   colon = nextClose;
-                               } else {
-                                   colon = nextComma;
-                               }
-                           }
-                           int endIndex = colon;
-                           nextColon++;
-                           while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
-                               nextColon++;
-                           }
-                           endIndex--;
-                           while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
-                               endIndex--;
-                           }
-                           accountDTO.premiumStart = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
-                       } else if (subField.equals("finish")) {
-                           int nextColon = indexOf(array, toSubField + 1, ':');
-                           int nextComma = indexOf(array, nextColon + 1, ',');
-                           int nextClose = indexOf(array, nextColon + 1, '}');
-                           if (nextComma == -1) {
-                               colon = indexOf(array, nextColon + 1, '}');
-                           } else {
-                               if (nextClose < nextComma) {
-                                   colon = nextClose;
-                               } else {
-                                   colon = nextComma;
-                               }
-                           }
-                           int endIndex = colon;
-                           nextColon++;
-                           while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
-                               nextColon++;
-                           }
-                           endIndex--;
-                           while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
-                               endIndex--;
-                           }
-                           accountDTO.premiumFinish = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
-                       }
+                } else if (field.equals("premium")) {
+                    int colon = indexOf(array, toField + 1, ':');
+                    while (array[colon] != '{') {
+                        if (array[colon] == '"') {
+                            throw new BadRequest();
+                        }
+                        colon++;
+                    }
+                    int end = colon;
+                    while (array[end] != '}') {
+                        end++;
+                    }
+                    if (end - colon == 1) {
+                        accountDTO.premiumStart = 0;
+                        accountDTO.premiumFinish = 0;
+                    } else {
+                        while (true) {
+                            if (array[colon] == '}') {
+                                break;
+                            }
+                            int fromSubField = indexOf(array, colon, '"');
+                            int toSubField = indexOf(array, fromSubField + 1, '"');
+                            String subField = new String(array, fromSubField + 1, toSubField - fromSubField - 1);
+                            if (subField.equals("start")) {
+                                int nextColon = indexOf(array, toSubField + 1, ':');
+                                int nextComma = indexOf(array, nextColon + 1, ',');
+                                int nextClose = indexOf(array, nextColon + 1, '}');
+                                if (nextComma == -1) {
+                                    colon = indexOf(array, nextColon + 1, '}');
+                                } else {
+                                    if (nextClose < nextComma) {
+                                        colon = nextClose;
+                                    } else {
+                                        colon = nextComma;
+                                    }
+                                }
+                                int endIndex = colon;
+                                nextColon++;
+                                while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
+                                    nextColon++;
+                                }
+                                endIndex--;
+                                while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
+                                    endIndex--;
+                                }
+                                accountDTO.premiumStart = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                            } else if (subField.equals("finish")) {
+                                int nextColon = indexOf(array, toSubField + 1, ':');
+                                int nextComma = indexOf(array, nextColon + 1, ',');
+                                int nextClose = indexOf(array, nextColon + 1, '}');
+                                if (nextComma == -1) {
+                                    colon = indexOf(array, nextColon + 1, '}');
+                                } else {
+                                    if (nextClose < nextComma) {
+                                        colon = nextClose;
+                                    } else {
+                                        colon = nextComma;
+                                    }
+                                }
+                                int endIndex = colon;
+                                nextColon++;
+                                while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
+                                    nextColon++;
+                                }
+                                endIndex--;
+                                while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
+                                    endIndex--;
+                                }
+                                accountDTO.premiumFinish = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                            } else {
+                                throw new BadRequest();
+                            }
 
-                   }
-                   int nextIndex = indexOf(array, colon, ',');
-                   if (nextIndex == -1) {
-                       currentIndex = indexOf(array, colon, '}');
-                   } else {
-                       currentIndex = indexOf(array, colon, ',');
-                   }
-               }
+                        }
+                        int nextIndex = indexOf(array, colon, ',');
+                        if (nextIndex == -1) {
+                            currentIndex = indexOf(array, colon, '}');
+                        } else {
+                            currentIndex = indexOf(array, colon, ',');
+                        }
+                    }
 
-           } else if (field.equals("likes")) {
-               int colon = indexOf(array, toField + 1, ':');
-               while (array[colon] != '[') {
-                   colon++;
-               }
-               int end = colon;
-               while (array[end] != ']') {
-                   end++;
-               }
-               if (end - colon == 1) {
-                   accountDTO.likes = null;
-               } else {
-                   accountDTO.likes = new ArrayList<>();
+                } else if (field.equals("likes")) {
+                    int colon = indexOf(array, toField + 1, ':');
+                    while (array[colon] != '[') {
+                        colon++;
+                    }
+                    int end = colon;
+                    while (array[end] != ']') {
+                        end++;
+                    }
+                    if (end - colon == 1) {
+                        accountDTO.likes = null;
+                    } else {
+                        accountDTO.likes = new ArrayList<>();
 
-                   while (true) {
-                       if (array[colon] == ']') {
-                           break;
-                       }
-                       int fromLike = indexOf(array, colon, '{');
-                       int toLike = indexOf(array, fromLike + 1, '}');
-                       colon = fromLike;
+                        while (true) {
+                            if (array[colon] == ']') {
+                                break;
+                            }
+                            int fromLike = indexOf(array, colon, '{');
+                            int toLike = indexOf(array, fromLike + 1, '}');
+                            colon = fromLike;
 
-                       AccountDTO.Like like = new AccountDTO.Like();
-                       while (true) {
-                           if (array[colon] == '}') {
-                               break;
-                           }
-                           int fromSubField = indexOf(array, colon, '"');
-                           int toSubField = indexOf(array, fromSubField + 1, '"');
-                           String subfield = new String(array, fromSubField+1, toSubField - fromSubField - 1);
-                           if (subfield.equals("id")) {
-                               int nextColon = indexOf(array, toSubField + 1, ':');
-                               int nextComma = indexOf(array, nextColon + 1, ',');
-                               int nextClose = indexOf(array, nextColon + 1, '}');
-                               if (nextComma == -1) {
-                                   colon = indexOf(array, nextColon + 1, '}');
-                               } else {
-                                   if (nextClose < nextComma) {
-                                       colon = nextClose;
-                                   } else {
-                                       colon = nextComma;
-                                   }
-                               }
-                               int endIndex = colon;
-                               nextColon++;
-                               while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
-                                   nextColon++;
-                               }
-                               endIndex--;
-                               while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
-                                   endIndex--;
-                               }
-                               like.id = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
-                           } else if (subfield.equals("ts")) {
-                               int nextColon = indexOf(array, toSubField + 1, ':');
-                               int nextComma = indexOf(array, nextColon + 1, ',');
-                               int nextClose = indexOf(array, nextColon + 1, '}');
-                               if (nextComma == -1) {
-                                   colon = indexOf(array, nextColon + 1, '}');
-                               } else {
-                                   if (nextClose < nextComma) {
-                                       colon = nextClose;
-                                   } else {
-                                       colon = nextComma;
-                                   }
-                               }
-                               int endIndex = colon;
-                               nextColon++;
-                               while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
-                                   nextColon++;
-                               }
-                               endIndex--;
-                               while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
-                                   endIndex--;
-                               }
-                               like.ts = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
-                           }
-                       }
-                       accountDTO.likes.add(like);
+                            AccountDTO.Like like = new AccountDTO.Like();
+                            while (true) {
+                                if (array[colon] == '}') {
+                                    break;
+                                }
+                                int fromSubField = indexOf(array, colon, '"');
+                                int toSubField = indexOf(array, fromSubField + 1, '"');
+                                String subfield = new String(array, fromSubField + 1, toSubField - fromSubField - 1);
+                                if (subfield.equals("id")) {
+                                    int nextColon = indexOf(array, toSubField + 1, ':');
+                                    int nextComma = indexOf(array, nextColon + 1, ',');
+                                    int nextClose = indexOf(array, nextColon + 1, '}');
+                                    if (nextComma == -1) {
+                                        colon = indexOf(array, nextColon + 1, '}');
+                                    } else {
+                                        if (nextClose < nextComma) {
+                                            colon = nextClose;
+                                        } else {
+                                            colon = nextComma;
+                                        }
+                                    }
+                                    int endIndex = colon;
+                                    nextColon++;
+                                    while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
+                                        nextColon++;
+                                    }
+                                    endIndex--;
+                                    while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
+                                        endIndex--;
+                                    }
+                                    like.id = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                                } else if (subfield.equals("ts")) {
+                                    int nextColon = indexOf(array, toSubField + 1, ':');
+                                    int nextComma = indexOf(array, nextColon + 1, ',');
+                                    int nextClose = indexOf(array, nextColon + 1, '}');
+                                    if (nextComma == -1) {
+                                        colon = indexOf(array, nextColon + 1, '}');
+                                    } else {
+                                        if (nextClose < nextComma) {
+                                            colon = nextClose;
+                                        } else {
+                                            colon = nextComma;
+                                        }
+                                    }
+                                    int endIndex = colon;
+                                    nextColon++;
+                                    while (array[nextColon] == ' ' || array[nextColon] == '\r' || array[nextColon] == '\n') {
+                                        nextColon++;
+                                    }
+                                    endIndex--;
+                                    while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
+                                        endIndex--;
+                                    }
+                                    like.ts = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                                }
+                            }
+                            accountDTO.likes.add(like);
 
-                       int commaIndex = indexOf(array, toLike, ',');
-                       int closeIndex = indexOf(array, toLike, ']');
-                       if (commaIndex == -1) {
-                           colon = closeIndex;
-                       } else {
-                           if (closeIndex < commaIndex) {
-                               colon = closeIndex;
-                           } else {
-                               colon = commaIndex;
-                           }
-                       }
-                   }
-                   int nextIndex = indexOf(array, colon, ',');
-                   if (nextIndex == -1) {
-                       currentIndex = indexOf(array, colon, '}');
-                   } else {
-                       currentIndex = indexOf(array, colon, ',');
-                   }
-               }
+                            int commaIndex = indexOf(array, toLike, ',');
+                            int closeIndex = indexOf(array, toLike, ']');
+                            if (commaIndex == -1) {
+                                colon = closeIndex;
+                            } else {
+                                if (closeIndex < commaIndex) {
+                                    colon = closeIndex;
+                                } else {
+                                    colon = commaIndex;
+                                }
+                            }
+                        }
+                        int nextIndex = indexOf(array, colon, ',');
+                        if (nextIndex == -1) {
+                            currentIndex = indexOf(array, colon, '}');
+                        } else {
+                            currentIndex = indexOf(array, colon, ',');
+                        }
+                    }
 
            } else {
                 currentIndex++;
