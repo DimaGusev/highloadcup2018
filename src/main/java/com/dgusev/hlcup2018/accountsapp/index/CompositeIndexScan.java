@@ -20,12 +20,10 @@ public class CompositeIndexScan implements IndexScan {
         while (true) {
             boolean equals = true;
             int min = Integer.MAX_VALUE;
-            int minIndex = -1;
             int prev = -1;
             for (int i = 0; i< state.length; i++) {
                 if (state[i] < min) {
                     min = state[i];
-                    minIndex = i;
                 }
                 if (prev != -1) {
                     if (state[i] != prev) {
@@ -44,7 +42,7 @@ public class CompositeIndexScan implements IndexScan {
             }
 
             for (int i = 0; i < indexScans.size(); i++) {
-                if (i != minIndex) {
+                if (state[i] != min) {
                     state[i] = indexScans.get(i).getNext();
                     if (state[i] == -1) {
                         return -1;

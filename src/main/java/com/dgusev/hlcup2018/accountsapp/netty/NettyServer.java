@@ -60,7 +60,7 @@ public class NettyServer {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            //super.exceptionCaught(ctx, cause);
+
         }
 
         @Override
@@ -96,15 +96,20 @@ public class NettyServer {
                             throw new BadRequest();
                         }
                     } else {
-                        if (queryStringDecoder.uri().startsWith("/accounts/new")) {
+                        if (queryStringDecoder.rawPath().equals("/accounts/new/")) {
                             accountsController.create(request.content().toString(StandardCharsets.UTF_8));
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.CREATED, "{}");
-                        } else if (queryStringDecoder.uri().startsWith("/accounts/likes")) {
+                        } else if (queryStringDecoder.rawPath().equals("/accounts/likes/")) {
                             accountsController.like(request.content().toString(StandardCharsets.UTF_8));
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, "{}");
                         } else {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
-                            int id = Integer.valueOf(queryStringDecoder.uri().substring(10, fin));
+                            int id = 0;
+                            try {
+                                id = Integer.valueOf(queryStringDecoder.uri().substring(10, fin));
+                            } catch (Exception ex) {
+                                throw new NotFoundRequest();
+                            }
                             accountsController.update(request.content().toString(StandardCharsets.UTF_8), id);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, "{}");
                         }
@@ -126,12 +131,15 @@ public class NettyServer {
 
     private void writeResponse(ChannelHandlerContext channelHandlerContext, FullHttpRequest fullHttpRequest, HttpResponseStatus httpResponseStatus, String body) {
         FullHttpResponse response = null;
+        int bodyLength = 0;
         if (body != null) {
+            byte[] b = body.getBytes();
             response = new DefaultFullHttpResponse(
                     HttpVersion.HTTP_1_1,
                     httpResponseStatus,
-                    Unpooled.copiedBuffer(body.getBytes())
+                    Unpooled.copiedBuffer(b)
             );
+            bodyLength = b.length;
             response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "application/json; charset=utf-8");
         } else {
             response = new DefaultFullHttpResponse(
@@ -139,17 +147,18 @@ public class NettyServer {
                     httpResponseStatus,
                     Unpooled.copiedBuffer("{}".getBytes())
             );
+            bodyLength = 2;
         }
         if (HttpUtil.isKeepAlive(fullHttpRequest)) {
             response.headers().set(
                     HttpHeaders.Names.CONNECTION,
                     HttpHeaders.Values.KEEP_ALIVE
             );
-            response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
+            response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, bodyLength);
             channelHandlerContext.writeAndFlush(response);
         } else {
-            response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, response.content().readableBytes());
-            channelHandlerContext.writeAndFlush(response).addListener(ChannelFutureListener.CLOSE);
+            response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, bodyLength);
+            channelHandlerContext.writeAndFlush(response);//.addListener(ChannelFutureListener.CLOSE);
         }
     }
 

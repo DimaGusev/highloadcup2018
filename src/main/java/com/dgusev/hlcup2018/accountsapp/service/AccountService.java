@@ -3,8 +3,7 @@ package com.dgusev.hlcup2018.accountsapp.service;
 import com.dgusev.hlcup2018.accountsapp.index.*;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
-import com.dgusev.hlcup2018.accountsapp.predicate.CountryEqPredicate;
-import com.dgusev.hlcup2018.accountsapp.predicate.SexEqPredicate;
+import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -31,6 +30,9 @@ public class AccountService {
 
     private List<AccountDTO> accountDTOList = new ArrayList<>();
     private Map<Integer, AccountDTO> accountIdMap = new HashMap<>();
+
+    private Set<String> emails = new HashSet<>();
+    private Set<String> phones = new HashSet<>();
 
     public static AtomicLong atomicLong = new AtomicLong();
 
@@ -117,8 +119,8 @@ public class AccountService {
                     }
                     if (keys.contains("interests")) {
                         if (accountDTO.interests == null || accountDTO.interests.size() == 0) {
-                            group.add(null);
-                            incrementGroup(groupMap, group);
+                            //group.add(null);
+                            //incrementGroup(groupMap, group);
                         } else {
                             for (String interes : accountDTO.interests) {
                                 List<String> newGroup = new ArrayList<>(group);
@@ -177,8 +179,8 @@ public class AccountService {
                     }
                     if (keys.contains("interests")) {
                         if (accountDTO.interests == null || accountDTO.interests.size() == 0) {
-                            group.add(null);
-                            incrementGroup(groupMap, group);
+                          //  group.add(null);
+                         //   incrementGroup(groupMap, group);
                         } else {
                             for (String interes : accountDTO.interests) {
                                 List<String> newGroup = new ArrayList<>(group);
@@ -229,11 +231,11 @@ public class AccountService {
 
     private int compareGroups(List<String> g1, List<String> g2) {
         for (int i = 0; i < g1.size(); i++) {
-            if (g1.get(i) == null) {
+            if (g1.get(i) == null && g2.get(i) != null) {
                 return -1;
-            } else if (g2.get(i) == null) {
+            } else if (g2.get(i) == null && g1.get(i) != null) {
                 return 1;
-            } else {
+            } else if (g2.get(i) != null && g1.get(i) != null) {
                 int cc = g1.get(i).compareTo(g2.get(i));
                 if (cc != 0) {
                     return cc;
@@ -399,6 +401,10 @@ public class AccountService {
             }
         }
         accountIdMap.put(accountDTO.id, accountDTO);
+        emails.add(accountDTO.email);
+        if (accountDTO.phone != null) {
+            phones.add(accountDTO.phone);
+        }
     }
 
 
@@ -415,17 +421,16 @@ public class AccountService {
         if (!accountDTO.email.matches(EMAIL_REG)) {
             throw new BadRequest();
         }
-        for (AccountDTO acc: accountDTOList) {
-            if (acc.id == accountDTO.id) {
-                throw new BadRequest();
-            }
-            if (acc.email.equals(accountDTO.email)) {
-                throw new BadRequest();
-            }
-            if (accountDTO.phone != null && acc.phone != null && accountDTO.phone.equals(acc.phone)) {
-                throw new BadRequest();
-            }
+        if (findById(accountDTO.id) != null) {
+            throw new BadRequest();
         }
+        if (emails.contains(accountDTO.email)) {
+            throw new BadRequest();
+        }
+        if (accountDTO.phone != null && phones.contains(accountDTO.phone)) {
+            throw new BadRequest();
+        }
+
         this.load(accountDTO);
         indexHolder.init(accountDTOList);
     }
@@ -437,30 +442,27 @@ public class AccountService {
         if (accountDTO.status != null && !ALLOWED_STATUS.contains(accountDTO.status)) {
             throw new BadRequest();
         }
-        AccountDTO oldAcc = null;
-        for (AccountDTO acc: accountDTOList) {
-            if (acc.id == accountDTO.id) {
-                oldAcc = acc;
-                break;
-            }
-        }
+        AccountDTO oldAcc = findById(accountDTO.id);
         if (oldAcc == null) {
             throw new NotFoundRequest();
         }
         if (accountDTO.email != null && !accountDTO.email.matches(EMAIL_REG)) {
             throw new BadRequest();
         }
-        for (AccountDTO acc: accountDTOList) {
-            if (acc.id != accountDTO.id) {
-                if (acc.email.equals(accountDTO.email)) {
-                    throw new BadRequest();
-                }
-                if (accountDTO.phone != null && acc.phone != null && accountDTO.phone.equals(acc.phone)) {
-                    throw new BadRequest();
-                }
+        if (accountDTO.email != null && !oldAcc.email.equals(accountDTO.email)) {
+            if (emails.contains(accountDTO.email)) {
+                throw new BadRequest();
             }
         }
-        if (accountDTO.email != null) {
+        if ((accountDTO.phone != null && oldAcc.phone == null) ||( accountDTO.phone != null && !oldAcc.phone.equals(accountDTO.phone))) {
+            if (phones.contains(accountDTO.phone)) {
+                throw new BadRequest();
+            }
+        }
+
+        if (accountDTO.email != null && !oldAcc.email.equals(accountDTO.email)) {
+            emails.remove(oldAcc.email);
+            emails.add(accountDTO.email);
             oldAcc.email = accountDTO.email;
         }
         if (accountDTO.fname != null) {
@@ -469,7 +471,9 @@ public class AccountService {
         if (accountDTO.sname != null) {
             oldAcc.sname = accountDTO.sname;
         }
-        if (accountDTO.phone != null) {
+        if (accountDTO.phone != null && oldAcc.phone != null && !oldAcc.phone.equals(accountDTO.phone)) {
+            phones.remove(oldAcc.phone);
+            phones.add(accountDTO.phone);
             oldAcc.phone = accountDTO.phone;
         }
         if (accountDTO.sex != null) {
@@ -513,12 +517,6 @@ public class AccountService {
 
         for (LikeRequest likeRequest: likeRequests) {
             AccountDTO accountDTO = findById(likeRequest.liker);
-            if (accountDTO == null) {
-                throw new BadRequest();
-            }
-            if (findById(likeRequest.likee) == null) {
-                throw new BadRequest();
-            }
             if (accountDTO.likes == null) {
                 accountDTO.likes = new ArrayList<>();
             }
@@ -545,6 +543,15 @@ public class AccountService {
             if (predicate instanceof CountryEqPredicate) {
                 CountryEqPredicate countryEqPredicate = (CountryEqPredicate) predicate;
                 indexScans.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
+            } else if (predicate instanceof CountryNullPredicate) {
+                CountryNullPredicate countryNullPredicate = (CountryNullPredicate) predicate;
+                indexScans.add(new CountryNullIndexScan(indexHolder, countryNullPredicate.getNill()));
+            } else if (predicate instanceof StatusEqPredicate) {
+                StatusEqPredicate statusEqPredicate = (StatusEqPredicate) predicate;
+                indexScans.add(new StatusEqIndexScan(indexHolder, statusEqPredicate.getStatus()));
+            } else if (predicate instanceof InterestsContainsPredicate) {
+                InterestsContainsPredicate interestsContainsPredicate = (InterestsContainsPredicate) predicate;
+                indexScans.add(new InterestsContainsIndexScan(indexHolder, interestsContainsPredicate.getInterests()));
             } else if (predicate instanceof SexEqPredicate) {
                 SexEqPredicate sexEqPredicate = (SexEqPredicate) predicate;
                 indexScans.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));

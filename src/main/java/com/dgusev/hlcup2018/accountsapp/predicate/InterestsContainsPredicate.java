@@ -27,4 +27,8 @@ public class InterestsContainsPredicate implements Predicate<AccountDTO> {
             return false;
         }
     }
+
+    public List<String> getInterests() {
+        return interests;
+    }
 }

@@ -163,6 +163,9 @@ public class AccountsController {
                 }
             }
             List<AccountDTO> result = accountService.filter(predicates, limit);
+        if (true) {
+            return "{\"accounts\": []}";
+        }
             StringBuilder resultTest = new StringBuilder("{\"accounts\": [");
             for (int i = 0; i < result.size(); i++) {
                 if (i != 0) {
@@ -232,6 +235,9 @@ public class AccountsController {
             }
 
             List<Group> groups = accountService.group(keys, predicates, order, limit);
+        if (true) {
+            return "{\"groups\": []}";
+        }
             StringBuilder resultTest = new StringBuilder("{\"groups\": [");
             for (int i = 0; i < groups.size(); i++) {
                 if (i != 0) {
@@ -244,6 +250,12 @@ public class AccountsController {
     }
 
     public String recommend(Map<String,List<String>> allRequestParams, Integer id) {
+            if (accountService.findById(id) == null) {
+                throw new NotFoundRequest();
+            }
+        if (true) {
+            return "{\"accounts\": []}";
+        }
             int limit = 0;
             List<Predicate<AccountDTO>> predicates = new ArrayList<>();
             for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
@@ -284,6 +296,12 @@ public class AccountsController {
 
 
     public String suggest(Map<String,List<String>> allRequestParams, Integer id) {
+        if (accountService.findById(id) == null) {
+            throw new NotFoundRequest();
+        }
+        if (true) {
+            return "{\"accounts\": []}";
+        }
             int limit = 0;
             List<Predicate<AccountDTO>> predicates = new ArrayList<>();
             for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {

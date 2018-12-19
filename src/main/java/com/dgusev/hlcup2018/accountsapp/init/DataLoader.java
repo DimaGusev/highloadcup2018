@@ -9,10 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -44,15 +41,14 @@ public class DataLoader implements CommandLineRunner {
                 if (zipEntry.getName().startsWith("accounts_")) {
                     String number = zipEntry.getName().substring(9);
                     accountsFileTreeMap.put(Integer.valueOf(number.substring(0, number.length() - 5)), zipEntry);
-                } else if (zipEntry.getName().equals("options.txt")) {
-                    int now = new Scanner(zipFile.getInputStream(zipEntry)).nextInt();
-                    nowProvider.initNow(now);
                 }
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
 
         });
+        int now = new Scanner(new FileInputStream(new File(new File(initFile).getParentFile(), "options.txt") )).nextInt();
+        nowProvider.initNow(now);
         System.out.println("Start load data" + new Date());
         System.out.println("File count: " + accountsFileTreeMap.size());
         Statistics statistics = new Statistics();
@@ -109,7 +105,13 @@ public class DataLoader implements CommandLineRunner {
         System.out.println(statistics);
         accountService.finishLoad();
         System.out.println("Indexes created");
-        nettyServer.start();
+        new Thread(() -> {
+            try {
+                nettyServer.start();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
 
     }
 }

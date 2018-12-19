@@ -21,4 +21,8 @@ public class CountryNullPredicate implements Predicate<AccountDTO> {
             return accountDTO.country == null;
         }
     }
+
+    public int getNill() {
+        return nill;
+    }
 }
