@@ -17,4 +17,8 @@ public class CityEqPredicate implements Predicate<AccountDTO> {
     public boolean test(AccountDTO accountDTO) {
         return accountDTO.city != null && accountDTO.city.equals(city);
     }
+
+    public String getCity() {
+        return city;
+    }
 }

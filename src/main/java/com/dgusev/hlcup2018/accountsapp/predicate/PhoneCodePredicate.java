@@ -15,6 +15,24 @@ public class PhoneCodePredicate implements Predicate<AccountDTO> {
 
     @Override
     public boolean test(AccountDTO accountDTO) {
-        return accountDTO.phone != null && accountDTO.phone.contains("(" + code + ")");
+        if (accountDTO.phone == null) {
+            return false;
+        }
+        int open = accountDTO.phone.indexOf("(");
+        if (open == -1) {
+            return false;
+        }
+        if (open + code.length() > accountDTO.phone.length()) {
+            return false;
+        }
+        if (accountDTO.phone.charAt(open + code.length() + 1) != ')') {
+            return false;
+        }
+        for (int i = 0; i < code.length(); i++) {
+            if (accountDTO.phone.charAt(open + i + 1) != code.charAt(i)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

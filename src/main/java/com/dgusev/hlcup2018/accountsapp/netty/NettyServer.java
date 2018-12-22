@@ -84,12 +84,12 @@ public class NettyServer {
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, result);
                         } else if (queryStringDecoder.uri().contains("recommend")) {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
-                            int id = Integer.valueOf(queryStringDecoder.uri().substring(10, fin));
+                            int id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
                             String result = accountsController.recommend(queryStringDecoder.parameters(), id);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, result);
                         } else if (queryStringDecoder.uri().contains("suggest")) {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
-                            int id = Integer.valueOf(queryStringDecoder.uri().substring(10, fin));
+                            int id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
                             String result = accountsController.suggest(queryStringDecoder.parameters(), id);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, result);
                         } else {
@@ -106,7 +106,7 @@ public class NettyServer {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
                             int id = 0;
                             try {
-                                id = Integer.valueOf(queryStringDecoder.uri().substring(10, fin));
+                                id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
                             } catch (Exception ex) {
                                 throw new NotFoundRequest();
                             }
@@ -119,8 +119,8 @@ public class NettyServer {
                 } catch (NotFoundRequest notFoundRequest) {
                     writeResponse(channelHandlerContext, request, HttpResponseStatus.NOT_FOUND, null);
                 } catch (Exception ex) {
-                    System.out.println(request.content().toString(StandardCharsets.UTF_8));
-                    ex.printStackTrace();
+                    //System.out.println(request.content().toString(StandardCharsets.UTF_8));
+                    //ex.printStackTrace();
                     writeResponse(channelHandlerContext, request, HttpResponseStatus.BAD_REQUEST, null);
                 }
             } else {

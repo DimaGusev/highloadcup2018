@@ -1,5 +1,7 @@
 package com.dgusev.hlcup2018.accountsapp.index;
 
+import com.dgusev.hlcup2018.accountsapp.service.AccountService;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -37,12 +39,14 @@ public class CompositeIndexScan implements IndexScan {
                 int result = state[0];
                 for (int i = 0; i < indexScans.size(); i++) {
                     state[i] = indexScans.get(i).getNext();
+                    AccountService.indexScanIterations2.incrementAndGet();
                 }
                 return result;
             }
 
             for (int i = 0; i < indexScans.size(); i++) {
                 if (state[i] != min) {
+                    AccountService.indexScanIterations2.incrementAndGet();
                     state[i] = indexScans.get(i).getNext();
                     if (state[i] == -1) {
                         return -1;

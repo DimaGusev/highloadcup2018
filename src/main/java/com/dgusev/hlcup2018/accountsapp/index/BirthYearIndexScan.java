@@ -1,14 +1,12 @@
 package com.dgusev.hlcup2018.accountsapp.index;
 
-import java.util.List;
-
-public class SexEqIndexScan extends AbstractIndexScan {
+public class BirthYearIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public SexEqIndexScan(IndexHolder indexHolder, String sex) {
+    public BirthYearIndexScan(IndexHolder indexHolder, int year) {
         super(indexHolder);
-        this.indexList = indexHolder.sexIndex.get(sex);
+        this.indexList = indexHolder.birthYearIndex.get(year);
     }
 
     @Override

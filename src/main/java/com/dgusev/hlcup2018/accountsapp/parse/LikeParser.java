@@ -51,7 +51,7 @@ public class LikeParser {
                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                         endIndex--;
                     }
-                    likeRequest.likee = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                    likeRequest.likee = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                 } else if (subField.equals("ts")) {
                     int nextColon = indexOf(array, toField + 1, ':');
                     int nextComma = indexOf(array, nextColon + 1, ',');
@@ -74,7 +74,7 @@ public class LikeParser {
                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                         endIndex--;
                     }
-                    likeRequest.ts = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                    likeRequest.ts = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                 } else if (subField.equals("liker")) {
                     int nextColon = indexOf(array, toField + 1, ':');
                     int nextComma = indexOf(array, nextColon + 1, ',');
@@ -97,7 +97,7 @@ public class LikeParser {
                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                         endIndex--;
                     }
-                    likeRequest.liker = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                    likeRequest.liker = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                 } else {
                     throw new BadRequest();
                 }

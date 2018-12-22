@@ -51,7 +51,7 @@ public class AccountsController {
                     continue;
                 }
                 if (name.equals("limit")) {
-                    limit = Integer.valueOf(parameter.getValue().get(0));
+                    limit = Integer.parseInt(parameter.getValue().get(0));
                     continue;
                 }
                 fields.add(name.substring(0, name.indexOf("_")));
@@ -86,7 +86,7 @@ public class AccountsController {
                     } else if (name.equals("fname_any")) {
                         predicates.add(new FnameAnyPredicate(Arrays.asList(parameter.getValue().get(0).split(","))));
                     } else if (name.equals("fname_null")) {
-                        predicates.add(new FnameNullPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -96,7 +96,7 @@ public class AccountsController {
                     } else if (name.equals("sname_starts")) {
                         predicates.add(new SnameStartsPredicate(parameter.getValue().get(0)));
                     } else if (name.equals("sname_null")) {
-                        predicates.add(new SnameNullPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new SnameNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -104,7 +104,7 @@ public class AccountsController {
                     if (name.equals("phone_code")) {
                         predicates.add(new PhoneCodePredicate(parameter.getValue().get(0)));
                     } else if (name.equals("phone_null")) {
-                        predicates.add(new PhoneNullPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new PhoneNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -112,7 +112,7 @@ public class AccountsController {
                     if (name.equals("country_eq")) {
                         predicates.add(new CountryEqPredicate(parameter.getValue().get(0)));
                     } else if (name.equals("country_null")) {
-                        predicates.add(new CountryNullPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new CountryNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -122,17 +122,17 @@ public class AccountsController {
                     } else if (name.equals("city_any")) {
                         predicates.add(new CityAnyPredicate(Arrays.asList(parameter.getValue().get(0).split(","))));
                     } else if (name.equals("city_null")) {
-                        predicates.add(new CityNullPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("birth_")) {
                     if (name.equals("birth_lt")) {
-                        predicates.add(new BirthLtPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new BirthLtPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else if (name.equals("birth_gt")) {
-                        predicates.add(new BirthGtPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new BirthGtPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     }  else if (name.equals("birth_year")) {
-                        predicates.add(new BirthYearPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -146,7 +146,7 @@ public class AccountsController {
                     }
                 } else if (name.startsWith("likes_")) {
                     if (name.equals("likes_contains")) {
-                        predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().get(0).split(",")).map(Integer::valueOf).collect(Collectors.toList())));
+                        predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().get(0).split(",")).mapToInt(Integer::parseInt).toArray()));
                     } else {
                         throw new BadRequest();
                     }
@@ -154,7 +154,7 @@ public class AccountsController {
                     if (name.equals("premium_now")) {
                         predicates.add(new PremiumNowPredicate(nowProvider.getNow()));
                     } else if (name.equals("premium_null")) {
-                        predicates.add(new PremiumNullPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                        predicates.add(new PremiumNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -163,9 +163,6 @@ public class AccountsController {
                 }
             }
             List<AccountDTO> result = accountService.filter(predicates, limit);
-        if (true) {
-            return "{\"accounts\": []}";
-        }
             StringBuilder resultTest = new StringBuilder("{\"accounts\": [");
             for (int i = 0; i < result.size(); i++) {
                 if (i != 0) {
@@ -202,9 +199,9 @@ public class AccountsController {
                     }
 
                 } else if (name.equals("order")) {
-                    order = Integer.valueOf(parameter.getValue().get(0));
+                    order = Integer.parseInt(parameter.getValue().get(0));
                 } else if (name.equals("limit")) {
-                    limit = Integer.valueOf(parameter.getValue().get(0));
+                    limit = Integer.parseInt(parameter.getValue().get(0));
                 } else if (name.equals("sex")) {
                     predicates.add(new SexEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("email")) {
@@ -222,22 +219,21 @@ public class AccountsController {
                 } else if (name.equals("city")) {
                     predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("birth")) {
-                    predicates.add(new BirthYearPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                    predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
                 } else if (name.equals("interests")) {
                     predicates.add(new InterestsContainsPredicate(Arrays.asList(parameter.getValue().get(0))));
                 } else if (name.equals("likes")) {
-                    predicates.add(new LikesContainsPredicate(Arrays.asList(Integer.valueOf(parameter.getValue().get(0)))));
+                    int[] array = new int[1];
+                    array[0] = Integer.parseInt(parameter.getValue().get(0));
+                    predicates.add(new LikesContainsPredicate(array));
                 } else if (name.equals("joined")) {
-                    predicates.add(new JoinedYearPredicate(Integer.valueOf(parameter.getValue().get(0))));
+                    predicates.add(new JoinedYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
                 } else {
                     throw new BadRequest();
                 }
             }
 
             List<Group> groups = accountService.group(keys, predicates, order, limit);
-        if (true) {
-            return "{\"groups\": []}";
-        }
             StringBuilder resultTest = new StringBuilder("{\"groups\": [");
             for (int i = 0; i < groups.size(); i++) {
                 if (i != 0) {
@@ -249,13 +245,10 @@ public class AccountsController {
             return resultTest.toString();
     }
 
-    public String recommend(Map<String,List<String>> allRequestParams, Integer id) {
+    public String recommend(Map<String,List<String>> allRequestParams, int id) {
             if (accountService.findById(id) == null) {
                 throw new NotFoundRequest();
             }
-        if (true) {
-            return "{\"accounts\": []}";
-        }
             int limit = 0;
             List<Predicate<AccountDTO>> predicates = new ArrayList<>();
             for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
@@ -263,7 +256,7 @@ public class AccountsController {
                 if (name.equals("query_id")) {
                     continue;
                 } else if (name.equals("limit")) {
-                    limit = Integer.valueOf(parameter.getValue().get(0));
+                    limit = Integer.parseInt(parameter.getValue().get(0));
                     if (limit < 0) {
                         throw new BadRequest();
                     }
@@ -295,12 +288,9 @@ public class AccountsController {
     }
 
 
-    public String suggest(Map<String,List<String>> allRequestParams, Integer id) {
+    public String suggest(Map<String,List<String>> allRequestParams, int id) {
         if (accountService.findById(id) == null) {
             throw new NotFoundRequest();
-        }
-        if (true) {
-            return "{\"accounts\": []}";
         }
             int limit = 0;
             List<Predicate<AccountDTO>> predicates = new ArrayList<>();
@@ -309,7 +299,7 @@ public class AccountsController {
                 if (name.equals("query_id")) {
                     continue;
                 } else if (name.equals("limit")) {
-                    limit = Integer.valueOf(parameter.getValue().get(0));
+                    limit = Integer.parseInt(parameter.getValue().get(0));
                     if (limit < 0) {
                         throw new BadRequest();
                     }
@@ -347,7 +337,7 @@ public class AccountsController {
             accountService.add(accountDTO);
     }
 
-    public void update(String body, Integer id) {
+    public void update(String body, int id) {
             AccountDTO accountDTO = accountParser.parse(body.getBytes());
             accountDTO.id = id;
             accountService.update(accountDTO);

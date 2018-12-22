@@ -4,7 +4,7 @@ import java.util.List;
 
 public class CountryEqIndexScan extends AbstractIndexScan {
 
-    private List<Integer> indexList;
+    private int[] indexList;
 
     public CountryEqIndexScan(IndexHolder indexHolder, String country) {
         super(indexHolder);
@@ -13,8 +13,8 @@ public class CountryEqIndexScan extends AbstractIndexScan {
 
     @Override
     public int getNext() {
-        if (indexList != null && index < indexList.size()) {
-            return indexList.get(index++);
+        if (indexList != null && index < indexList.length) {
+            return indexList[index++];
         } else {
             return -1;
         }

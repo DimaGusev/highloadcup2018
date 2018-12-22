@@ -58,7 +58,7 @@ public class AccountParser {
                 if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
                     throw new IllegalArgumentException("id is null");
                 } else {
-                    accountDTO.id = Integer.valueOf(new String(array, colon, end + 1 - colon));
+                    accountDTO.id = Integer.parseInt(new String(array, colon, end + 1 - colon));
                 }
                 currentIndex = totalEnd;
             } else if (field.equals("email")) {
@@ -232,7 +232,7 @@ public class AccountParser {
                if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
                    throw new IllegalArgumentException("birth is null");
                } else {
-                   accountDTO.birth = Integer.valueOf(new String(array, colon, end + 1 - colon));
+                   accountDTO.birth = Integer.parseInt(new String(array, colon, end + 1 - colon));
                }
                currentIndex = totalEnd;
            } else if (field.equals("country")) {
@@ -346,7 +346,7 @@ public class AccountParser {
                if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
                    throw new IllegalArgumentException("joined is null");
                } else {
-                   accountDTO.joined = Integer.valueOf(new String(array, colon, end + 1 - colon));
+                   accountDTO.joined = Integer.parseInt(new String(array, colon, end + 1 - colon));
                }
                currentIndex = totalEnd;
             } else if (field.equals("interests")) {
@@ -435,7 +435,7 @@ public class AccountParser {
                                 while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                     endIndex--;
                                 }
-                                accountDTO.premiumStart = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                                accountDTO.premiumStart = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                             } else if (subField.equals("finish")) {
                                 int nextColon = indexOf(array, toSubField + 1, ':');
                                 int nextComma = indexOf(array, nextColon + 1, ',');
@@ -458,7 +458,7 @@ public class AccountParser {
                                 while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                     endIndex--;
                                 }
-                                accountDTO.premiumFinish = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                                accountDTO.premiumFinish = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                             } else {
                                 throw new BadRequest();
                             }
@@ -524,7 +524,7 @@ public class AccountParser {
                                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                         endIndex--;
                                     }
-                                    like.id = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                                    like.id = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                                 } else if (subfield.equals("ts")) {
                                     int nextColon = indexOf(array, toSubField + 1, ':');
                                     int nextComma = indexOf(array, nextColon + 1, ',');
@@ -547,7 +547,7 @@ public class AccountParser {
                                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                         endIndex--;
                                     }
-                                    like.ts = Integer.valueOf(new String(array, nextColon, endIndex + 1 - nextColon));
+                                    like.ts = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                                 }
                             }
                             accountDTO.likes.add(like);

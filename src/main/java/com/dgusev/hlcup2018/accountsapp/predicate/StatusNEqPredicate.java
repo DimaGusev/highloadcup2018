@@ -17,4 +17,8 @@ public class StatusNEqPredicate implements Predicate<AccountDTO> {
     public boolean test(AccountDTO accountDTO) {
         return !accountDTO.status.equals(status);
     }
+
+    public String getStatus() {
+        return status;
+    }
 }

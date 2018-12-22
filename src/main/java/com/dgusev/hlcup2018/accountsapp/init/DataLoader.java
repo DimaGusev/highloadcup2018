@@ -45,7 +45,6 @@ public class DataLoader implements CommandLineRunner {
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
-
         });
         int now = new Scanner(new FileInputStream(new File(new File(initFile).getParentFile(), "options.txt") )).nextInt();
         nowProvider.initNow(now);
@@ -84,10 +83,10 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
-                           /* accountDTO.id = Integer.valueOf(k.toString() + Integer.toString(accountDTO.id));
-                            accountDTO.email = k.toString() + accountDTO.email;
+                            /*accountDTO.id = k* 10001  +  accountDTO.id;
+                            accountDTO.email = k + "" + accountDTO.email;
                             if (accountDTO.phone != null) {
-                                accountDTO.phone = k.toString() + accountDTO.phone;
+                                accountDTO.phone = k + "" + accountDTO.phone;
                             } */
                             accountService.load(accountDTO);
                             statistics.analyze(accountDTO);

@@ -101,17 +101,6 @@ public class AccountFormatter {
                 stringBuilder.append("\"").append(field).append("\":");
                 stringBuilder.append("\"").append(accountDTO.status).append("\"");
                 first = false;
-            } else if (field.equals("interests")) {
-                if (accountDTO.interests != null) {
-                    if (!first) {
-                        stringBuilder.append(",");
-                    }
-                    stringBuilder.append("\"").append(field).append("\":");
-                    stringBuilder.append("[");
-                    stringBuilder.append(accountDTO.interests.stream().map(i -> "\"" + i + "\"").collect(Collectors.joining(",")));
-                    stringBuilder.append("]");
-                    first = false;
-                }
             } else if (field.equals("premium")) {
                 if (accountDTO.premiumStart != 0) {
                     if (!first) {
@@ -123,22 +112,6 @@ public class AccountFormatter {
                     stringBuilder.append(",\"finish\":");
                     stringBuilder.append(accountDTO.premiumFinish);
                     stringBuilder.append("}");
-                    first = false;
-                }
-            } else if (field.equals("likes")) {
-                if (accountDTO.likes != null) {
-                    if (!first) {
-                        stringBuilder.append(",");
-                    }
-                    stringBuilder.append("\"").append(field).append("\":");
-                    stringBuilder.append("[");
-                    stringBuilder.append(accountDTO.likes.stream().map(l -> "{\"id\":" +
-                            l.id +
-                            ",\"ts\":" +
-                            l.ts +
-                            "}"
-                    ).collect(Collectors.joining(",")));
-                    stringBuilder.append("]");
                     first = false;
                 }
             }

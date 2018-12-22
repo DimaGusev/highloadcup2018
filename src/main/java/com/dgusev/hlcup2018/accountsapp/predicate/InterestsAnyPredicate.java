@@ -17,7 +17,8 @@ public class InterestsAnyPredicate implements Predicate<AccountDTO> {
     @Override
     public boolean test(AccountDTO accountDTO) {
         if (accountDTO.interests != null && !accountDTO.interests.isEmpty()) {
-            for (String interes: interests) {
+            for (int i = 0; i < interests.size(); i++) {
+                String interes = interests.get(i);
                 if (accountDTO.interests.contains(interes)) {
                     return true;
                 }

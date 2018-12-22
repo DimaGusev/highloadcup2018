@@ -4,7 +4,7 @@ import java.util.List;
 
 public class StatusEqIndexScan extends AbstractIndexScan {
 
-    private List<Integer> indexList;
+    private int[] indexList;
 
     public StatusEqIndexScan(IndexHolder indexHolder, String status) {
         super(indexHolder);
@@ -20,8 +20,8 @@ public class StatusEqIndexScan extends AbstractIndexScan {
 
     @Override
     public int getNext() {
-        if (indexList != null && index < indexList.size()) {
-            return indexList.get(index++);
+        if (indexList != null && index < indexList.length) {
+            return indexList[index++];
         } else {
             return -1;
         }

@@ -7,9 +7,9 @@ import java.util.function.Predicate;
 
 public class LikesContainsPredicate implements Predicate<AccountDTO> {
 
-    private List<Integer> likes;
+    private int[] likes;
 
-    public LikesContainsPredicate(List<Integer> interests) {
+    public LikesContainsPredicate(int[] interests) {
         PredicateStatistics.lc.incrementAndGet();
         this.likes = interests;
     }
@@ -17,7 +17,8 @@ public class LikesContainsPredicate implements Predicate<AccountDTO> {
     @Override
     public boolean test(AccountDTO accountDTO) {
         if (accountDTO.likes != null && !accountDTO.likes.isEmpty()) {
-            for (Integer like: likes) {
+            for (int i = 0; i< likes.length; i++) {
+                int like = likes[i];
                 if (!containsLike(accountDTO.likes, like)) {
                     return false;
                 }
@@ -28,8 +29,9 @@ public class LikesContainsPredicate implements Predicate<AccountDTO> {
         }
     }
 
-    private boolean containsLike(List<AccountDTO.Like> likes, Integer like) {
-        for (AccountDTO.Like l : likes) {
+    private boolean containsLike(List<AccountDTO.Like> likes, int like) {
+        for (int i = 0; i < likes.size(); i++) {
+            AccountDTO.Like l = likes.get(i);
             if (l.id == like) {
                 return true;
             }

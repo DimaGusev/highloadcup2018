@@ -21,4 +21,8 @@ public class CityNullPredicate implements Predicate<AccountDTO> {
             return accountDTO.city == null;
         }
     }
+
+    public int getNill() {
+        return nill;
+    }
 }
