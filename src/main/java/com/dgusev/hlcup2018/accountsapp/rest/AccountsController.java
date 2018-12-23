@@ -8,6 +8,7 @@ import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
 import com.dgusev.hlcup2018.accountsapp.parse.LikeParser;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
+import io.netty.buffer.ByteBuf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -19,6 +20,12 @@ import java.util.stream.Collectors;
 public class AccountsController {
 
     private static final Set<String> ALLOWED_KEYS = new HashSet<>(Arrays.asList("sex", "status", "interests", "country", "city"));
+
+    private static final byte[] EMPTY_ACCOUNTS_LIST = "{\"accounts\": []}".getBytes();
+    private static final byte[] ACCOUNTS_LIST_START = "{\"accounts\": [".getBytes();
+    private static final byte[] LIST_END = "]}".getBytes();
+    private static final byte[] EMPTY_GROUPS_LIST = "{\"groups\": []}".getBytes();
+    private static final byte[] GROUPS_LIST_START = "{\"groups\": [".getBytes();
 
     @Autowired
     private AccountService accountService;
@@ -39,10 +46,10 @@ public class AccountsController {
     private LikeParser likeParser;
 
 
-    public String accountsFilter(Map<String,List<String>> allRequestParams) throws Exception {
+    public void accountsFilter(Map<String,List<String>> allRequestParams, ByteBuf responseBuf) throws Exception {
         List<Predicate<AccountDTO>> predicates = new ArrayList<>();
         int limit = 0;
-            Set<String> fields = new HashSet<>();
+            List<String> fields = new ArrayList<>();
             fields.add("id");
             fields.add("email");
             for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
@@ -163,18 +170,21 @@ public class AccountsController {
                 }
             }
             List<AccountDTO> result = accountService.filter(predicates, limit);
-            StringBuilder resultTest = new StringBuilder("{\"accounts\": [");
-            for (int i = 0; i < result.size(); i++) {
-                if (i != 0) {
-                    resultTest.append(",");
+            if (result.isEmpty()) {
+                responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
+            } else {
+                responseBuf.writeBytes(ACCOUNTS_LIST_START);
+                for (int i = 0; i < result.size(); i++) {
+                    if (i != 0) {
+                        responseBuf.writeByte(',');
+                    }
+                    accountFormatter.format(result.get(i), fields, responseBuf);
                 }
-                resultTest.append(accountFormatter.format(result.get(i), fields));
+                responseBuf.writeBytes(LIST_END);
             }
-            resultTest.append("]}");
-            return resultTest.toString();
     }
 
-    public String group(Map<String,List<String>> allRequestParams) {
+    public void group(Map<String,List<String>> allRequestParams, ByteBuf responseBuf) {
             List<String> keys = new ArrayList<>();
             int order = 1;
             int limit = 0;
@@ -234,19 +244,22 @@ public class AccountsController {
             }
 
             List<Group> groups = accountService.group(keys, predicates, order, limit);
-            StringBuilder resultTest = new StringBuilder("{\"groups\": [");
-            for (int i = 0; i < groups.size(); i++) {
-                if (i != 0) {
-                    resultTest.append(",");
+            if (groups.isEmpty()) {
+                responseBuf.writeBytes(EMPTY_GROUPS_LIST);
+            } else {
+                responseBuf.writeBytes(GROUPS_LIST_START);
+                for (int i = 0; i < groups.size(); i++) {
+                    if (i != 0) {
+                        responseBuf.writeByte(',');
+                    }
+                    groupFormatter.format(groups.get(i), keys, responseBuf);
                 }
-                resultTest.append(groupFormatter.format(groups.get(i), keys));
+                responseBuf.writeBytes(LIST_END);
             }
-            resultTest.append("]}");
-            return resultTest.toString();
     }
 
-    public String recommend(Map<String,List<String>> allRequestParams, int id) {
-            if (accountService.findById(id) == null) {
+    public void recommend(Map<String,List<String>> allRequestParams, int id, ByteBuf responseBuf) {
+            if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
                 throw new NotFoundRequest();
             }
             int limit = 0;
@@ -276,58 +289,64 @@ public class AccountsController {
             }
 
             List<AccountDTO> result = accountService.recommend(id, predicates, limit);
-            StringBuilder resultTest = new StringBuilder("{\"accounts\": [");
-            for (int i = 0; i < result.size(); i++) {
-                if (i != 0) {
-                    resultTest.append(",");
+            if (result.isEmpty()) {
+                responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
+            } else {
+                responseBuf.writeBytes(ACCOUNTS_LIST_START);
+                for (int i = 0; i < result.size(); i++) {
+                    if (i != 0) {
+                        responseBuf.writeByte(',');
+                    }
+                    accountFormatter.formatRecommend(result.get(i), responseBuf);
                 }
-                resultTest.append(accountFormatter.formatRecommend(result.get(i)));
+                responseBuf.writeBytes(LIST_END);
             }
-            resultTest.append("]}");
-            return resultTest.toString();
     }
 
 
-    public String suggest(Map<String,List<String>> allRequestParams, int id) {
-        if (accountService.findById(id) == null) {
+    public void suggest(Map<String,List<String>> allRequestParams, int id, ByteBuf responseBuf) {
+        if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
             throw new NotFoundRequest();
         }
-            int limit = 0;
-            List<Predicate<AccountDTO>> predicates = new ArrayList<>();
-            for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
-                String name = parameter.getKey();
-                if (name.equals("query_id")) {
-                    continue;
-                } else if (name.equals("limit")) {
-                    limit = Integer.parseInt(parameter.getValue().get(0));
-                    if (limit < 0) {
-                        throw new BadRequest();
-                    }
-                } else if (name.equals("country")) {
-                    if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
-                        throw new BadRequest();
-                    }
-                    predicates.add(new CountryEqPredicate(parameter.getValue().get(0)));
-                } else if (name.equals("city")) {
-                    if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
-                        throw new BadRequest();
-                    }
-                    predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
-                } else {
+        int limit = 0;
+        List<Predicate<AccountDTO>> predicates = new ArrayList<>();
+        for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
+            String name = parameter.getKey();
+            if (name.equals("query_id")) {
+                continue;
+            } else if (name.equals("limit")) {
+                limit = Integer.parseInt(parameter.getValue().get(0));
+                if (limit < 0) {
                     throw new BadRequest();
                 }
+            } else if (name.equals("country")) {
+                if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
+                    throw new BadRequest();
+                }
+                predicates.add(new CountryEqPredicate(parameter.getValue().get(0)));
+            } else if (name.equals("city")) {
+                if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
+                    throw new BadRequest();
+                }
+                predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
+            } else {
+                throw new BadRequest();
             }
+        }
 
-            List<AccountDTO> result = accountService.suggest(id, predicates, limit);
-            StringBuilder resultTest = new StringBuilder("{\"accounts\": [");
+        List<AccountDTO> result = accountService.suggest(id, predicates, limit);
+        if (result.isEmpty()) {
+            responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
+        } else {
+            responseBuf.writeBytes(ACCOUNTS_LIST_START);
             for (int i = 0; i < result.size(); i++) {
                 if (i != 0) {
-                    resultTest.append(",");
+                    responseBuf.writeByte(',');
                 }
-                resultTest.append(accountFormatter.formatSuggest(result.get(i)));
+                accountFormatter.formatSuggest(result.get(i), responseBuf);
             }
-            resultTest.append("]}");
-            return resultTest.toString();
+            responseBuf.writeBytes(LIST_END);
+        }
     }
 
 

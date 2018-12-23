@@ -7,10 +7,10 @@ public class InterestsContainsIndexScan extends AbstractIndexScan {
 
     private int[][] indexList;
     private int[] indexes;
-    private int[] minIds;
-    private int prev = Integer.MAX_VALUE;
+    private int[] state;
+    private boolean alwaysFalse;
 
-    public InterestsContainsIndexScan(IndexHolder indexHolder, List<String> interests) {
+    public InterestsContainsIndexScan(IndexHolder indexHolder, String[] interests) {
         super(indexHolder);
         int count = 0;
         for (String interes: interests) {
@@ -23,61 +23,71 @@ public class InterestsContainsIndexScan extends AbstractIndexScan {
         for (String interes: interests) {
             if (indexHolder.interestsIndex.containsKey(interes)) {
                 indexList[index++] = indexHolder.interestsIndex.get(interes);
+            } else {
+                alwaysFalse = true;
             }
         }
         indexes = new int[count];
-        minIds = new int[count];
+        state = new int[count];
         for (int i = 0; i < count; i++) {
-            minIds[i] = -1;
+            if (indexList[i].length != 0) {
+                state[i] = indexList[i][indexes[i]++];
+            } else {
+                state[i] = -1;
+            }
         }
     }
 
     @Override
     public int getNext() {
+        if (alwaysFalse) {
+            return -1;
+        }
         if (indexList != null && indexList.length != 0) {
-            for (int i = 0; i< indexList.length; i++) {
-                minIds[i] =  -1;
-                if (indexes[i] < indexList[i].length) {
-                    for (int j = indexes[i]; j < indexList[i].length; j++) {
-                        if (indexList[i][j] < prev) {
-                            minIds[i] = indexList[i][j];
-                            break;
+            while (true) {
+                boolean equals = true;
+                int min = Integer.MAX_VALUE;
+                int prev = -1;
+                for (int i = 0; i< state.length; i++) {
+                    if (state[i] < min) {
+                        min = state[i];
+                    }
+                    if (prev != -1) {
+                        if (state[i] != prev) {
+                            equals = false;
                         }
                     }
+                    prev = state[i];
                 }
-            }
 
-            int max = getMax(minIds);
-            if (max == -1) {
-                return -1;
-            }
-
-            for (int i = 0; i< indexList.length; i++) {
-                if (indexes[i] < indexList[i].length) {
-                    for (int j = indexes[i]; j < indexList[i].length; j++) {
-                        if (indexList[i][j] >= max) {
-                            indexes[i]++;
+                if (equals) {
+                    int result = state[0];
+                    for (int i = 0; i < indexList.length; i++) {
+                        if (indexes[i] < indexList[i].length) {
+                            state[i] = indexList[i][indexes[i]++];
                         } else {
-                            break;
+                            state[i] = -1;
+                        }
+                    }
+                    return result;
+                }
+
+                for (int i = 0; i < indexList.length; i++) {
+                    if (state[i] != min) {
+                        if (indexes[i] < indexList[i].length) {
+                            state[i] = indexList[i][indexes[i]++];
+                        } else {
+                            state[i] = -1;
+                        }
+                        if (state[i] == -1) {
+                            return -1;
                         }
                     }
                 }
             }
-            prev = max;
-            return max;
         } else {
             return -1;
         }
-    }
-
-    private int getMax(int[] array) {
-        int max = -1;
-        for (int i = 0; i < array.length; i++) {
-            if (array[i] > max) {
-                max = array[i];
-            }
-        }
-        return max;
     }
 
 }

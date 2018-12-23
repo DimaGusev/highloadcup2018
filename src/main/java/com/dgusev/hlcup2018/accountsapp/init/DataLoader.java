@@ -53,7 +53,7 @@ public class DataLoader implements CommandLineRunner {
         Statistics statistics = new Statistics();
         int count = 0;
         byte[] buf = new byte[1000000];
-       // for (Integer k = 0; k < 50; k++) {
+       // for (int k = 0; k < 50; k++) {
             for (Map.Entry<Integer, ZipEntry> entry : accountsFileTreeMap.entrySet()) {
                 Integer n = entry.getKey();
                 ZipEntry z = entry.getValue();

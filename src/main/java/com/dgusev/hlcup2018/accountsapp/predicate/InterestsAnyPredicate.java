@@ -16,10 +16,10 @@ public class InterestsAnyPredicate implements Predicate<AccountDTO> {
 
     @Override
     public boolean test(AccountDTO accountDTO) {
-        if (accountDTO.interests != null && !accountDTO.interests.isEmpty()) {
+        if (accountDTO.interests != null && accountDTO.interests.length != 0) {
             for (int i = 0; i < interests.size(); i++) {
                 String interes = interests.get(i);
-                if (accountDTO.interests.contains(interes)) {
+                if (contains(accountDTO.interests, interes)) {
                     return true;
                 }
             }
@@ -27,5 +27,14 @@ public class InterestsAnyPredicate implements Predicate<AccountDTO> {
         } else {
             return false;
         }
+    }
+
+    private boolean contains(String[] arrray, String element) {
+        for (int i = 0; i < arrray.length; i++) {
+            if (arrray[i].equals(element)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

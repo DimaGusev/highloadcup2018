@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class AccountParser {
@@ -361,7 +362,7 @@ public class AccountParser {
                if (end - colon == 1) {
                    accountDTO.interests = null;
                } else {
-                   accountDTO.interests = new ArrayList<>();
+                   List<String> interestsList = new ArrayList<>();
                    while (true) {
                        if (array[colon] == ']') {
                           break;
@@ -369,7 +370,7 @@ public class AccountParser {
                        int fromInteres = indexOf(array, colon, '"');
                        int toInteres = indexOf(array, fromInteres + 1, '"');
                        String interes = parseString(array, fromInteres + 1, toInteres - fromInteres - 1 );
-                       accountDTO.interests.add(interes);
+                       interestsList.add(interes);
                        int commaIndex = indexOf(array, toInteres, ',');
                        int closeIndex = indexOf(array, toInteres, ']');
                        if (commaIndex == -1) {
@@ -382,6 +383,7 @@ public class AccountParser {
                            }
                        }
                    }
+                   accountDTO.interests = interestsList.toArray(new String[interestsList.size()]);
                    int nextIndex = indexOf(array, colon, ',');
                    if (nextIndex == -1) {
                        currentIndex = indexOf(array, colon, '}');
@@ -484,7 +486,7 @@ public class AccountParser {
                     if (end - colon == 1) {
                         accountDTO.likes = null;
                     } else {
-                        accountDTO.likes = new ArrayList<>();
+                        List<AccountDTO.Like> likesList = new ArrayList<>();
 
                         while (true) {
                             if (array[colon] == ']') {
@@ -550,7 +552,7 @@ public class AccountParser {
                                     like.ts = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                                 }
                             }
-                            accountDTO.likes.add(like);
+                            likesList.add(like);
 
                             int commaIndex = indexOf(array, toLike, ',');
                             int closeIndex = indexOf(array, toLike, ']');
@@ -564,6 +566,7 @@ public class AccountParser {
                                 }
                             }
                         }
+                        accountDTO.likes = likesList.toArray(new AccountDTO.Like[likesList.size()]);
                         int nextIndex = indexOf(array, colon, ',');
                         if (nextIndex == -1) {
                             currentIndex = indexOf(array, colon, '}');

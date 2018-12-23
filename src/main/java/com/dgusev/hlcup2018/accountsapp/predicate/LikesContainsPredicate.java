@@ -16,7 +16,7 @@ public class LikesContainsPredicate implements Predicate<AccountDTO> {
 
     @Override
     public boolean test(AccountDTO accountDTO) {
-        if (accountDTO.likes != null && !accountDTO.likes.isEmpty()) {
+        if (accountDTO.likes != null && accountDTO.likes.length != 0) {
             for (int i = 0; i< likes.length; i++) {
                 int like = likes[i];
                 if (!containsLike(accountDTO.likes, like)) {
@@ -29,9 +29,9 @@ public class LikesContainsPredicate implements Predicate<AccountDTO> {
         }
     }
 
-    private boolean containsLike(List<AccountDTO.Like> likes, int like) {
-        for (int i = 0; i < likes.size(); i++) {
-            AccountDTO.Like l = likes.get(i);
+    private boolean containsLike(AccountDTO.Like[] likes, int like) {
+        for (int i = 0; i < likes.length; i++) {
+            AccountDTO.Like l = likes[i];
             if (l.id == like) {
                 return true;
             }

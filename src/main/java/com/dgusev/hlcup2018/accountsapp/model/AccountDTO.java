@@ -15,10 +15,10 @@ public class AccountDTO {
     public String city;
     public int joined = Integer.MIN_VALUE;
     public String status;
-    public List<String> interests;
+    public String[] interests;
     public int premiumStart;
     public int premiumFinish;
-    public List<Like> likes;
+    public Like[] likes;
 
     public static class Like {
         public int id;

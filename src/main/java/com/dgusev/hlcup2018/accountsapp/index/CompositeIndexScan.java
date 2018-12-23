@@ -7,11 +7,11 @@ import java.util.List;
 
 public class CompositeIndexScan implements IndexScan {
 
-    private List<IndexScan> indexScans;
+    private IndexScan[] indexScans;
     private int[] state;
 
     public CompositeIndexScan(List<IndexScan> indexScans) {
-        this.indexScans = indexScans;
+        this.indexScans = indexScans.toArray(new IndexScan[indexScans.size()]);
         state = new int[indexScans.size()];
         for (int i = 0; i < indexScans.size(); i++) {
             state[i] = indexScans.get(i).getNext();
@@ -37,17 +37,15 @@ public class CompositeIndexScan implements IndexScan {
 
             if (equals) {
                 int result = state[0];
-                for (int i = 0; i < indexScans.size(); i++) {
-                    state[i] = indexScans.get(i).getNext();
-                    AccountService.indexScanIterations2.incrementAndGet();
+                for (int i = 0; i < indexScans.length; i++) {
+                    state[i] = indexScans[i].getNext();
                 }
                 return result;
             }
 
-            for (int i = 0; i < indexScans.size(); i++) {
+            for (int i = 0; i < indexScans.length; i++) {
                 if (state[i] != min) {
-                    AccountService.indexScanIterations2.incrementAndGet();
-                    state[i] = indexScans.get(i).getNext();
+                    state[i] = indexScans[i].getNext();
                     if (state[i] == -1) {
                         return -1;
                     }

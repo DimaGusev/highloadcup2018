@@ -5,6 +5,7 @@ import com.dgusev.hlcup2018.accountsapp.model.NotFoundRequest;
 import com.dgusev.hlcup2018.accountsapp.rest.AccountsController;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import io.netty.bootstrap.ServerBootstrap;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -20,6 +21,10 @@ import java.util.Date;
 
 @Component
 public class NettyServer {
+
+    private static final byte[] EMPTY_OBJECT = "{}".getBytes();
+
+    public static volatile String LAST_FILTER_URL;
 
     @Value("${server.port}")
     private Integer port;
@@ -60,7 +65,7 @@ public class NettyServer {
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-
+            //System.out.println(cause.getClass() +" "+ cause.getMessage());
         }
 
         @Override
@@ -68,8 +73,8 @@ public class NettyServer {
             if (msg instanceof FullHttpRequest)
             {
                 final FullHttpRequest request = (FullHttpRequest) msg;
+                ByteBuf responseBuf =  channelHandlerContext.alloc().directBuffer();
                 try {
-
 
                 QueryStringDecoder queryStringDecoder = new QueryStringDecoder(request.uri());
 
@@ -77,31 +82,33 @@ public class NettyServer {
                     if (request.method() == HttpMethod.GET) {
 
                         if (queryStringDecoder.uri().startsWith("/accounts/filter")) {
-                            String result = accountsController.accountsFilter(queryStringDecoder.parameters());
-                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, result);
+                            LAST_FILTER_URL = queryStringDecoder.uri();
+                            accountsController.accountsFilter(queryStringDecoder.parameters(), responseBuf);
+                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.uri().startsWith("/accounts/group")) {
-                            String result = accountsController.group(queryStringDecoder.parameters());
-                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, result);
+                            accountsController.group(queryStringDecoder.parameters(), responseBuf);
+                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.uri().contains("recommend")) {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
                             int id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
-                            String result = accountsController.recommend(queryStringDecoder.parameters(), id);
-                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, result);
+                            accountsController.recommend(queryStringDecoder.parameters(), id, responseBuf);
+                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.uri().contains("suggest")) {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
                             int id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
-                            String result = accountsController.suggest(queryStringDecoder.parameters(), id);
-                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, result);
+                            accountsController.suggest(queryStringDecoder.parameters(), id, responseBuf);
+                            writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else {
                             throw new BadRequest();
                         }
                     } else {
+                        responseBuf.writeBytes(EMPTY_OBJECT);
                         if (queryStringDecoder.rawPath().equals("/accounts/new/")) {
                             accountsController.create(request.content().toString(StandardCharsets.UTF_8));
-                            writeResponse(channelHandlerContext, request, HttpResponseStatus.CREATED, "{}");
+                            writeResponse(channelHandlerContext, request, HttpResponseStatus.CREATED, responseBuf);
                         } else if (queryStringDecoder.rawPath().equals("/accounts/likes/")) {
                             accountsController.like(request.content().toString(StandardCharsets.UTF_8));
-                            writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, "{}");
+                            writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, responseBuf);
                         } else {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
                             int id = 0;
@@ -111,17 +118,17 @@ public class NettyServer {
                                 throw new NotFoundRequest();
                             }
                             accountsController.update(request.content().toString(StandardCharsets.UTF_8), id);
-                            writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, "{}");
+                            writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, responseBuf);
                         }
                     }
                 } catch (BadRequest | NumberFormatException badRequest) {
-                    writeResponse(channelHandlerContext, request, HttpResponseStatus.BAD_REQUEST, null);
+                    writeResponse(channelHandlerContext, request, HttpResponseStatus.BAD_REQUEST, responseBuf);
                 } catch (NotFoundRequest notFoundRequest) {
-                    writeResponse(channelHandlerContext, request, HttpResponseStatus.NOT_FOUND, null);
+                    writeResponse(channelHandlerContext, request, HttpResponseStatus.NOT_FOUND, responseBuf);
                 } catch (Exception ex) {
                     //System.out.println(request.content().toString(StandardCharsets.UTF_8));
-                    //ex.printStackTrace();
-                    writeResponse(channelHandlerContext, request, HttpResponseStatus.BAD_REQUEST, null);
+                    ex.printStackTrace();
+                    writeResponse(channelHandlerContext, request, HttpResponseStatus.BAD_REQUEST, responseBuf);
                 }
             } else {
                 super.channelRead(channelHandlerContext, msg);
@@ -129,37 +136,21 @@ public class NettyServer {
         }
     }
 
-    private void writeResponse(ChannelHandlerContext channelHandlerContext, FullHttpRequest fullHttpRequest, HttpResponseStatus httpResponseStatus, String body) {
-        FullHttpResponse response = null;
-        int bodyLength = 0;
-        if (body != null) {
-            byte[] b = body.getBytes();
-            response = new DefaultFullHttpResponse(
+    private void writeResponse(ChannelHandlerContext channelHandlerContext, FullHttpRequest fullHttpRequest, HttpResponseStatus httpResponseStatus, ByteBuf responseBuf) {
+        FullHttpResponse response = new DefaultFullHttpResponse(
                     HttpVersion.HTTP_1_1,
                     httpResponseStatus,
-                    Unpooled.copiedBuffer(b)
-            );
-            bodyLength = b.length;
-            response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "application/json; charset=utf-8");
-        } else {
-            response = new DefaultFullHttpResponse(
-                    HttpVersion.HTTP_1_1,
-                    httpResponseStatus,
-                    Unpooled.copiedBuffer("{}".getBytes())
-            );
-            bodyLength = 2;
-        }
+                    responseBuf
+        );
+        response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, responseBuf.writerIndex());
+        response.headers().set(HttpHeaders.Names.CONTENT_TYPE, "application/json; charset=utf-8");
         if (HttpUtil.isKeepAlive(fullHttpRequest)) {
             response.headers().set(
                     HttpHeaders.Names.CONNECTION,
                     HttpHeaders.Values.KEEP_ALIVE
             );
-            response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, bodyLength);
-            channelHandlerContext.writeAndFlush(response);
-        } else {
-            response.headers().setInt(HttpHeaderNames.CONTENT_LENGTH, bodyLength);
-            channelHandlerContext.writeAndFlush(response);//.addListener(ChannelFutureListener.CLOSE);
         }
+        channelHandlerContext.writeAndFlush(response);
     }
 
 }

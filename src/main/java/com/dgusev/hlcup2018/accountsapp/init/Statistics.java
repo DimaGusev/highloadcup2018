@@ -73,7 +73,7 @@ public class Statistics {
         }
 
         if (accountDTO.interests != null) {
-            interests.addAll(accountDTO.interests);
+            interests.addAll(Arrays.asList(accountDTO.interests));
         }
 
         if (accountDTO.premiumStart != 0) {
@@ -81,7 +81,7 @@ public class Statistics {
         }
 
         if (accountDTO.likes != null) {
-            likesCount+= accountDTO.likes.size();
+            likesCount+= accountDTO.likes.length;
         }
     }
 
