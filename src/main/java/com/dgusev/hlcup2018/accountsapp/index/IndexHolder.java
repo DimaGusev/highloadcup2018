@@ -1,6 +1,8 @@
 package com.dgusev.hlcup2018.accountsapp.index;
 
+import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
@@ -14,14 +16,21 @@ public class IndexHolder {
     public Map<String, int[]> interestsIndex;
     public Map<String, int[]> cityIndex;
     public Map<Integer, int[]> birthYearIndex;
+    public Map<String, int[]> emailDomainIndex;
     public int[] notNullCountry;
     public int[] nullCountry;
     public int[] notNullCity;
     public int[] nullCity;
+    public int[] premiumIndex;
+
+    @Autowired
+    private NowProvider nowProvider;
 
     public synchronized void init(AccountDTO[] accountDTOList, int size) {
+        int now = nowProvider.getNow();
         Map<String, List<Integer>> tmpCountryIndex = new HashMap<>();
         Map<String, List<Integer>> tmpSexIndex = new HashMap<>();
+        Map<String, List<Integer>> tmpEmailDomainIndex = new HashMap<>();
         List<Integer> tmpNotNullCountry = new ArrayList<>();
         List<Integer> tmpNullCountry = new ArrayList<>();
         List<Integer> tmpNotNullCity = new ArrayList<>();
@@ -35,6 +44,7 @@ public class IndexHolder {
         }
         Map<String, List<Integer>> tmpInterestsIndex = new HashMap<>();
         Map<String, List<Integer>> tmpCityIndex = new HashMap<>();
+        List<Integer> tmpPremiumIndex = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             AccountDTO accountDTO = accountDTOList[i];
             if (accountDTO.country != null) {
@@ -64,6 +74,12 @@ public class IndexHolder {
             }
             int year = new Date(accountDTO.birth * 1000L).getYear() + 1900;
             tmpBirthYearIndex.computeIfAbsent(year, k -> new ArrayList<>()).add(accountDTO.id);
+            if (accountDTO.premiumStart != 0 && accountDTO.premiumStart <= now && (accountDTO.premiumFinish == 0 || accountDTO.premiumFinish > now)) {
+                tmpPremiumIndex.add(accountDTO.id);
+            }
+            int at = accountDTO.email.lastIndexOf('@');
+            String domain = accountDTO.email.substring(at + 1);
+            tmpEmailDomainIndex.computeIfAbsent(domain, k -> new ArrayList<>()).add(accountDTO.id);
         }
         countryIndex = new HashMap<>();
         for (Map.Entry<String, List<Integer>> entry: tmpCountryIndex.entrySet()) {
@@ -110,6 +126,15 @@ public class IndexHolder {
         birthYearIndex = new HashMap<>();
         for (Map.Entry<Integer, List<Integer>> entry: tmpBirthYearIndex.entrySet()) {
             birthYearIndex.put(entry.getKey(), entry.getValue().stream()
+                    .mapToInt(Integer::intValue)
+                    .toArray());
+        }
+        premiumIndex = tmpPremiumIndex.stream()
+                .mapToInt(Integer::intValue)
+                .toArray();
+        emailDomainIndex = new HashMap<>();
+        for (Map.Entry<String, List<Integer>> entry: tmpEmailDomainIndex.entrySet()) {
+            emailDomainIndex.put(entry.getKey(), entry.getValue().stream()
                     .mapToInt(Integer::intValue)
                     .toArray());
         }

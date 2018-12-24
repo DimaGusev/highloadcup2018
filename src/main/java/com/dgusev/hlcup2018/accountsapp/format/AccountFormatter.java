@@ -127,18 +127,11 @@ public class AccountFormatter {
         if (accountDTO.premiumStart != 0) {
             stringBuilder.append(",");
             stringBuilder.append("\"").append("premium").append("\":");
-            stringBuilder.append("{\"premiumStart\":");
+            stringBuilder.append("{\"start\":");
             stringBuilder.append(accountDTO.premiumStart);
-            stringBuilder.append(",\"premiumFinish\":");
+            stringBuilder.append(",\"finish\":");
             stringBuilder.append(accountDTO.premiumFinish);
             stringBuilder.append("}");
-        }
-        if (accountDTO.interests != null) {
-            stringBuilder.append(",");
-            stringBuilder.append("\"").append("interests").append("\":");
-            stringBuilder.append("[");
-            stringBuilder.append(Arrays.stream(accountDTO.interests).map(i -> "\"" + i + "\"").collect(Collectors.joining(",")));
-            stringBuilder.append("]");
         }
         stringBuilder.append("}");
         responseBuf.writeBytes(stringBuilder.toString().getBytes());

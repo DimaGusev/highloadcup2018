@@ -7,18 +7,18 @@ import java.util.function.Predicate;
 
 public class InterestsAnyPredicate implements Predicate<AccountDTO> {
 
-    private List<String> interests;
+    private String[] interests;
 
     public InterestsAnyPredicate(List<String> interests) {
         PredicateStatistics.ia.incrementAndGet();
-        this.interests = interests;
+        this.interests = interests.toArray(new String[interests.size()]);
     }
 
     @Override
     public boolean test(AccountDTO accountDTO) {
         if (accountDTO.interests != null && accountDTO.interests.length != 0) {
-            for (int i = 0; i < interests.size(); i++) {
-                String interes = interests.get(i);
+            for (int i = 0; i < interests.length; i++) {
+                String interes = interests[i];
                 if (contains(accountDTO.interests, interes)) {
                     return true;
                 }
@@ -36,5 +36,9 @@ public class InterestsAnyPredicate implements Predicate<AccountDTO> {
             }
         }
         return false;
+    }
+
+    public String[] getInterests() {
+        return interests;
     }
 }

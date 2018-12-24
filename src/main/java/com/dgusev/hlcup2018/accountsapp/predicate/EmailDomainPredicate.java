@@ -7,14 +7,20 @@ import java.util.function.Predicate;
 public class EmailDomainPredicate implements Predicate<AccountDTO> {
 
     private String domain;
+    private String atDomain;
 
     public EmailDomainPredicate(String domain) {
         PredicateStatistics.ed.incrementAndGet();
-        this.domain = "@" + domain;
+        this.atDomain = "@" + domain;
+        this.domain = domain;
     }
 
     @Override
     public boolean test(AccountDTO accountDTO) {
-        return accountDTO.email.endsWith(domain);
+        return accountDTO.email.endsWith(atDomain);
+    }
+
+    public String getDomain() {
+        return domain;
     }
 }

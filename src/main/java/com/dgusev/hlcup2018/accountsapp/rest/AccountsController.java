@@ -127,7 +127,7 @@ public class AccountsController {
                     if (name.equals("city_eq")) {
                         predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
                     } else if (name.equals("city_any")) {
-                        predicates.add(new CityAnyPredicate(Arrays.asList(parameter.getValue().get(0).split(","))));
+                        predicates.add(new CityAnyPredicate(parameter.getValue().get(0).split(",")));
                     } else if (name.equals("city_null")) {
                         predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
