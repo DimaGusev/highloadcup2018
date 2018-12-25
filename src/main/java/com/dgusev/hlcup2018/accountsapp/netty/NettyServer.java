@@ -81,25 +81,35 @@ public class NettyServer {
 
                     if (request.method() == HttpMethod.GET) {
 
-                        if (queryStringDecoder.uri().startsWith("/accounts/filter")) {
+                        if (queryStringDecoder.rawPath().equals("/accounts/filter/")) {
                             LAST_FILTER_URL = queryStringDecoder.uri();
                             accountsController.accountsFilter(queryStringDecoder.parameters(), responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
-                        } else if (queryStringDecoder.uri().startsWith("/accounts/group")) {
+                        } else if (queryStringDecoder.rawPath().equals("/accounts/group/")) {
                             accountsController.group(queryStringDecoder.parameters(), responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.uri().contains("recommend")) {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
-                            int id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
+                            int id = 0;
+                            try {
+                                id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
+                            } catch (NumberFormatException ex) {
+                                throw new NotFoundRequest();
+                            }
                             accountsController.recommend(queryStringDecoder.parameters(), id, responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.uri().contains("suggest")) {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
-                            int id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
+                            int id = 0;
+                            try {
+                                id = Integer.parseInt(queryStringDecoder.uri().substring(10, fin));
+                            } catch (NumberFormatException ex) {
+                                throw new NotFoundRequest();
+                            }
                             accountsController.suggest(queryStringDecoder.parameters(), id, responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else {
-                            throw new BadRequest();
+                            throw new NotFoundRequest();
                         }
                     } else {
                         responseBuf.writeBytes(EMPTY_OBJECT);

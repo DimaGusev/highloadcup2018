@@ -143,6 +143,9 @@ public class AccountFormatter {
         if (accountDTO.fname != null) {
             stringBuilder.append(",\"fname\":\"").append(accountDTO.fname).append("\"");
         }
+        if (accountDTO.sname != null) {
+            stringBuilder.append(",\"sname\":\"").append(accountDTO.sname).append("\"");
+        }
         stringBuilder.append("}");
         responseBuf.writeBytes(stringBuilder.toString().getBytes());
     }

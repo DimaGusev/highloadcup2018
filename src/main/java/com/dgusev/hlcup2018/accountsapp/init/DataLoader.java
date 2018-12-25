@@ -53,7 +53,7 @@ public class DataLoader implements CommandLineRunner {
         Statistics statistics = new Statistics();
         int count = 0;
         byte[] buf = new byte[1000000];
-        for (int k = 0; k < 50; k++) {
+ //       for (int k = 0; k < 50; k++) {
             for (Map.Entry<Integer, ZipEntry> entry : accountsFileTreeMap.entrySet()) {
                 Integer n = entry.getKey();
                 ZipEntry z = entry.getValue();
@@ -83,11 +83,11 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
-                            accountDTO.id = k* 10001  +  accountDTO.id;
+                            /*accountDTO.id = k* 10001  +  accountDTO.id;
                             accountDTO.email = k + "" + accountDTO.email;
                             if (accountDTO.phone != null) {
                                 accountDTO.phone = k + "" + accountDTO.phone;
-                            }
+                            }*/
                             accountService.load(accountDTO);
                             statistics.analyze(accountDTO);
                             count++;
@@ -99,7 +99,7 @@ public class DataLoader implements CommandLineRunner {
                     e.printStackTrace();
                 }
             }
-        }
+//        }
         System.out.println("Finish load " + count + " accounts " + new Date());
         System.out.println(statistics);
         accountService.finishLoad();
