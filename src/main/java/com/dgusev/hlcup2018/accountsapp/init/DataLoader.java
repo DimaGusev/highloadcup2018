@@ -23,8 +23,12 @@ public class DataLoader implements CommandLineRunner {
     @Autowired
     private AccountParser accountParser;
 
-    @Value("${data.initial.file}")
-    private String initFile;
+    @Value("${data.initial.file.win}")
+    private String initFileWin;
+
+    @Value("${data.initial.file.linux}")
+    private String initFileLinux;
+
 
     @Autowired
     private AccountService accountService;
@@ -34,6 +38,12 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        String initFile = null;
+        if (System.getProperty("os.name").toLowerCase().contains("win")) {
+            initFile = initFileWin;
+        } else {
+            initFile = initFileLinux;
+        }
         ZipFile zipFile = new ZipFile(initFile);
         TreeMap<Integer, ZipEntry> accountsFileTreeMap = new TreeMap<>();
         Collections.list(zipFile.entries()).forEach(zipEntry -> {
@@ -53,7 +63,8 @@ public class DataLoader implements CommandLineRunner {
         Statistics statistics = new Statistics();
         int count = 0;
         byte[] buf = new byte[1000000];
- //       for (int k = 0; k < 50; k++) {
+//        for (int k = 0; k < 22; k++) {
+ //           System.out.println("Start " + k + " " + new Date());
             for (Map.Entry<Integer, ZipEntry> entry : accountsFileTreeMap.entrySet()) {
                 Integer n = entry.getKey();
                 ZipEntry z = entry.getValue();
@@ -83,7 +94,7 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
-                            /*accountDTO.id = k* 10001  +  accountDTO.id;
+ /*                           accountDTO.id = k* 30001  +  accountDTO.id;
                             accountDTO.email = k + "" + accountDTO.email;
                             if (accountDTO.phone != null) {
                                 accountDTO.phone = k + "" + accountDTO.phone;
@@ -99,7 +110,7 @@ public class DataLoader implements CommandLineRunner {
                     e.printStackTrace();
                 }
             }
-//        }
+ //       }
         System.out.println("Finish load " + count + " accounts " + new Date());
         System.out.println(statistics);
         accountService.finishLoad();

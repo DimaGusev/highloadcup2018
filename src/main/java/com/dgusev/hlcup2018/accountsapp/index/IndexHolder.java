@@ -22,6 +22,7 @@ public class IndexHolder {
     public int[] notNullCity;
     public int[] nullCity;
     public int[] premiumIndex;
+    public Map<Integer, int[]> likesIndex;
 
     @Autowired
     private NowProvider nowProvider;
@@ -44,6 +45,7 @@ public class IndexHolder {
         }
         Map<String, List<Integer>> tmpInterestsIndex = new HashMap<>();
         Map<String, List<Integer>> tmpCityIndex = new HashMap<>();
+        Map<Integer, Set<Integer>> tmpLikesIndex = new HashMap<>();
         List<Integer> tmpPremiumIndex = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             AccountDTO accountDTO = accountDTOList[i];
@@ -80,6 +82,14 @@ public class IndexHolder {
             int at = accountDTO.email.lastIndexOf('@');
             String domain = accountDTO.email.substring(at + 1);
             tmpEmailDomainIndex.computeIfAbsent(domain, k -> new ArrayList<>()).add(accountDTO.id);
+            if (accountDTO.likes != null && accountDTO.likes.length != 0) {
+                for (AccountDTO.Like like: accountDTO.likes) {
+                    if (!tmpLikesIndex.containsKey(like.id)) {
+                        tmpLikesIndex.put(like.id, new LinkedHashSet<>());
+                    }
+                    tmpLikesIndex.get(like.id).add(accountDTO.id);
+                }
+            }
         }
         countryIndex = new HashMap<>();
         for (Map.Entry<String, List<Integer>> entry: tmpCountryIndex.entrySet()) {
@@ -135,6 +145,12 @@ public class IndexHolder {
         emailDomainIndex = new HashMap<>();
         for (Map.Entry<String, List<Integer>> entry: tmpEmailDomainIndex.entrySet()) {
             emailDomainIndex.put(entry.getKey(), entry.getValue().stream()
+                    .mapToInt(Integer::intValue)
+                    .toArray());
+        }
+        likesIndex = new HashMap<>();
+        for (Map.Entry<Integer, Set<Integer>> entry: tmpLikesIndex.entrySet()) {
+            likesIndex.put(entry.getKey(), entry.getValue().stream()
                     .mapToInt(Integer::intValue)
                     .toArray());
         }

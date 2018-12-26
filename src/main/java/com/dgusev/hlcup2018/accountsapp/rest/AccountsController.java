@@ -316,7 +316,7 @@ public class AccountsController {
                 continue;
             } else if (name.equals("limit")) {
                 limit = Integer.parseInt(parameter.getValue().get(0));
-                if (limit < 0) {
+                if (limit <= 0) {
                     throw new BadRequest();
                 }
             } else if (name.equals("country")) {

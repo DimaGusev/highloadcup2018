@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class AccountService {
-    public  static final int MAX_ID = 520000;
+    public  static final int MAX_ID = 1520000;
     private static final Set<String> ALLOWED_SEX = new HashSet<>(Arrays.asList("m", "f"));
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
     private static final String EMAIL_REG = "[0-9a-zA-z]+@[0-9a-zA-z]+\\.[0-9a-zA-z]+";
@@ -38,8 +38,8 @@ public class AccountService {
     public static volatile long LAST_UPDATE_TIMESTAMP;
 
     public List<AccountDTO> filter(List<Predicate<AccountDTO>> predicates, int limit) {
-        if (limit == 0) {
-            return new ArrayList<>();
+        if (limit <= 0) {
+            throw new BadRequest();
         }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         if (!indexScans.isEmpty()) {
@@ -90,6 +90,9 @@ public class AccountService {
     }
 
     public List<Group> group(List<String> keys, List<Predicate<AccountDTO>> predicates, int order, int limit) {
+        if (limit <= 0) {
+            throw new BadRequest();
+        }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         HashMap<Long, IntegerHolder> groupHashMap = new HashMap<>();
         HashMap<Long, List<String>> groupNameMap = new HashMap<>();
@@ -206,6 +209,9 @@ public class AccountService {
 
 
     public List<AccountDTO> recommend(int id, List<Predicate<AccountDTO>> predicates, int limit) {
+        if (limit <= 0) {
+            throw new BadRequest();
+        }
         AccountDTO accountDTO = findById(id);
         if (accountDTO == null) {
             throw new NotFoundRequest();
@@ -351,19 +357,9 @@ public class AccountService {
         if (accountDTO == null) {
             throw new NotFoundRequest();
         }
-        /*if (true) {
-            return Collections.EMPTY_LIST;
-        }*/
         predicates.add(new SexEqPredicate(accountDTO.sex));
         predicates.add(a -> a.id != id);
-        Set<Integer> likes = new HashSet<>();
-        if (accountDTO.likes != null && accountDTO.likes.length != 0) {
-            likes.addAll(Arrays.stream(accountDTO.likes).map(l -> l.id).collect(Collectors.toList()));
-        }
-        Predicate<AccountDTO> accountPredicate = predicates.get(0);
-        for (int i = 1; i < predicates.size(); i++) {
-            accountPredicate = accountPredicate.and(predicates.get(i));
-        }
+
         String targetSex = null;
         if (accountDTO.sex.equals("m")) {
             targetSex = "f";
@@ -372,13 +368,57 @@ public class AccountService {
         }
 
         final String ts = targetSex;
+        if (accountDTO.likes == null || accountDTO.likes.length == 0) {
+            return Collections.EMPTY_LIST;
+        }
+        Set<Integer> myLikes = new HashSet<>();
+        for (AccountDTO.Like like: accountDTO.likes) {
+            myLikes.add(like.id);
+        }
+        Set<Integer> suggests = new HashSet<>();
+        for (Integer a: myLikes) {
+            if (indexHolder.likesIndex.containsKey(a)) {
+                int[] likers = indexHolder.likesIndex.get(a);
+                for (int l: likers) {
+                    suggests.add(l);
+                }
+            }
+        }
+        if (suggests.isEmpty()) {
+            return Collections.EMPTY_LIST;
+        }
+        List<Integer> likersIndex = new ArrayList<>(suggests);
+        likersIndex.sort(Comparator.reverseOrder());
+        IndexScan likersIndexScan = new ArrayIndexScan(likersIndex.stream().mapToInt(i->i).toArray());
 
-         return Arrays.stream(accountDTOList,0 , size).filter(accountPredicate.and(a -> getSimilarity(accountDTO, a) != 0)).sorted( (a1, a2) -> {
-            double s1 = getSimilarity(accountDTO, a1);
-            double s2 = getSimilarity(accountDTO, a2);
-            return Double.compare(s2, s1);
-        }).flatMap(a -> a.likes != null ? Arrays.stream(a.likes).sorted(Comparator.comparingInt((AccountDTO.Like l) -> l.id).reversed()) : new ArrayList<AccountDTO.Like>().stream())
-                 .filter(l -> !likes.contains(l.id) && findById(l.id).sex.equals(ts)).map(l -> l.id).distinct().limit(limit).map(i-> accountIdMap[i]).collect(Collectors.toList());
+        List<IndexScan> indexScans = getAvailableIndexScan(predicates);
+        indexScans.add(likersIndexScan);
+        IndexScan indexScan = new CompositeIndexScan(indexScans);
+        Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
+        List<AccountDTO> suggestResult = new ArrayList<>();
+        while (true) {
+            int next = indexScan.getNext();
+            if (next == -1) {
+                break;
+            }
+            AccountDTO acc = findById(next);
+            if (accountPredicate.test(acc)) {
+                suggestResult.add(acc);
+            }
+        }
+        return suggestResult.stream().map(a ->  {
+            Similarity similarity = new Similarity();
+            similarity.accountDTO = a;
+            similarity.similarity = getSimilarity(accountDTO, a);
+            return similarity;
+        }).sorted(Comparator.comparingDouble((Similarity s) -> s.similarity).reversed())
+                .flatMap(s -> Arrays.stream(s.accountDTO.likes).sorted(Comparator.comparingInt((AccountDTO.Like l) -> l.id).reversed()))
+                .filter(l -> !myLikes.contains(l.id) && findById(l.id).sex.equals(ts))
+                .map(l -> l.id)
+                .distinct()
+                .limit(limit)
+                .map(i-> accountIdMap[i])
+                .collect(Collectors.toList());
     }
 
     private double getSimilarity(AccountDTO a1, AccountDTO a2) {
@@ -532,6 +572,9 @@ public class AccountService {
             phones.remove(oldAcc.phone);
             phones.add(accountDTO.phone);
             oldAcc.phone = accountDTO.phone;
+        } else if (oldAcc.phone == null && accountDTO.phone != null) {
+            phones.add(accountDTO.phone);
+            oldAcc.phone = accountDTO.phone;
         }
         if (accountDTO.sex != null) {
             oldAcc.sex = accountDTO.sex;
@@ -554,7 +597,7 @@ public class AccountService {
         if (accountDTO.interests != null) {
             oldAcc.interests = accountDTO.interests;
         }
-        if (accountDTO.premiumStart != Integer.MIN_VALUE) {
+        if (accountDTO.premiumStart != 0) {
             oldAcc.premiumStart = accountDTO.premiumStart;
             oldAcc.premiumFinish = accountDTO.premiumFinish;
         }
@@ -718,6 +761,11 @@ public class AccountService {
 
     private static class IntegerHolder {
         public int count;
+    }
+
+    private static class Similarity {
+        public AccountDTO accountDTO;
+        public double similarity;
     }
 
 }
