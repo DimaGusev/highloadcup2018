@@ -1,20 +1,20 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
+import gnu.trove.impl.Constants;
 
 import java.util.function.Predicate;
 
 public class SnameEqPredicate implements Predicate<Account> {
 
-    private String sname;
+    private int sname;
 
-    public SnameEqPredicate(String sname) {
-        PredicateStatistics.sne.incrementAndGet();
+    public SnameEqPredicate(int sname) {
         this.sname = sname;
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.sname != null && Account.sname.equals(sname);
+    public boolean test(Account account) {
+        return account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE && account.sname != sname;
     }
 }

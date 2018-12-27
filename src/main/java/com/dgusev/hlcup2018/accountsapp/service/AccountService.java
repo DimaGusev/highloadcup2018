@@ -580,7 +580,7 @@ public class AccountService {
             oldAcc.fname = dictionary.getOrCreateFname(accountDTO.fname);
         }
         if (accountDTO.sname != null) {
-            oldAcc.sname = accountDTO.sname;
+            oldAcc.sname = dictionary.getOrCreateSname(accountDTO.sname);
         }
         if (accountDTO.phone != null && oldAcc.phone != null && !oldAcc.phone.equals(accountDTO.phone)) {
             phones.remove(oldAcc.phone);

@@ -5,7 +5,7 @@ public class Account {
     public int id = -1;
     public String email;
     public int fname;
-    public String sname;
+    public int sname;
     public String phone;
     public boolean sex;
     public int birth = Integer.MIN_VALUE;

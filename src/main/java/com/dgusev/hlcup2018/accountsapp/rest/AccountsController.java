@@ -112,9 +112,9 @@ public class AccountsController {
                     }
                 } else if (name.startsWith("sname_")) {
                     if (name.equals("sname_eq")) {
-                        predicates.add(new SnameEqPredicate(parameter.getValue().get(0)));
+                        predicates.add(new SnameEqPredicate(dictionary.getFname(parameter.getValue().get(0))));
                     } else if (name.equals("sname_starts")) {
-                        predicates.add(new SnameStartsPredicate(parameter.getValue().get(0)));
+                        predicates.add(new SnameStartsPredicate(parameter.getValue().get(0), dictionary));
                     } else if (name.equals("sname_null")) {
                         predicates.add(new SnameNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
@@ -240,7 +240,7 @@ public class AccountsController {
                 } else if (name.equals("fname")) {
                     predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue().get(0))));
                 } else if (name.equals("sname")) {
-                    predicates.add(new SnameEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new SnameEqPredicate(dictionary.getSname(parameter.getValue().get(0))));
                 } else if (name.equals("phone")) {
                     predicates.add(new PhoneEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("country")) {

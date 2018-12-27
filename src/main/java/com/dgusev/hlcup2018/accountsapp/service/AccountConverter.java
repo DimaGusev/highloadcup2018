@@ -21,7 +21,11 @@ public class AccountConverter {
         } else {
             account.fname = Constants.DEFAULT_INT_NO_ENTRY_VALUE;
         }
-        account.sname = accountDTO.sname;
+        if (accountDTO.sname != null) {
+            account.sname = dictionary.getOrCreateSname(accountDTO.sname);
+        } else {
+            account.sname = Constants.DEFAULT_INT_NO_ENTRY_VALUE;
+        }
         account.phone = accountDTO.phone;
 
         account.sex = ConvertorUtills.convertSex(accountDTO.sex);

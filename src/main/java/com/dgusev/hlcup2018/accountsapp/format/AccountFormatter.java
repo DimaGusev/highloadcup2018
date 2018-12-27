@@ -42,9 +42,9 @@ public class AccountFormatter {
                     first = false;
                 }
             } else if (field.equals("sname")) {
-                if (account.sname != null) {
+                if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, account.sname);
+                    writeStringValue(responseBuf, dictionary.getSname(account.sname));
                     first = false;
                 }
             } else if (field.equals("phone")) {
@@ -128,8 +128,8 @@ public class AccountFormatter {
         if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
             stringBuilder.append(",\"fname\":\"").append(dictionary.getFname(account.fname)).append("\"");
         }
-        if (account.sname != null) {
-            stringBuilder.append(",\"sname\":\"").append(account.sname).append("\"");
+        if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+            stringBuilder.append(",\"sname\":\"").append(dictionary.getSname(account.sname)).append("\"");
         }
         if (account.premiumStart != 0) {
             stringBuilder.append(",");
@@ -150,8 +150,8 @@ public class AccountFormatter {
         if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
             stringBuilder.append(",\"fname\":\"").append(dictionary.getFname(account.fname)).append("\"");
         }
-        if (account.sname != null) {
-            stringBuilder.append(",\"sname\":\"").append(account.sname).append("\"");
+        if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+            stringBuilder.append(",\"sname\":\"").append(dictionary.getSname(account.sname)).append("\"");
         }
         stringBuilder.append("}");
         responseBuf.writeBytes(stringBuilder.toString().getBytes());

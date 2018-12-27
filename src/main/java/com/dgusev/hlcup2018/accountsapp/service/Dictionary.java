@@ -30,6 +30,11 @@ public class Dictionary {
     private AtomicInteger fnameSequence = new AtomicInteger();
 
 
+    private TIntObjectMap<String> snameDictionary = new TIntObjectHashMap<>();
+    private TObjectIntMap<String> snameReverseDictionary = new TObjectIntHashMap<>();
+    private AtomicInteger snameSequence = new AtomicInteger();
+
+
     public String getCountry(byte country) {
         return countryDictionary.get(country);
     }
@@ -76,14 +81,33 @@ public class Dictionary {
         return fnameReverseDictionary.get(fname);
     }
 
-    public int getOrCreateFname(String city) {
-        if (!fnameReverseDictionary.containsKey(city)) {
+    public int getOrCreateFname(String fname) {
+        if (!fnameReverseDictionary.containsKey(fname)) {
             int id = fnameSequence.incrementAndGet();
-            fnameDictionary.put(id, city);
-            fnameReverseDictionary.put(city, id);
+            fnameDictionary.put(id, fname);
+            fnameReverseDictionary.put(fname, id);
             return id;
         } else {
-            return fnameReverseDictionary.get(city);
+            return fnameReverseDictionary.get(fname);
+        }
+    }
+
+    public String getSname(int sname) {
+        return snameDictionary.get(sname);
+    }
+
+    public int getSname(String sname) {
+        return snameReverseDictionary.get(sname);
+    }
+
+    public int getOrCreateSname(String sname) {
+        if (!snameReverseDictionary.containsKey(sname)) {
+            int id = fnameSequence.incrementAndGet();
+            snameDictionary.put(id, sname);
+            snameReverseDictionary.put(sname, id);
+            return id;
+        } else {
+            return snameReverseDictionary.get(sname);
         }
     }
 
