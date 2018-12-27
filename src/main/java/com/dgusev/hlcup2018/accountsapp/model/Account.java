@@ -4,7 +4,7 @@ package com.dgusev.hlcup2018.accountsapp.model;
 public class Account {
     public int id = -1;
     public String email;
-    public String fname;
+    public int fname;
     public String sname;
     public String phone;
     public boolean sex;

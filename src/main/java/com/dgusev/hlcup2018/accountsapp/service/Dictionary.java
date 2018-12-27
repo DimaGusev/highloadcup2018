@@ -25,6 +25,10 @@ public class Dictionary {
     private TObjectIntMap<String> cityReverseDictionary = new TObjectIntHashMap<>();
     private AtomicInteger citySequence = new AtomicInteger();
 
+    private TIntObjectMap<String> fnameDictionary = new TIntObjectHashMap<>();
+    private TObjectIntMap<String> fnameReverseDictionary = new TObjectIntHashMap<>();
+    private AtomicInteger fnameSequence = new AtomicInteger();
+
 
     public String getCountry(byte country) {
         return countryDictionary.get(country);
@@ -61,6 +65,25 @@ public class Dictionary {
             return id;
         } else {
             return cityReverseDictionary.get(city);
+        }
+    }
+
+    public String getFname(int fname) {
+        return fnameDictionary.get(fname);
+    }
+
+    public int getFname(String fname) {
+        return fnameReverseDictionary.get(fname);
+    }
+
+    public int getOrCreateFname(String city) {
+        if (!fnameReverseDictionary.containsKey(city)) {
+            int id = fnameSequence.incrementAndGet();
+            fnameDictionary.put(id, city);
+            fnameReverseDictionary.put(city, id);
+            return id;
+        } else {
+            return fnameReverseDictionary.get(city);
         }
     }
 

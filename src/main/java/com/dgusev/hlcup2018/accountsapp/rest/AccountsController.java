@@ -97,9 +97,14 @@ public class AccountsController {
 
                 } else if (name.startsWith("fname_")) {
                     if (name.equals("fname_eq")) {
-                        predicates.add(new FnameEqPredicate(parameter.getValue().get(0)));
+                        predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue().get(0))));
                     } else if (name.equals("fname_any")) {
-                        predicates.add(new FnameAnyPredicate(Arrays.asList(parameter.getValue().get(0).split(","))));
+                        String[] fnames = parameter.getValue().get(0).split(",");
+                        int[] values = new int[fnames.length];
+                        for (int i = 0; i < fnames.length; i ++) {
+                            values[i] = dictionary.getFname(fnames[i]);
+                        }
+                        predicates.add(new FnameAnyPredicate(values));
                     } else if (name.equals("fname_null")) {
                         predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
@@ -233,7 +238,7 @@ public class AccountsController {
                 } else if (name.equals("status")) {
                     predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue().get(0))));
                 } else if (name.equals("fname")) {
-                    predicates.add(new FnameEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue().get(0))));
                 } else if (name.equals("sname")) {
                     predicates.add(new SnameEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("phone")) {

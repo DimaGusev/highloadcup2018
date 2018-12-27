@@ -2,7 +2,6 @@ package com.dgusev.hlcup2018.accountsapp.service;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
-import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import gnu.trove.impl.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -17,7 +16,11 @@ public class AccountConverter {
         Account account = new Account();
         account.id = accountDTO.id;
         account.email = accountDTO.email;
-        account.fname = accountDTO.fname;
+        if (accountDTO.fname != null) {
+            account.fname = dictionary.getOrCreateFname(accountDTO.fname);
+        } else {
+            account.fname = Constants.DEFAULT_INT_NO_ENTRY_VALUE;
+        }
         account.sname = accountDTO.sname;
         account.phone = accountDTO.phone;
 

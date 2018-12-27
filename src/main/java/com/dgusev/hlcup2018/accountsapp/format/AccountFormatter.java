@@ -36,9 +36,9 @@ public class AccountFormatter {
                 writeStringValue(responseBuf, account.email);
                 first = false;
             } else if (field.equals("fname")) {
-                if (account.fname != null) {
+                if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, account.fname);
+                    writeStringValue(responseBuf, dictionary.getFname(account.fname));
                     first = false;
                 }
             } else if (field.equals("sname")) {
@@ -68,7 +68,7 @@ public class AccountFormatter {
                     first = false;
                 }
             } else if (field.equals("city")) {
-                if (account.city != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                     writeField(responseBuf, first, field);
                     writeStringValue(responseBuf, dictionary.getCity(account.city));
                     first = false;
@@ -125,8 +125,8 @@ public class AccountFormatter {
     public void formatRecommend(Account account, ByteBuf responseBuf) {
         StringBuilder stringBuilder = new StringBuilder("{\"id\":");
         stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(ConvertorUtills.convertStatusNumber(account.status)).append("\",\"birth\":").append(account.birth);
-        if (account.fname != null) {
-            stringBuilder.append(",\"fname\":\"").append(account.fname).append("\"");
+        if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+            stringBuilder.append(",\"fname\":\"").append(dictionary.getFname(account.fname)).append("\"");
         }
         if (account.sname != null) {
             stringBuilder.append(",\"sname\":\"").append(account.sname).append("\"");
@@ -147,8 +147,8 @@ public class AccountFormatter {
     public void formatSuggest(Account account, ByteBuf responseBuf) {
         StringBuilder stringBuilder = new StringBuilder("{\"id\":");
         stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(ConvertorUtills.convertStatusNumber(account.status)).append("\"");
-        if (account.fname != null) {
-            stringBuilder.append(",\"fname\":\"").append(account.fname).append("\"");
+        if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+            stringBuilder.append(",\"fname\":\"").append(dictionary.getFname(account.fname)).append("\"");
         }
         if (account.sname != null) {
             stringBuilder.append(",\"sname\":\"").append(account.sname).append("\"");

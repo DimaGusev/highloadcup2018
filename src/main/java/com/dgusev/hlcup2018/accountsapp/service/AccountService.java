@@ -577,7 +577,7 @@ public class AccountService {
             oldAcc.email = accountDTO.email;
         }
         if (accountDTO.fname != null) {
-            oldAcc.fname = accountDTO.fname;
+            oldAcc.fname = dictionary.getOrCreateFname(accountDTO.fname);
         }
         if (accountDTO.sname != null) {
             oldAcc.sname = accountDTO.sname;
