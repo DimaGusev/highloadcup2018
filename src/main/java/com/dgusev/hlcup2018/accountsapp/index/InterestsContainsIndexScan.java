@@ -10,17 +10,17 @@ public class InterestsContainsIndexScan extends AbstractIndexScan {
     private int[] state;
     private boolean alwaysFalse;
 
-    public InterestsContainsIndexScan(IndexHolder indexHolder, String[] interests) {
+    public InterestsContainsIndexScan(IndexHolder indexHolder, byte[] interests) {
         super(indexHolder);
         int count = 0;
-        for (String interes: interests) {
+        for (byte interes: interests) {
             if (indexHolder.interestsIndex.containsKey(interes)) {
                 count++;
             }
         }
         indexList = new int[count][];
         index = 0;
-        for (String interes: interests) {
+        for (byte interes: interests) {
             if (indexHolder.interestsIndex.containsKey(interes)) {
                 indexList[index++] = indexHolder.interestsIndex.get(interes);
             } else {

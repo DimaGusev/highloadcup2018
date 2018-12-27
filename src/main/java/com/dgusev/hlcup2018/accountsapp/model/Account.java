@@ -13,7 +13,7 @@ public class Account {
     public int city;
     public int joined = Integer.MIN_VALUE;
     public byte status;
-    public String[] interests;
+    public byte[] interests;
     public int premiumStart;
     public int premiumFinish;
     public long[] likes;

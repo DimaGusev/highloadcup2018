@@ -19,7 +19,7 @@ public class IndexHolder {
     public TByteObjectMap<int[]> countryIndex;
     public TByteObjectMap<int[]> sexIndex;
     public TByteObjectMap<int[]> statusIndex;
-    public Map<String, int[]> interestsIndex;
+    public TByteObjectMap<int[]> interestsIndex;
     public TIntObjectMap<int[]> cityIndex;
     public Map<Integer, int[]> birthYearIndex;
     public Map<String, int[]> emailDomainIndex;
@@ -49,7 +49,7 @@ public class IndexHolder {
         for (int i = 0; i< 3; i++) {
             tmpStatusIndex.put((byte)i, new ArrayList<>());
         }
-        Map<String, List<Integer>> tmpInterestsIndex = new HashMap<>();
+        Map<Byte, List<Integer>> tmpInterestsIndex = new HashMap<>();
         Map<Integer, List<Integer>> tmpCityIndex = new HashMap<>();
         Map<Integer, Set<Integer>> tmpLikesIndex = new HashMap<>();
         List<Integer> tmpPremiumIndex = new ArrayList<>();
@@ -71,7 +71,7 @@ public class IndexHolder {
             tmpStatusIndex.get(account.status).add(account.id);
 
             if (account.interests != null) {
-                for (String interes: account.interests) {
+                for (byte interes: account.interests) {
                     tmpInterestsIndex.computeIfAbsent(interes, k -> new ArrayList<>()).add(account.id);
                 }
             }
@@ -111,8 +111,8 @@ public class IndexHolder {
                     .mapToInt(Integer::intValue)
                     .toArray());
         }
-        interestsIndex = new HashMap<>();
-        for (Map.Entry<String, List<Integer>> entry: tmpInterestsIndex.entrySet()) {
+        interestsIndex = new TByteObjectHashMap<>();
+        for (Map.Entry<Byte, List<Integer>> entry: tmpInterestsIndex.entrySet()) {
             interestsIndex.put(entry.getKey(), entry.getValue().stream()
                     .mapToInt(Integer::intValue)
                     .toArray());

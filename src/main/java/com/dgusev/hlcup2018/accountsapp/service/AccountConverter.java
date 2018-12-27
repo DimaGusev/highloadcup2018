@@ -42,7 +42,13 @@ public class AccountConverter {
         }
         account.joined = accountDTO.joined;
         account.status = ConvertorUtills.convertStatusNumber(accountDTO.status);
-        account.interests = accountDTO.interests;
+        if (accountDTO.interests != null) {
+            byte[] interests = new byte[accountDTO.interests.length];
+            for (int i = 0; i < accountDTO.interests.length; i++) {
+                interests[i] = dictionary.getOrCreateInteres(accountDTO.interests[i]);
+            }
+            account.interests = interests;
+        }
         account.premiumStart = accountDTO.premiumStart;
         account.premiumFinish = accountDTO.premiumFinish;
         account.likes = accountDTO.likes;

@@ -16,7 +16,6 @@ import org.springframework.stereotype.Component;
 
 import java.util.*;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @Component
 public class AccountsController {
@@ -164,9 +163,19 @@ public class AccountsController {
                     }
                 } else if (name.startsWith("interests_")) {
                     if (name.equals("interests_contains")) {
-                        predicates.add(new InterestsContainsPredicate(Arrays.asList(parameter.getValue().get(0).split(","))));
+                        String[] interests = parameter.getValue().get(0).split(",");
+                        byte[] values = new byte[interests.length];
+                        for (int i = 0; i < interests.length; i ++) {
+                            values[i] = dictionary.getInteres(interests[i]);
+                        }
+                        predicates.add(new InterestsContainsPredicate(values));
                     } else if (name.equals("interests_any")) {
-                        predicates.add(new InterestsAnyPredicate(Arrays.asList(parameter.getValue().get(0).split(","))));
+                        String[] interests = parameter.getValue().get(0).split(",");
+                        byte[] values = new byte[interests.length];
+                        for (int i = 0; i < interests.length; i ++) {
+                            values[i] = dictionary.getInteres(interests[i]);
+                        }
+                        predicates.add(new InterestsAnyPredicate(values));
                     } else {
                         throw new BadRequest();
                     }
@@ -250,7 +259,9 @@ public class AccountsController {
                 } else if (name.equals("birth")) {
                     predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
                 } else if (name.equals("interests")) {
-                    predicates.add(new InterestsContainsPredicate(Arrays.asList(parameter.getValue().get(0))));
+                    byte[] value = new byte[1];
+                    value[0] = dictionary.getInteres(parameter.getValue().get(0));
+                    predicates.add(new InterestsContainsPredicate(value));
                 } else if (name.equals("likes")) {
                     int[] array = new int[1];
                     array[0] = Integer.parseInt(parameter.getValue().get(0));

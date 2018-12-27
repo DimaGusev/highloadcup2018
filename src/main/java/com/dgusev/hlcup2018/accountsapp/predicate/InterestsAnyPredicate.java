@@ -7,19 +7,17 @@ import java.util.function.Predicate;
 
 public class InterestsAnyPredicate implements Predicate<Account> {
 
-    private String[] interests;
+    private byte[] interests;
 
-    public InterestsAnyPredicate(List<String> interests) {
-        PredicateStatistics.ia.incrementAndGet();
-        this.interests = interests.toArray(new String[interests.size()]);
+    public InterestsAnyPredicate(byte[] interests) {
+        this.interests = interests;
     }
 
     @Override
-    public boolean test(Account Account) {
-        if (Account.interests != null && Account.interests.length != 0) {
+    public boolean test(Account account) {
+        if (account.interests != null && account.interests.length != 0) {
             for (int i = 0; i < interests.length; i++) {
-                String interes = interests[i];
-                if (contains(Account.interests, interes)) {
+                if (contains(account.interests, interests[i])) {
                     return true;
                 }
             }
@@ -29,16 +27,16 @@ public class InterestsAnyPredicate implements Predicate<Account> {
         }
     }
 
-    private boolean contains(String[] arrray, String element) {
+    private boolean contains(byte[] arrray, byte element) {
         for (int i = 0; i < arrray.length; i++) {
-            if (arrray[i].equals(element)) {
+            if (arrray[i] == element) {
                 return true;
             }
         }
         return false;
     }
 
-    public String[] getInterests() {
+    public byte[] getInterests() {
         return interests;
     }
 }

@@ -34,6 +34,11 @@ public class Dictionary {
     private TObjectIntMap<String> snameReverseDictionary = new TObjectIntHashMap<>();
     private AtomicInteger snameSequence = new AtomicInteger();
 
+    private TByteObjectMap<String> interesDictionary = new TByteObjectHashMap<>();
+    private TObjectByteMap<String> interesReverseDictionary = new TObjectByteHashMap<>();
+    private AtomicInteger interesSequence = new AtomicInteger();
+
+
 
     public String getCountry(byte country) {
         return countryDictionary.get(country);
@@ -102,12 +107,32 @@ public class Dictionary {
 
     public int getOrCreateSname(String sname) {
         if (!snameReverseDictionary.containsKey(sname)) {
-            int id = fnameSequence.incrementAndGet();
+            int id = snameSequence.incrementAndGet();
             snameDictionary.put(id, sname);
             snameReverseDictionary.put(sname, id);
             return id;
         } else {
             return snameReverseDictionary.get(sname);
+        }
+    }
+
+
+    public String getInteres(byte interes) {
+        return interesDictionary.get(interes);
+    }
+
+    public byte getInteres(String interes) {
+        return interesReverseDictionary.get(interes);
+    }
+
+    public byte getOrCreateInteres(String interes) {
+        if (!interesReverseDictionary.containsKey(interes)) {
+            int id = interesSequence.incrementAndGet();
+            interesDictionary.put((byte)id, interes);
+            interesReverseDictionary.put(interes, (byte)id);
+            return (byte) id;
+        } else {
+            return interesReverseDictionary.get(interes);
         }
     }
 

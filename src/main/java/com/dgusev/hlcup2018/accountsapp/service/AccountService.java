@@ -175,7 +175,8 @@ public class AccountService {
         }
         if (keys.contains("interests")) {
             if (account.interests != null && account.interests.length != 0) {
-                for (String interes : account.interests) {
+                for (byte inter : account.interests) {
+                    String interes = dictionary.getInteres(inter);
                     long newHashcode = hashcode;
                     newHashcode = 31 * newHashcode + interes.hashCode();
                     List<String> newGroup = new ArrayList<>(group);
@@ -229,7 +230,7 @@ public class AccountService {
             if (account.interests == null || a.interests == null || account.interests.length == 0 || a.interests.length == 0) {
                 return false;
             }
-            if (interestsMatched(Arrays.asList(account.interests), Arrays.asList(a.interests)) == 0) {
+            if (interestsMatched(account.interests, a.interests) == 0) {
                 return false;
             }
             return true;
@@ -237,10 +238,6 @@ public class AccountService {
         });
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         Predicate<Account> accountPredicate = andPredicates(predicates);
-        Set<String> interests = new HashSet<>();
-        if (account.interests != null) {
-            interests.addAll(Arrays.asList(account.interests));
-        }
         List<Account> result1 = new ArrayList<>();
         List<Account> result2 = new ArrayList<>();
         List<Account> result3 = new ArrayList<>();
@@ -302,8 +299,8 @@ public class AccountService {
             if (cc1 != 0) {
                 return cc1;
             }
-            int int1 = interestsMatched(interests, Arrays.asList(a1.interests != null ? a1.interests : new String[0]));
-            int int2 = interestsMatched(interests, Arrays.asList(a2.interests != null ? a2.interests : new String[0]));
+            int int1 = interestsMatched(account.interests, a1.interests != null ? a1.interests : new byte[0]);
+            int int2 = interestsMatched(account.interests, a2.interests != null ? a2.interests : new byte[0]);
             int cc2 = Integer.compare(int1, int2);
             if (cc2 != 0) {
                 return -cc2;
@@ -325,17 +322,26 @@ public class AccountService {
 
 
 
-    private int interestsMatched(Collection<String> myInterests, Collection<String> othersInterests) {
-        if (othersInterests == null || othersInterests.isEmpty()) {
+    private int interestsMatched(byte[] myInterests, byte[] othersInterests) {
+        if (othersInterests == null || othersInterests.length == 0 || myInterests ==null || myInterests.length == 0) {
             return 0;
         }
         int count = 0;
-        for (String interes: othersInterests) {
-            if (myInterests.contains(interes)) {
+        for (byte interes: othersInterests) {
+            if (contains(myInterests, interes)) {
                 count++;
             }
         }
         return count;
+    }
+
+    private boolean contains(byte[] arrray, byte element) {
+        for (int i = 0; i < arrray.length; i++) {
+            if (arrray[i] == element) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean isPremium(Account account) {
@@ -609,7 +615,11 @@ public class AccountService {
             oldAcc.status = ConvertorUtills.convertStatusNumber(accountDTO.status);
         }
         if (accountDTO.interests != null) {
-            oldAcc.interests = accountDTO.interests;
+            byte[] values = new byte[accountDTO.interests.length];
+            for (int i = 0; i < accountDTO.interests.length; i ++) {
+                values[i] = dictionary.getInteres(accountDTO.interests[i]);
+            }
+            oldAcc.interests = values;
         }
         if (accountDTO.premiumStart != 0) {
             oldAcc.premiumStart = accountDTO.premiumStart;

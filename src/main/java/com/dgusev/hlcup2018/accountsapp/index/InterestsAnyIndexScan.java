@@ -9,17 +9,17 @@ public class InterestsAnyIndexScan extends AbstractIndexScan {
     private int[] minIds;
     private int prev = Integer.MAX_VALUE;
 
-    public InterestsAnyIndexScan(IndexHolder indexHolder, String[] interests) {
+    public InterestsAnyIndexScan(IndexHolder indexHolder, byte[] interests) {
         super(indexHolder);
         int count = 0;
-        for (String interes: interests) {
+        for (byte interes: interests) {
             if (indexHolder.interestsIndex.containsKey(interes)) {
                 count++;
             }
         }
         indexList = new int[count][];
         index = 0;
-        for (String interes: interests) {
+        for (byte interes: interests) {
             if (indexHolder.interestsIndex.containsKey(interes)) {
                 indexList[index++] = indexHolder.interestsIndex.get(interes);
             }
