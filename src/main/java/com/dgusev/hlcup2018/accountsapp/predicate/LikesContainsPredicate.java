@@ -29,10 +29,10 @@ public class LikesContainsPredicate implements Predicate<AccountDTO> {
         }
     }
 
-    private boolean containsLike(AccountDTO.Like[] likes, int like) {
+    private boolean containsLike(long[] likes, int like) {
         for (int i = 0; i < likes.length; i++) {
-            AccountDTO.Like l = likes[i];
-            if (l.id == like) {
+            long l = likes[i];
+            if ((int)(l & 0x0000ffff)== like) {
                 return true;
             }
         }

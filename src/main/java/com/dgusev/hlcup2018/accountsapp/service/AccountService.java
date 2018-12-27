@@ -4,12 +4,16 @@ import com.dgusev.hlcup2018.accountsapp.index.*;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
+import gnu.trove.map.TObjectIntMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 @Service
 public class AccountService {
@@ -372,8 +376,9 @@ public class AccountService {
             return Collections.EMPTY_LIST;
         }
         Set<Integer> myLikes = new HashSet<>();
-        for (AccountDTO.Like like: accountDTO.likes) {
-            myLikes.add(like.id);
+        for (long like: accountDTO.likes) {
+            int lid = (int)(like & 0x0000ffff);
+            myLikes.add(lid);
         }
         Set<Integer> suggests = new HashSet<>();
         for (Integer a: myLikes) {
@@ -406,28 +411,54 @@ public class AccountService {
                 suggestResult.add(acc);
             }
         }
-        return suggestResult.stream().map(a ->  {
+        List<Similarity> similarities = suggestResult.stream().map(a ->  {
             Similarity similarity = new Similarity();
             similarity.accountDTO = a;
             similarity.similarity = getSimilarity(accountDTO, a);
             return similarity;
-        }).sorted(Comparator.comparingDouble((Similarity s) -> s.similarity).reversed())
-                .flatMap(s -> Arrays.stream(s.accountDTO.likes).sorted(Comparator.comparingInt((AccountDTO.Like l) -> l.id).reversed()))
-                .filter(l -> !myLikes.contains(l.id) && findById(l.id).sex.equals(ts))
-                .map(l -> l.id)
-                .distinct()
-                .limit(limit)
-                .map(i-> accountIdMap[i])
-                .collect(Collectors.toList());
+        }).sorted(Comparator.comparingDouble((Similarity s) -> s.similarity).reversed()).collect(Collectors.toList());
+        List<AccountDTO> result = new ArrayList<>();
+        Set<Integer> likersSet = new HashSet<>();
+        for (int i = 0; i < similarities.size(); i++) {
+            Similarity s = similarities.get(i);
+            int[] likers = Arrays.stream(s.accountDTO.likes).mapToInt(l -> (Integer)(int)(l & 0x0000ffff)).toArray();
+            Arrays.sort(likers);
+            for (int j = likers.length -1; j >= 0; j--) {
+                if (!myLikes.contains(likers[j]) && findById(likers[j]).sex.equals(ts)) {
+                    if (!likersSet.contains(likers[j])) {
+                        likersSet.add(likers[j]);
+                        result.add(accountIdMap[likers[j]]);
+                        if (result.size() == limit) {
+                            break;
+                        }
+                    }
+                }
+            }
+            if (result.size() == limit) {
+                break;
+            }
+        }
+        return result;
     }
 
     private double getSimilarity(AccountDTO a1, AccountDTO a2) {
-        List<AccountDTO.Like> like1 = a1.likes != null ?Arrays.asList( a1.likes) : new ArrayList<AccountDTO.Like>();
-        List<AccountDTO.Like> like2 = a2.likes != null ? Arrays.asList(a2.likes) : new ArrayList<AccountDTO.Like>();
+
+        List<Like> like1 = a1.likes != null ? Arrays.stream( a1.likes).mapToObj(l -> {
+            Like like = new Like();
+            like.id = (int)(l & 0x00000000ffffffffL);
+            like.ts = (int)(l >> 32);
+            return like;
+        }).collect(Collectors.toList()) : new ArrayList<>();
+        List<Like> like2 = a2.likes != null ? Arrays.stream( a2.likes).mapToObj(l -> {
+            Like like = new Like();
+            like.id = (int)(l & 0x00000000ffffffffL);
+            like.ts = (int)(l >> 32);
+            return like;
+        }).collect(Collectors.toList()) : new ArrayList<>();
         Set<Integer> setLike1 = new HashSet<>();
         setLike1.addAll(like1.stream().map(l -> l.id).collect(Collectors.toList()));
         Set<Integer> sharedLikes = new HashSet<>();
-        for (AccountDTO.Like l: like2) {
+        for (Like l: like2) {
             if (setLike1.contains(l.id)) {
                 sharedLikes.add(l.id);
             }
@@ -435,8 +466,8 @@ public class AccountService {
         if (sharedLikes.isEmpty()) {
             return 0;
         }
-        Map<Integer, List<AccountDTO.Like>> likeMap1 = new HashMap<>();
-        for (AccountDTO.Like l: like1) {
+        Map<Integer, List<Like>> likeMap1 = new HashMap<>();
+        for (Like l: like1) {
             if (sharedLikes.contains(l.id)) {
                 if (!likeMap1.containsKey(l.id)) {
                     likeMap1.put(l.id, new ArrayList<>());
@@ -444,8 +475,8 @@ public class AccountService {
                 likeMap1.get(l.id).add(l);
             }
         }
-        Map<Integer, List<AccountDTO.Like>> likeMap2 = new HashMap<>();
-        for (AccountDTO.Like l: like2) {
+        Map<Integer, List<Like>> likeMap2 = new HashMap<>();
+        for (Like l: like2) {
             if (sharedLikes.contains(l.id)) {
                 if (!likeMap2.containsKey(l.id)) {
                     likeMap2.put(l.id, new ArrayList<>());
@@ -455,8 +486,8 @@ public class AccountService {
         }
         double similarity = 0;
         for (Integer like: sharedLikes) {
-            List<AccountDTO.Like> l1 = likeMap1.get(like);
-            List<AccountDTO.Like> l2 = likeMap2.get(like);
+            List<Like> l1 = likeMap1.get(like);
+            List<Like> l2 = likeMap2.get(like);
             double t1 = l1.stream().mapToDouble(l -> l.ts).average().getAsDouble();
             double t2 = l2.stream().mapToDouble(l -> l.ts).average().getAsDouble();
             if (t1 == t2) {
@@ -625,15 +656,15 @@ public class AccountService {
 
         for (LikeRequest likeRequest: likeRequests) {
             AccountDTO accountDTO = findById(likeRequest.liker);
-            AccountDTO.Like like = new AccountDTO.Like();
-            like.id = likeRequest.likee;
-            like.ts = likeRequest.ts;
-            AccountDTO.Like[] oldArray = accountDTO.likes;
+            long like =0;
+            like = (int)(0x0000ffff & likeRequest.likee);
+            like = ((long)likeRequest.ts << 32 | like) ;
+            long[] oldArray = accountDTO.likes;
             if (oldArray == null) {
-                accountDTO.likes = new AccountDTO.Like[1];
+                accountDTO.likes = new long[1];
                 accountDTO.likes[0] = like;
             } else {
-                accountDTO.likes = new AccountDTO.Like[oldArray.length + 1];
+                accountDTO.likes = new long[oldArray.length + 1];
                 System.arraycopy(oldArray, 0, accountDTO.likes, 0, oldArray.length);
                 accountDTO.likes[oldArray.length] = like;
             }
@@ -740,9 +771,9 @@ public class AccountService {
 
         @Override
         public void run() {
-            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 2000){
+            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 1000){
                 try {
-                    Thread.sleep(4000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -766,6 +797,11 @@ public class AccountService {
     private static class Similarity {
         public AccountDTO accountDTO;
         public double similarity;
+    }
+
+    private static class Like  {
+        public int ts;
+        public int id;
     }
 
 }

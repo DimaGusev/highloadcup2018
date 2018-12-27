@@ -17,10 +17,4 @@ public class Account {
     public int[] interests;
     public int premiumStart;
     public int premiumFinish;
-    public List<AccountDTO.Like> likes;
-
-    public static class Like {
-        public int id;
-        public int ts;
-    }
 }

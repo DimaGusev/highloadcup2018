@@ -83,11 +83,12 @@ public class IndexHolder {
             String domain = accountDTO.email.substring(at + 1);
             tmpEmailDomainIndex.computeIfAbsent(domain, k -> new ArrayList<>()).add(accountDTO.id);
             if (accountDTO.likes != null && accountDTO.likes.length != 0) {
-                for (AccountDTO.Like like: accountDTO.likes) {
-                    if (!tmpLikesIndex.containsKey(like.id)) {
-                        tmpLikesIndex.put(like.id, new LinkedHashSet<>());
+                for (long like: accountDTO.likes) {
+                    int id = (int)(like & 0x0000ffff);
+                    if (!tmpLikesIndex.containsKey(id)) {
+                        tmpLikesIndex.put(id, new LinkedHashSet<>());
                     }
-                    tmpLikesIndex.get(like.id).add(accountDTO.id);
+                    tmpLikesIndex.get(id).add(accountDTO.id);
                 }
             }
         }

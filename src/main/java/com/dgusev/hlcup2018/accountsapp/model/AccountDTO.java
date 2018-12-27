@@ -18,10 +18,5 @@ public class AccountDTO {
     public String[] interests;
     public int premiumStart;
     public int premiumFinish;
-    public Like[] likes;
-
-    public static class Like {
-        public int id;
-        public int ts;
-    }
+    public long[] likes;
 }

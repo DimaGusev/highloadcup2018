@@ -486,7 +486,7 @@ public class AccountParser {
                     if (end - colon == 1) {
                         accountDTO.likes = null;
                     } else {
-                        List<AccountDTO.Like> likesList = new ArrayList<>();
+                        List<Long> likesList = new ArrayList<>();
 
                         while (true) {
                             if (array[colon] == ']') {
@@ -496,7 +496,7 @@ public class AccountParser {
                             int toLike = indexOf(array, fromLike + 1, '}');
                             colon = fromLike;
 
-                            AccountDTO.Like like = new AccountDTO.Like();
+                            long like = 0;
                             while (true) {
                                 if (array[colon] == '}') {
                                     break;
@@ -526,7 +526,8 @@ public class AccountParser {
                                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                         endIndex--;
                                     }
-                                    like.id = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                                    like = like & 0xffffffff00000000L;
+                                    like = like | Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                                 } else if (subfield.equals("ts")) {
                                     int nextColon = indexOf(array, toSubField + 1, ':');
                                     int nextComma = indexOf(array, nextColon + 1, ',');
@@ -549,7 +550,8 @@ public class AccountParser {
                                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                         endIndex--;
                                     }
-                                    like.ts = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                                    like = like & 0xffffffffL;
+                                    like = like | (long)Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon)) << 32;
                                 }
                             }
                             likesList.add(like);
@@ -566,7 +568,11 @@ public class AccountParser {
                                 }
                             }
                         }
-                        accountDTO.likes = likesList.toArray(new AccountDTO.Like[likesList.size()]);
+                        long[] arr = new long[likesList.size()];
+                        for (int i = 0; i < likesList.size(); i++) {
+                            arr[i] = likesList.get(i);
+                        }
+                        accountDTO.likes = arr;
                         int nextIndex = indexOf(array, colon, ',');
                         if (nextIndex == -1) {
                             currentIndex = indexOf(array, colon, '}');
