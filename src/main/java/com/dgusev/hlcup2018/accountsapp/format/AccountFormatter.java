@@ -1,6 +1,6 @@
 package com.dgusev.hlcup2018.accountsapp.format;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 import io.netty.buffer.ByteBuf;
 import org.springframework.stereotype.Component;
 
@@ -15,72 +15,72 @@ public class AccountFormatter {
     private static final byte[] START = "{\"start\":".getBytes();
     private static final byte[] FINISH = ",\"finish\":".getBytes();
 
-    public void format(AccountDTO accountDTO, List<String> fields, ByteBuf responseBuf) {
+    public void format(Account account, List<String> fields, ByteBuf responseBuf) {
         responseBuf.writeByte('{');
         boolean first = true;
         for (int i = 0; i < fields.size(); i++) {
             String field = fields.get(i);
             if (field.equals("id")) {
                 writeField(responseBuf, first, field);
-                encodeLong(accountDTO.id, responseBuf);
+                encodeLong(account.id, responseBuf);
                 first = false;
             } else if (field.equals("email")) {
                 writeField(responseBuf, first, field);
-                writeStringValue(responseBuf, accountDTO.email);
+                writeStringValue(responseBuf, account.email);
                 first = false;
             } else if (field.equals("fname")) {
-                if (accountDTO.fname != null) {
+                if (account.fname != null) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, accountDTO.fname);
+                    writeStringValue(responseBuf, account.fname);
                     first = false;
                 }
             } else if (field.equals("sname")) {
-                if (accountDTO.sname != null) {
+                if (account.sname != null) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, accountDTO.sname);
+                    writeStringValue(responseBuf, account.sname);
                     first = false;
                 }
             } else if (field.equals("phone")) {
-                 if (accountDTO.phone != null) {
+                 if (account.phone != null) {
                      writeField(responseBuf, first, field);
-                     writeStringValue(responseBuf, accountDTO.phone);
+                     writeStringValue(responseBuf, account.phone);
                      first = false;
                  }
             } else if (field.equals("sex")) {
                 writeField(responseBuf, first, field);
-                writeStringValue(responseBuf, accountDTO.sex);
+                writeStringValue(responseBuf, account.sex);
                 first = false;
             } else if (field.equals("birth")) {
                 writeField(responseBuf, first, field);
-                encodeLong(accountDTO.birth, responseBuf);
+                encodeLong(account.birth, responseBuf);
                 first = false;
             } else if (field.equals("country")) {
-                if (accountDTO.country != null) {
+                if (account.country != null) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, accountDTO.country);
+                    writeStringValue(responseBuf, account.country);
                     first = false;
                 }
             } else if (field.equals("city")) {
-                if (accountDTO.city != null) {
+                if (account.city != null) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, accountDTO.city);
+                    writeStringValue(responseBuf, account.city);
                     first = false;
                 }
             } else if (field.equals("joined")) {
                 writeField(responseBuf, first, field);
-                encodeLong(accountDTO.joined, responseBuf);
+                encodeLong(account.joined, responseBuf);
                 first = false;
             } else if (field.equals("status")) {
                 writeField(responseBuf, first, field);
-                writeStringValue(responseBuf, accountDTO.status);
+                writeStringValue(responseBuf, account.status);
                 first = false;
             } else if (field.equals("premium")) {
-                if (accountDTO.premiumStart != 0) {
+                if (account.premiumStart != 0) {
                     writeField(responseBuf, first, field);
                     responseBuf.writeBytes(START);
-                    encodeLong(accountDTO.premiumStart, responseBuf);
+                    encodeLong(account.premiumStart, responseBuf);
                     responseBuf.writeBytes(FINISH);
-                    encodeLong(accountDTO.premiumFinish, responseBuf);
+                    encodeLong(account.premiumFinish, responseBuf);
                     responseBuf.writeByte('}');
                     first = false;
                 }
@@ -115,36 +115,36 @@ public class AccountFormatter {
         responseBuf.writeByte('\"');
     }
 
-    public void formatRecommend(AccountDTO accountDTO, ByteBuf responseBuf) {
+    public void formatRecommend(Account account, ByteBuf responseBuf) {
         StringBuilder stringBuilder = new StringBuilder("{\"id\":");
-        stringBuilder.append(accountDTO.id).append(",\"email\":\"").append(accountDTO.email).append("\",\"status\":\"").append(accountDTO.status).append("\",\"birth\":").append(accountDTO.birth);
-        if (accountDTO.fname != null) {
-            stringBuilder.append(",\"fname\":\"").append(accountDTO.fname).append("\"");
+        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(account.status).append("\",\"birth\":").append(account.birth);
+        if (account.fname != null) {
+            stringBuilder.append(",\"fname\":\"").append(account.fname).append("\"");
         }
-        if (accountDTO.sname != null) {
-            stringBuilder.append(",\"sname\":\"").append(accountDTO.sname).append("\"");
+        if (account.sname != null) {
+            stringBuilder.append(",\"sname\":\"").append(account.sname).append("\"");
         }
-        if (accountDTO.premiumStart != 0) {
+        if (account.premiumStart != 0) {
             stringBuilder.append(",");
             stringBuilder.append("\"").append("premium").append("\":");
             stringBuilder.append("{\"start\":");
-            stringBuilder.append(accountDTO.premiumStart);
+            stringBuilder.append(account.premiumStart);
             stringBuilder.append(",\"finish\":");
-            stringBuilder.append(accountDTO.premiumFinish);
+            stringBuilder.append(account.premiumFinish);
             stringBuilder.append("}");
         }
         stringBuilder.append("}");
         responseBuf.writeBytes(stringBuilder.toString().getBytes());
     }
 
-    public void formatSuggest(AccountDTO accountDTO, ByteBuf responseBuf) {
+    public void formatSuggest(Account account, ByteBuf responseBuf) {
         StringBuilder stringBuilder = new StringBuilder("{\"id\":");
-        stringBuilder.append(accountDTO.id).append(",\"email\":\"").append(accountDTO.email).append("\",\"status\":\"").append(accountDTO.status).append("\"");
-        if (accountDTO.fname != null) {
-            stringBuilder.append(",\"fname\":\"").append(accountDTO.fname).append("\"");
+        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(account.status).append("\"");
+        if (account.fname != null) {
+            stringBuilder.append(",\"fname\":\"").append(account.fname).append("\"");
         }
-        if (accountDTO.sname != null) {
-            stringBuilder.append(",\"sname\":\"").append(accountDTO.sname).append("\"");
+        if (account.sname != null) {
+            stringBuilder.append(",\"sname\":\"").append(account.sname).append("\"");
         }
         stringBuilder.append("}");
         responseBuf.writeBytes(stringBuilder.toString().getBytes());

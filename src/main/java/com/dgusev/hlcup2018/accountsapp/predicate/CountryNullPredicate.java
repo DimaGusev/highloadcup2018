@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class CountryNullPredicate implements Predicate<AccountDTO> {
+public class CountryNullPredicate implements Predicate<Account> {
 
     private int nill;
 
@@ -14,11 +14,11 @@ public class CountryNullPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
+    public boolean test(Account Account) {
         if (nill == 0) {
-            return accountDTO.country != null;
+            return Account.country != null;
         } else  {
-            return accountDTO.country == null;
+            return Account.country == null;
         }
     }
 

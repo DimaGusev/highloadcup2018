@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class FnameNullPredicate implements Predicate<AccountDTO> {
+public class FnameNullPredicate implements Predicate<Account> {
 
     private int nill;
 
@@ -14,11 +14,11 @@ public class FnameNullPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
+    public boolean test(Account Account) {
         if (nill == 0) {
-            return accountDTO.fname != null;
+            return Account.fname != null;
         } else  {
-            return accountDTO.fname == null;
+            return Account.fname == null;
         }
     }
 }

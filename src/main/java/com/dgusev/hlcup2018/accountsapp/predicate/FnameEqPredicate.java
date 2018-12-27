@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class FnameEqPredicate implements Predicate<AccountDTO> {
+public class FnameEqPredicate implements Predicate<Account> {
 
     private String fname;
 
@@ -14,7 +14,7 @@ public class FnameEqPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return accountDTO.fname != null && accountDTO.fname.equals(fname);
+    public boolean test(Account Account) {
+        return Account.fname != null && Account.fname.equals(fname);
     }
 }

@@ -47,7 +47,7 @@ public class AccountsController {
 
 
     public void accountsFilter(Map<String,List<String>> allRequestParams, ByteBuf responseBuf) throws Exception {
-        List<Predicate<AccountDTO>> predicates = new ArrayList<>();
+        List<Predicate<Account>> predicates = new ArrayList<>();
         int limit = 0;
             List<String> fields = new ArrayList<>();
             fields.add("id");
@@ -169,7 +169,7 @@ public class AccountsController {
                     throw new BadRequest();
                 }
             }
-            List<AccountDTO> result = accountService.filter(predicates, limit);
+            List<Account> result = accountService.filter(predicates, limit);
             if (result.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {
@@ -188,7 +188,7 @@ public class AccountsController {
             List<String> keys = new ArrayList<>();
             int order = 1;
             int limit = 0;
-            List<Predicate<AccountDTO>> predicates = new ArrayList<>();
+            List<Predicate<Account>> predicates = new ArrayList<>();
             for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
                 String name = parameter.getKey();
                 if (name.equals("query_id")) {
@@ -263,7 +263,7 @@ public class AccountsController {
                 throw new NotFoundRequest();
             }
             int limit = 0;
-            List<Predicate<AccountDTO>> predicates = new ArrayList<>();
+            List<Predicate<Account>> predicates = new ArrayList<>();
             for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
                 String name = parameter.getKey();
                 if (name.equals("query_id")) {
@@ -288,7 +288,7 @@ public class AccountsController {
                 }
             }
 
-            List<AccountDTO> result = accountService.recommend(id, predicates, limit);
+            List<Account> result = accountService.recommend(id, predicates, limit);
             if (result.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {
@@ -309,7 +309,7 @@ public class AccountsController {
             throw new NotFoundRequest();
         }
         int limit = 0;
-        List<Predicate<AccountDTO>> predicates = new ArrayList<>();
+        List<Predicate<Account>> predicates = new ArrayList<>();
         for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
             String name = parameter.getKey();
             if (name.equals("query_id")) {
@@ -334,7 +334,7 @@ public class AccountsController {
             }
         }
 
-        List<AccountDTO> result = accountService.suggest(id, predicates, limit);
+        List<Account> result = accountService.suggest(id, predicates, limit);
         if (result.isEmpty()) {
             responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
         } else {

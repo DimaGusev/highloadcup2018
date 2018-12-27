@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class PremiumNowPredicate implements Predicate<AccountDTO> {
+public class PremiumNowPredicate implements Predicate<Account> {
 
     private int now;
 
@@ -14,7 +14,7 @@ public class PremiumNowPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return accountDTO.premiumStart != 0 && accountDTO.premiumStart <= now && (accountDTO.premiumFinish == 0 || accountDTO.premiumFinish > now);
+    public boolean test(Account Account) {
+        return Account.premiumStart != 0 && Account.premiumStart <= now && (Account.premiumFinish == 0 || Account.premiumFinish > now);
     }
 }

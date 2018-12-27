@@ -1,11 +1,11 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.List;
 import java.util.function.Predicate;
 
-public class LikesContainsPredicate implements Predicate<AccountDTO> {
+public class LikesContainsPredicate implements Predicate<Account> {
 
     private int[] likes;
 
@@ -15,11 +15,11 @@ public class LikesContainsPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        if (accountDTO.likes != null && accountDTO.likes.length != 0) {
+    public boolean test(Account Account) {
+        if (Account.likes != null && Account.likes.length != 0) {
             for (int i = 0; i< likes.length; i++) {
                 int like = likes[i];
-                if (!containsLike(accountDTO.likes, like)) {
+                if (!containsLike(Account.likes, like)) {
                     return false;
                 }
             }

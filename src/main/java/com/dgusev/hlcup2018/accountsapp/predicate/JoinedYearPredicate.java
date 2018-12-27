@@ -1,13 +1,13 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.function.Predicate;
 
-public class JoinedYearPredicate implements Predicate<AccountDTO> {
+public class JoinedYearPredicate implements Predicate<Account> {
 
     private static final int[] YEARS_ARRAY = new int[8];
     static {
@@ -32,8 +32,8 @@ public class JoinedYearPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return calculateYear(accountDTO.joined) == year;
+    public boolean test(Account Account) {
+        return calculateYear(Account.joined) == year;
     }
 
     private static int calculateYear(int timestamp) {

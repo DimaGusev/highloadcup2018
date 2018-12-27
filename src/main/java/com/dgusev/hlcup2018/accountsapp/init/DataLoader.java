@@ -3,6 +3,7 @@ package com.dgusev.hlcup2018.accountsapp.init;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.netty.NettyServer;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
+import com.dgusev.hlcup2018.accountsapp.service.AccountConverter;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,9 @@ public class DataLoader implements CommandLineRunner {
 
     @Autowired
     private NowProvider nowProvider;
+
+    @Autowired
+    private AccountConverter accountConverter;
 
     @Override
     public void run(String... args) throws Exception {
@@ -99,7 +103,7 @@ public class DataLoader implements CommandLineRunner {
                             if (accountDTO.phone != null) {
                                 accountDTO.phone = k + "" + accountDTO.phone;
                             }*/
-                            accountService.load(accountDTO);
+                            accountService.load(accountConverter.convert(accountDTO));
                             statistics.analyze(accountDTO);
                             count++;
                         }

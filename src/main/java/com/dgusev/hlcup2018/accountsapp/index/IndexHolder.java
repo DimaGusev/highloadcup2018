@@ -1,6 +1,7 @@
 package com.dgusev.hlcup2018.accountsapp.index;
 
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -27,7 +28,7 @@ public class IndexHolder {
     @Autowired
     private NowProvider nowProvider;
 
-    public synchronized void init(AccountDTO[] accountDTOList, int size) {
+    public synchronized void init(Account[] accountDTOList, int size) {
         int now = nowProvider.getNow();
         Map<String, List<Integer>> tmpCountryIndex = new HashMap<>();
         Map<String, List<Integer>> tmpSexIndex = new HashMap<>();
@@ -48,47 +49,47 @@ public class IndexHolder {
         Map<Integer, Set<Integer>> tmpLikesIndex = new HashMap<>();
         List<Integer> tmpPremiumIndex = new ArrayList<>();
         for (int i = 0; i < size; i++) {
-            AccountDTO accountDTO = accountDTOList[i];
-            if (accountDTO.country != null) {
-                tmpCountryIndex.computeIfAbsent(accountDTO.country, k -> new ArrayList<>()).add(accountDTO.id);
-                tmpNotNullCountry.add(accountDTO.id);
+            Account account= accountDTOList[i];
+            if (account.country != null) {
+                tmpCountryIndex.computeIfAbsent(account.country, k -> new ArrayList<>()).add(account.id);
+                tmpNotNullCountry.add(account.id);
             } else {
-                tmpNullCountry.add(accountDTO.id);
+                tmpNullCountry.add(account.id);
             }
-            if (accountDTO.city != null) {
-                tmpCityIndex.computeIfAbsent(accountDTO.city, k -> new ArrayList<>()).add(accountDTO.id);
-                tmpNotNullCity.add(accountDTO.id);
+            if (account.city != null) {
+                tmpCityIndex.computeIfAbsent(account.city, k -> new ArrayList<>()).add(account.id);
+                tmpNotNullCity.add(account.id);
             } else {
-                tmpNullCity.add(accountDTO.id);
+                tmpNullCity.add(account.id);
             }
-            tmpSexIndex.get(accountDTO.sex).add(accountDTO.id);
-            if (accountDTO.status.equals("свободны")) {
-                tmpStatusIndex.get(0).add(accountDTO.id);
-            } else if (accountDTO.status.equals("всё сложно")) {
-                tmpStatusIndex.get(1).add(accountDTO.id);
+            tmpSexIndex.get(account.sex).add(account.id);
+            if (account.status.equals("свободны")) {
+                tmpStatusIndex.get(0).add(account.id);
+            } else if (account.status.equals("всё сложно")) {
+                tmpStatusIndex.get(1).add(account.id);
             } else {
-                tmpStatusIndex.get(2).add(accountDTO.id);
+                tmpStatusIndex.get(2).add(account.id);
             }
-            if (accountDTO.interests != null) {
-                for (String interes: accountDTO.interests) {
-                    tmpInterestsIndex.computeIfAbsent(interes, k -> new ArrayList<>()).add(accountDTO.id);
+            if (account.interests != null) {
+                for (String interes: account.interests) {
+                    tmpInterestsIndex.computeIfAbsent(interes, k -> new ArrayList<>()).add(account.id);
                 }
             }
-            int year = new Date(accountDTO.birth * 1000L).getYear() + 1900;
-            tmpBirthYearIndex.computeIfAbsent(year, k -> new ArrayList<>()).add(accountDTO.id);
-            if (accountDTO.premiumStart != 0 && accountDTO.premiumStart <= now && (accountDTO.premiumFinish == 0 || accountDTO.premiumFinish > now)) {
-                tmpPremiumIndex.add(accountDTO.id);
+            int year = new Date(account.birth * 1000L).getYear() + 1900;
+            tmpBirthYearIndex.computeIfAbsent(year, k -> new ArrayList<>()).add(account.id);
+            if (account.premiumStart != 0 && account.premiumStart <= now && (account.premiumFinish == 0 || account.premiumFinish > now)) {
+                tmpPremiumIndex.add(account.id);
             }
-            int at = accountDTO.email.lastIndexOf('@');
-            String domain = accountDTO.email.substring(at + 1);
-            tmpEmailDomainIndex.computeIfAbsent(domain, k -> new ArrayList<>()).add(accountDTO.id);
-            if (accountDTO.likes != null && accountDTO.likes.length != 0) {
-                for (long like: accountDTO.likes) {
+            int at = account.email.lastIndexOf('@');
+            String domain = account.email.substring(at + 1);
+            tmpEmailDomainIndex.computeIfAbsent(domain, k -> new ArrayList<>()).add(account.id);
+            if (account.likes != null && account.likes.length != 0) {
+                for (long like: account.likes) {
                     int id = (int)(like & 0x0000ffff);
                     if (!tmpLikesIndex.containsKey(id)) {
                         tmpLikesIndex.put(id, new LinkedHashSet<>());
                     }
-                    tmpLikesIndex.get(id).add(accountDTO.id);
+                    tmpLikesIndex.get(id).add(account.id);
                 }
             }
         }

@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class SnameStartsPredicate implements Predicate<AccountDTO> {
+public class SnameStartsPredicate implements Predicate<Account> {
 
     private String start;
 
@@ -14,7 +14,7 @@ public class SnameStartsPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return accountDTO.sname != null && accountDTO.sname.startsWith(start);
+    public boolean test(Account Account) {
+        return Account.sname != null && Account.sname.startsWith(start);
     }
 }

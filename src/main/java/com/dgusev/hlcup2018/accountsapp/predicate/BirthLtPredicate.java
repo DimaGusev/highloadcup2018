@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class BirthLtPredicate implements Predicate<AccountDTO> {
+public class BirthLtPredicate implements Predicate<Account> {
 
     private int birth;
 
@@ -14,7 +14,7 @@ public class BirthLtPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return accountDTO.birth < birth;
+    public boolean test(Account Account) {
+        return Account.birth < birth;
     }
 }

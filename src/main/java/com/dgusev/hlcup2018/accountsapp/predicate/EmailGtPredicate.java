@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class EmailGtPredicate implements Predicate<AccountDTO> {
+public class EmailGtPredicate implements Predicate<Account> {
 
     private String email;
 
@@ -14,7 +14,7 @@ public class EmailGtPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return accountDTO.email.compareTo(email) > 0;
+    public boolean test(Account Account) {
+        return Account.email.compareTo(email) > 0;
     }
 }

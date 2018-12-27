@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class StatusNEqPredicate implements Predicate<AccountDTO> {
+public class StatusNEqPredicate implements Predicate<Account> {
 
     private String status;
 
@@ -14,8 +14,8 @@ public class StatusNEqPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return !accountDTO.status.equals(status);
+    public boolean test(Account Account) {
+        return !Account.status.equals(status);
     }
 
     public String getStatus() {

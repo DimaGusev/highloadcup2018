@@ -1,7 +1,5 @@
 package com.dgusev.hlcup2018.accountsapp.model;
 
-import java.util.List;
-
 public class AccountDTO {
 
     public int id = -1;
@@ -19,4 +17,5 @@ public class AccountDTO {
     public int premiumStart;
     public int premiumFinish;
     public long[] likes;
+
 }

@@ -1,10 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public class SexEqPredicate implements Predicate<AccountDTO> {
+public class SexEqPredicate implements Predicate<Account> {
 
     private String sex;
 
@@ -14,8 +14,8 @@ public class SexEqPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return accountDTO.sex.equals(sex);
+    public boolean test(Account Account) {
+        return Account.sex.equals(sex);
     }
 
     public String getSex() {

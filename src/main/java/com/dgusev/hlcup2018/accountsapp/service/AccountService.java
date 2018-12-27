@@ -4,16 +4,13 @@ import com.dgusev.hlcup2018.accountsapp.index.*;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
-import gnu.trove.map.TObjectIntMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @Service
 public class AccountService {
@@ -32,23 +29,26 @@ public class AccountService {
     @Autowired
     private IndexHolder indexHolder;
 
-    private AccountDTO[] accountDTOList = new AccountDTO[MAX_ID];
+    @Autowired
+    private AccountConverter accountConverter;
+
+    private Account[] accountList = new Account[MAX_ID];
     private volatile int size;
-    private AccountDTO[] accountIdMap = new AccountDTO[MAX_ID];
+    private Account[] accountIdMap = new Account[MAX_ID];
 
     private Set<String> emails = new HashSet<>();
     private Set<String> phones = new HashSet<>();
 
     public static volatile long LAST_UPDATE_TIMESTAMP;
 
-    public List<AccountDTO> filter(List<Predicate<AccountDTO>> predicates, int limit) {
+    public List<Account> filter(List<Predicate<Account>> predicates, int limit) {
         if (limit <= 0) {
             throw new BadRequest();
         }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         if (!indexScans.isEmpty()) {
-            Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
-            List<AccountDTO> result = new ArrayList<>();
+            Predicate<Account> accountPredicate = andPredicates(predicates);
+            List<Account> result = new ArrayList<>();
             int count = 0;
             IndexScan indexScan = new CompositeIndexScan(indexScans);
             while (true) {
@@ -57,9 +57,9 @@ public class AccountService {
                     break;
                 }
 
-                AccountDTO accountDTO = findById(next);
-                if (accountPredicate.test(accountDTO)) {
-                    result.add(accountDTO);
+                Account account = findById(next);
+                if (accountPredicate.test(account)) {
+                    result.add(account);
                     count++;
                     if (count == limit) {
                         break;
@@ -68,22 +68,22 @@ public class AccountService {
             }
             return result;
         } else {
-            Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
+            Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
     }
 
-    private List<AccountDTO> filterSeqScan(Predicate<AccountDTO> predicate, int limit) {
+    private List<Account> filterSeqScan(Predicate<Account> predicate, int limit) {
 
-        List<AccountDTO> result = new ArrayList<>();
+        List<Account> result = new ArrayList<>();
         int count = 0;
         if (limit == 0) {
             return new ArrayList<>();
         }
         for (int i = 0; i< size; i++) {
-            AccountDTO accountDTO = accountDTOList[i];
-            if (predicate.test(accountDTO)) {
-                result.add(accountDTO);
+            Account account = accountList[i];
+            if (predicate.test(account)) {
+                result.add(account);
                 count++;
                 if (count == limit) {
                     break;
@@ -93,7 +93,7 @@ public class AccountService {
         return result;
     }
 
-    public List<Group> group(List<String> keys, List<Predicate<AccountDTO>> predicates, int order, int limit) {
+    public List<Group> group(List<String> keys, List<Predicate<Account>> predicates, int order, int limit) {
         if (limit <= 0) {
             throw new BadRequest();
         }
@@ -102,24 +102,24 @@ public class AccountService {
         HashMap<Long, List<String>> groupNameMap = new HashMap<>();
         List<String> tmpGroupList = new ArrayList<>();
         if (!indexScans.isEmpty()) {
-            Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
+            Predicate<Account> accountPredicate = andPredicates(predicates);
             IndexScan indexScan = new CompositeIndexScan(indexScans);
             while (true) {
                 int next = indexScan.getNext();
                 if (next == -1) {
                     break;
                 }
-                AccountDTO accountDTO = findById(next);
-                if (accountPredicate.test(accountDTO)) {
-                    processRecord(accountDTO, groupHashMap, groupNameMap , keys, tmpGroupList);
+                Account account = findById(next);
+                if (accountPredicate.test(account)) {
+                    processRecord(account, groupHashMap, groupNameMap , keys, tmpGroupList);
                 }
             }
         } else {
-            Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
+            Predicate<Account> accountPredicate = andPredicates(predicates);
             for (int i = 0; i< size; i++) {
-                AccountDTO accountDTO = accountDTOList[i];
-                if (accountPredicate.test(accountDTO)) {
-                    processRecord(accountDTO, groupHashMap, groupNameMap, keys, tmpGroupList);
+                Account account = accountList[i];
+                if (accountPredicate.test(account)) {
+                    processRecord(account, groupHashMap, groupNameMap, keys, tmpGroupList);
                 }
             }
         }
@@ -147,32 +147,32 @@ public class AccountService {
         }).limit(limit).collect(Collectors.toList());
     }
 
-    private void processRecord(AccountDTO accountDTO, Map<Long, IntegerHolder> groupHashMap, Map<Long, List<String>> groupNameMap, List<String> keys, List<String> group) {
+    private void processRecord(Account account, Map<Long, IntegerHolder> groupHashMap, Map<Long, List<String>> groupNameMap, List<String> keys, List<String> group) {
         group.clear();
         long hashcode =  0;
         for (int i = 0; i < keys.size(); i++) {
             String key = keys.get(i);
             if (key.equals("sex")) {
-                group.add(accountDTO.sex);
-                hashcode = 31* hashcode + (accountDTO.sex.hashCode());
+                group.add(account.sex);
+                hashcode = 31* hashcode + (account.sex.hashCode());
             } else if (key.equals("status")) {
-                group.add(accountDTO.status);
-                hashcode = 31* hashcode + (accountDTO.status.hashCode());
+                group.add(account.status);
+                hashcode = 31* hashcode + (account.status.hashCode());
             } else if (key.equals("interests")) {
 
             } else if (key.equals("country")) {
-                group.add(accountDTO.country);
-                hashcode = 31* hashcode + (accountDTO.country == null ? 0 : accountDTO.country.hashCode());
+                group.add(account.country);
+                hashcode = 31* hashcode + (account.country == null ? 0 : account.country.hashCode());
             } else if (key.equals("city")) {
-                group.add(accountDTO.city);
-                hashcode = 31* hashcode + (accountDTO.city == null ? 0 : accountDTO.city.hashCode());
+                group.add(account.city);
+                hashcode = 31* hashcode + (account.city == null ? 0 : account.city.hashCode());
             } else {
                 throw new BadRequest();
             }
         }
         if (keys.contains("interests")) {
-            if (accountDTO.interests != null && accountDTO.interests.length != 0) {
-                for (String interes : accountDTO.interests) {
+            if (account.interests != null && account.interests.length != 0) {
+                for (String interes : account.interests) {
                     long newHashcode = hashcode;
                     newHashcode = 31 * newHashcode + interes.hashCode();
                     List<String> newGroup = new ArrayList<>(group);
@@ -212,42 +212,42 @@ public class AccountService {
     }
 
 
-    public List<AccountDTO> recommend(int id, List<Predicate<AccountDTO>> predicates, int limit) {
+    public List<Account> recommend(int id, List<Predicate<Account>> predicates, int limit) {
         if (limit <= 0) {
             throw new BadRequest();
         }
-        AccountDTO accountDTO = findById(id);
-        if (accountDTO == null) {
+        Account account = findById(id);
+        if (account == null) {
             throw new NotFoundRequest();
         }
-        if (accountDTO.sex.equals("m")) {
+        if (account.sex.equals("m")) {
             predicates.add(new SexEqPredicate("f"));
         } else {
             predicates.add(new SexEqPredicate("m"));
         }
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
-            if (accountDTO.interests == null || a.interests == null || accountDTO.interests.length == 0 || a.interests.length == 0) {
+            if (account.interests == null || a.interests == null || account.interests.length == 0 || a.interests.length == 0) {
                 return false;
             }
-            if (interestsMatched(Arrays.asList(accountDTO.interests), Arrays.asList(a.interests)) == 0) {
+            if (interestsMatched(Arrays.asList(account.interests), Arrays.asList(a.interests)) == 0) {
                 return false;
             }
             return true;
 
         });
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
-        Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
+        Predicate<Account> accountPredicate = andPredicates(predicates);
         Set<String> interests = new HashSet<>();
-        if (accountDTO.interests != null) {
-            interests.addAll(Arrays.asList(accountDTO.interests));
+        if (account.interests != null) {
+            interests.addAll(Arrays.asList(account.interests));
         }
-        List<AccountDTO> result1 = new ArrayList<>();
-        List<AccountDTO> result2 = new ArrayList<>();
-        List<AccountDTO> result3 = new ArrayList<>();
-        List<AccountDTO> result4 = new ArrayList<>();
-        List<AccountDTO> result5 = new ArrayList<>();
-        List<AccountDTO> result6 = new ArrayList<>();
+        List<Account> result1 = new ArrayList<>();
+        List<Account> result2 = new ArrayList<>();
+        List<Account> result3 = new ArrayList<>();
+        List<Account> result4 = new ArrayList<>();
+        List<Account> result5 = new ArrayList<>();
+        List<Account> result6 = new ArrayList<>();
         IndexScan indexScan = new CompositeIndexScan(indexScans);
         PremiumNowPredicate premiumNowPredicate = new PremiumNowPredicate(nowProvider.getNow());
         while (true) {
@@ -255,7 +255,7 @@ public class AccountService {
             if (next == -1) {
                 break;
             }
-            AccountDTO acc = findById(next);
+            Account acc = findById(next);
             if (accountPredicate.test(acc)) {
                 if (premiumNowPredicate.test(acc)) {
                     if (acc.status.equals("свободны")) {
@@ -276,7 +276,7 @@ public class AccountService {
                 }
             }
         }
-        List<AccountDTO> result = new ArrayList<>();
+        List<Account> result = new ArrayList<>();
         result.addAll(result1);
         if (result.size() < limit) {
             result.addAll(result2);
@@ -311,8 +311,8 @@ public class AccountService {
             if (cc2 != 0) {
                 return -cc2;
             }
-            int bd1 = Math.abs(a1.birth - accountDTO.birth);
-            int bd2 = Math.abs(a2.birth - accountDTO.birth);
+            int bd1 = Math.abs(a1.birth - account.birth);
+            int bd2 = Math.abs(a2.birth - account.birth);
             int cc3 = Integer.compare(bd1, bd2);
             if (cc3 != 0) {
                 return cc3;
@@ -351,32 +351,32 @@ public class AccountService {
         return count;
     }
 
-    private boolean isPremium(AccountDTO accountDTO) {
-        return accountDTO.premiumStart != 0 && accountDTO.premiumStart < nowProvider.getNow() && (accountDTO.premiumFinish > nowProvider.getNow() || accountDTO.premiumFinish == 0);
+    private boolean isPremium(Account account) {
+        return account.premiumStart != 0 && account.premiumStart < nowProvider.getNow() && (account.premiumFinish > nowProvider.getNow() || account.premiumFinish == 0);
     }
 
 
-    public List<AccountDTO> suggest(int id, List<Predicate<AccountDTO>> predicates, int limit) {
-        AccountDTO accountDTO = findById(id);
-        if (accountDTO == null) {
+    public List<Account> suggest(int id, List<Predicate<Account>> predicates, int limit) {
+        Account account = findById(id);
+        if (account == null) {
             throw new NotFoundRequest();
         }
-        predicates.add(new SexEqPredicate(accountDTO.sex));
+        predicates.add(new SexEqPredicate(account.sex));
         predicates.add(a -> a.id != id);
 
         String targetSex = null;
-        if (accountDTO.sex.equals("m")) {
+        if (account.sex.equals("m")) {
             targetSex = "f";
         } else {
             targetSex = "m";
         }
 
         final String ts = targetSex;
-        if (accountDTO.likes == null || accountDTO.likes.length == 0) {
+        if (account.likes == null || account.likes.length == 0) {
             return Collections.EMPTY_LIST;
         }
         Set<Integer> myLikes = new HashSet<>();
-        for (long like: accountDTO.likes) {
+        for (long like: account.likes) {
             int lid = (int)(like & 0x0000ffff);
             myLikes.add(lid);
         }
@@ -399,29 +399,29 @@ public class AccountService {
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         indexScans.add(likersIndexScan);
         IndexScan indexScan = new CompositeIndexScan(indexScans);
-        Predicate<AccountDTO> accountPredicate = andPredicates(predicates);
-        List<AccountDTO> suggestResult = new ArrayList<>();
+        Predicate<Account> accountPredicate = andPredicates(predicates);
+        List<Account> suggestResult = new ArrayList<>();
         while (true) {
             int next = indexScan.getNext();
             if (next == -1) {
                 break;
             }
-            AccountDTO acc = findById(next);
+            Account acc = findById(next);
             if (accountPredicate.test(acc)) {
                 suggestResult.add(acc);
             }
         }
         List<Similarity> similarities = suggestResult.stream().map(a ->  {
             Similarity similarity = new Similarity();
-            similarity.accountDTO = a;
-            similarity.similarity = getSimilarity(accountDTO, a);
+            similarity.account = a;
+            similarity.similarity = getSimilarity(account, a);
             return similarity;
         }).sorted(Comparator.comparingDouble((Similarity s) -> s.similarity).reversed()).collect(Collectors.toList());
-        List<AccountDTO> result = new ArrayList<>();
+        List<Account> result = new ArrayList<>();
         Set<Integer> likersSet = new HashSet<>();
         for (int i = 0; i < similarities.size(); i++) {
             Similarity s = similarities.get(i);
-            int[] likers = Arrays.stream(s.accountDTO.likes).mapToInt(l -> (Integer)(int)(l & 0x0000ffff)).toArray();
+            int[] likers = Arrays.stream(s.account.likes).mapToInt(l -> (Integer)(int)(l & 0x0000ffff)).toArray();
             Arrays.sort(likers);
             for (int j = likers.length -1; j >= 0; j--) {
                 if (!myLikes.contains(likers[j]) && findById(likers[j]).sex.equals(ts)) {
@@ -441,7 +441,7 @@ public class AccountService {
         return result;
     }
 
-    private double getSimilarity(AccountDTO a1, AccountDTO a2) {
+    private double getSimilarity(Account a1, Account a2) {
 
         List<Like> like1 = a1.likes != null ? Arrays.stream( a1.likes).mapToObj(l -> {
             Like like = new Like();
@@ -503,24 +503,24 @@ public class AccountService {
         return similarity;
     }
 
-    public synchronized void load(AccountDTO accountDTO) {
+    public synchronized void load(Account account) {
         if (size == 0) {
-            accountDTOList[size] = accountDTO;
+            accountList[size] = account;
             size++;
         } else {
             for (int i = 0; i < size; i++) {
-                if (accountDTO.id > accountDTOList[i].id) {
-                    System.arraycopy(accountDTOList, i, accountDTOList, i+1, size - i);
-                    accountDTOList[i] = accountDTO;
+                if (account.id > accountList[i].id) {
+                    System.arraycopy(accountList, i, accountList, i+1, size - i);
+                    accountList[i] = account;
                     size++;
                     break;
                 }
             }
         }
-        accountIdMap[accountDTO.id] =  accountDTO;
-        emails.add(accountDTO.email);
-        if (accountDTO.phone != null) {
-            phones.add(accountDTO.phone);
+        accountIdMap[account.id] =  account;
+        emails.add(account.email);
+        if (account.phone != null) {
+            phones.add(account.phone);
         }
     }
 
@@ -548,7 +548,7 @@ public class AccountService {
             throw new BadRequest();
         }
 
-        this.load(accountDTO);
+        this.load(accountConverter.convert(accountDTO));
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
                 if (LAST_UPDATE_TIMESTAMP == 0) {
@@ -570,7 +570,7 @@ public class AccountService {
         if (accountDTO.id >= MAX_ID) {
             throw new NotFoundRequest();
         }
-        AccountDTO oldAcc = findById(accountDTO.id);
+        Account oldAcc = findById(accountDTO.id);
         if (oldAcc == null) {
             throw new NotFoundRequest();
         }
@@ -655,18 +655,18 @@ public class AccountService {
         }
 
         for (LikeRequest likeRequest: likeRequests) {
-            AccountDTO accountDTO = findById(likeRequest.liker);
+            Account account = findById(likeRequest.liker);
             long like =0;
             like = (int)(0x0000ffff & likeRequest.likee);
             like = ((long)likeRequest.ts << 32 | like) ;
-            long[] oldArray = accountDTO.likes;
+            long[] oldArray = account.likes;
             if (oldArray == null) {
-                accountDTO.likes = new long[1];
-                accountDTO.likes[0] = like;
+                account.likes = new long[1];
+                account.likes[0] = like;
             } else {
-                accountDTO.likes = new long[oldArray.length + 1];
-                System.arraycopy(oldArray, 0, accountDTO.likes, 0, oldArray.length);
-                accountDTO.likes[oldArray.length] = like;
+                account.likes = new long[oldArray.length + 1];
+                System.arraycopy(oldArray, 0, account.likes, 0, oldArray.length);
+                account.likes[oldArray.length] = like;
             }
 
         }
@@ -682,21 +682,21 @@ public class AccountService {
 
     }
 
-    public AccountDTO findById(int id) {
+    public Account findById(int id) {
         return accountIdMap[id];
     }
 
     public void finishLoad() {
-        indexHolder.init(this.accountDTOList, size);
+        indexHolder.init(this.accountList, size);
         System.gc();
     }
 
 
-    private List<IndexScan> getAvailableIndexScan(List<Predicate<AccountDTO>> predicates) {
+    private List<IndexScan> getAvailableIndexScan(List<Predicate<Account>> predicates) {
         List<IndexScan> indexScans = new ArrayList<>();
-        Iterator<Predicate<AccountDTO>> iterator = predicates.iterator();
+        Iterator<Predicate<Account>> iterator = predicates.iterator();
         while (iterator.hasNext()) {
-            Predicate<AccountDTO> predicate = iterator.next();
+            Predicate<Account> predicate = iterator.next();
             if (predicate instanceof CountryEqPredicate) {
                 CountryEqPredicate countryEqPredicate = (CountryEqPredicate) predicate;
                 indexScans.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
@@ -754,8 +754,8 @@ public class AccountService {
         return indexScans;
     }
 
-    private Predicate<AccountDTO> andPredicates(List<Predicate<AccountDTO>> predicates) {
-        Predicate<AccountDTO> accountPredicate = null;
+    private Predicate<Account> andPredicates(List<Predicate<Account>> predicates) {
+        Predicate<Account> accountPredicate = null;
         if (predicates.isEmpty()) {
             accountPredicate = foo -> true;
         } else {
@@ -781,7 +781,7 @@ public class AccountService {
 
             try {
                 System.out.println("Start update indexes " + new Date());
-                indexHolder.init(accountDTOList, size);
+                indexHolder.init(accountList, size);
                 System.gc();
                 System.out.println("End update indexes " + new Date());
             } catch (Exception ex) {
@@ -795,7 +795,7 @@ public class AccountService {
     }
 
     private static class Similarity {
-        public AccountDTO accountDTO;
+        public Account account;
         public double similarity;
     }
 

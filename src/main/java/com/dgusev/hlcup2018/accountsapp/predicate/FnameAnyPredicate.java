@@ -1,11 +1,11 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.List;
 import java.util.function.Predicate;
 
-public class FnameAnyPredicate implements Predicate<AccountDTO> {
+public class FnameAnyPredicate implements Predicate<Account> {
 
     private List<String> fnames;
 
@@ -15,7 +15,7 @@ public class FnameAnyPredicate implements Predicate<AccountDTO> {
     }
 
     @Override
-    public boolean test(AccountDTO accountDTO) {
-        return accountDTO.fname != null && fnames.contains(accountDTO.fname);
+    public boolean test(Account Account) {
+        return Account.fname != null && fnames.contains(Account.fname);
     }
 }
