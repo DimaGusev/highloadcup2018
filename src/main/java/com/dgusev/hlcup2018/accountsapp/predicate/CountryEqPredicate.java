@@ -6,19 +6,18 @@ import java.util.function.Predicate;
 
 public class CountryEqPredicate implements Predicate<Account> {
 
-    private String country;
+    private byte country;
 
-    public CountryEqPredicate(String country) {
-        PredicateStatistics.cne.incrementAndGet();
+    public CountryEqPredicate(byte country) {
         this.country = country;
     }
 
     @Override
     public boolean test(Account Account) {
-        return Account.country != null && Account.country.equals(country);
+        return Account.country == country;
     }
 
-    public String  getCounty() {
+    public byte  getCounty() {
         return country;
     }
 }

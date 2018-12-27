@@ -3,10 +3,15 @@ package com.dgusev.hlcup2018.accountsapp.service;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
+import gnu.trove.impl.Constants;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class AccountConverter {
+
+    @Autowired
+    private Dictionary dictionary;
 
     public Account convert(AccountDTO accountDTO) {
         Account account = new Account();
@@ -18,7 +23,11 @@ public class AccountConverter {
 
         account.sex = ConvertorUtills.convertSex(accountDTO.sex);
         account.birth = accountDTO.birth;
-        account.country = accountDTO.country;
+        if (accountDTO.country != null) {
+            account.country = dictionary.getOrCreateCountry(accountDTO.country);
+        } else  {
+            account.country = Constants.DEFAULT_BYTE_NO_ENTRY_VALUE;
+        }
         account.city = accountDTO.city;
         account.joined = accountDTO.joined;
         account.status = ConvertorUtills.convertStatusNumber(accountDTO.status);

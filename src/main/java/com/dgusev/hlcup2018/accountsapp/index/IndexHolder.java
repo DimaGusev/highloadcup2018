@@ -3,6 +3,7 @@ package com.dgusev.hlcup2018.accountsapp.index;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import gnu.trove.impl.Constants;
 import gnu.trove.map.TByteObjectMap;
 import gnu.trove.map.hash.TByteObjectHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +14,7 @@ import java.util.*;
 @Component
 public class IndexHolder {
 
-    public Map<String, int[]> countryIndex;
+    public TByteObjectMap<int[]> countryIndex;
     public TByteObjectMap<int[]> sexIndex;
     public TByteObjectMap<int[]> statusIndex;
     public Map<String, int[]> interestsIndex;
@@ -32,7 +33,7 @@ public class IndexHolder {
 
     public synchronized void init(Account[] accountDTOList, int size) {
         int now = nowProvider.getNow();
-        Map<String, List<Integer>> tmpCountryIndex = new HashMap<>();
+        Map<Byte, List<Integer>> tmpCountryIndex = new HashMap<>();
         Map<Boolean, List<Integer>> tmpSexIndex = new HashMap<>();
         Map<String, List<Integer>> tmpEmailDomainIndex = new HashMap<>();
         List<Integer> tmpNotNullCountry = new ArrayList<>();
@@ -52,7 +53,7 @@ public class IndexHolder {
         List<Integer> tmpPremiumIndex = new ArrayList<>();
         for (int i = 0; i < size; i++) {
             Account account= accountDTOList[i];
-            if (account.country != null) {
+            if (account.country != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
                 tmpCountryIndex.computeIfAbsent(account.country, k -> new ArrayList<>()).add(account.id);
                 tmpNotNullCountry.add(account.id);
             } else {
@@ -90,8 +91,8 @@ public class IndexHolder {
                 }
             }
         }
-        countryIndex = new HashMap<>();
-        for (Map.Entry<String, List<Integer>> entry: tmpCountryIndex.entrySet()) {
+        countryIndex = new TByteObjectHashMap<>();
+        for (Map.Entry<Byte, List<Integer>> entry: tmpCountryIndex.entrySet()) {
             countryIndex.put(entry.getKey(), entry.getValue().stream()
                     .mapToInt(Integer::intValue)
                     .toArray());

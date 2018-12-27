@@ -9,6 +9,7 @@ import com.dgusev.hlcup2018.accountsapp.parse.LikeParser;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
+import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
 import io.netty.buffer.ByteBuf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -45,6 +46,9 @@ public class AccountsController {
 
     @Autowired
     private LikeParser likeParser;
+
+    @Autowired
+    private Dictionary dictionary;
 
 
     public void accountsFilter(Map<String,List<String>> allRequestParams, ByteBuf responseBuf) throws Exception {
@@ -118,7 +122,8 @@ public class AccountsController {
                     }
                 } else if (name.startsWith("country_")) {
                     if (name.equals("country_eq")) {
-                        predicates.add(new CountryEqPredicate(parameter.getValue().get(0)));
+                        byte countryIndex = dictionary.getCountry(parameter.getValue().get(0));
+                        predicates.add(new CountryEqPredicate(countryIndex));
                     } else if (name.equals("country_null")) {
                         predicates.add(new CountryNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
@@ -226,7 +231,7 @@ public class AccountsController {
                 } else if (name.equals("phone")) {
                     predicates.add(new PhoneEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("country")) {
-                    predicates.add(new CountryEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue().get(0))));
                 } else if (name.equals("city")) {
                     predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("birth")) {
@@ -278,7 +283,7 @@ public class AccountsController {
                     if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
                         throw new BadRequest();
                     }
-                    predicates.add(new CountryEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue().get(0))));
                 } else if (name.equals("city")) {
                     if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
                         throw new BadRequest();
@@ -324,7 +329,7 @@ public class AccountsController {
                 if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
                     throw new BadRequest();
                 }
-                predicates.add(new CountryEqPredicate(parameter.getValue().get(0)));
+                predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue().get(0))));
             } else if (name.equals("city")) {
                 if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
                     throw new BadRequest();

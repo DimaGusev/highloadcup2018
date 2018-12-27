@@ -9,7 +9,7 @@ public class Account {
     public String phone;
     public boolean sex;
     public int birth = Integer.MIN_VALUE;
-    public String country;
+    public byte country;
     public String city;
     public int joined = Integer.MIN_VALUE;
     public byte status;

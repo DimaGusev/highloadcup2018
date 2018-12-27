@@ -2,7 +2,10 @@ package com.dgusev.hlcup2018.accountsapp.format;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
+import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
+import gnu.trove.impl.Constants;
 import io.netty.buffer.ByteBuf;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
@@ -15,6 +18,9 @@ public class AccountFormatter {
 
     private static final byte[] START = "{\"start\":".getBytes();
     private static final byte[] FINISH = ",\"finish\":".getBytes();
+
+    @Autowired
+    private Dictionary dictionary;
 
     public void format(Account account, List<String> fields, ByteBuf responseBuf) {
         responseBuf.writeByte('{');
@@ -56,9 +62,9 @@ public class AccountFormatter {
                 encodeLong(account.birth, responseBuf);
                 first = false;
             } else if (field.equals("country")) {
-                if (account.country != null) {
+                if (account.country != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, account.country);
+                    writeStringValue(responseBuf, dictionary.getCountry(account.country));
                     first = false;
                 }
             } else if (field.equals("city")) {

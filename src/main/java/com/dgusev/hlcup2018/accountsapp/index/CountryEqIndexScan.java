@@ -6,7 +6,7 @@ public class CountryEqIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public CountryEqIndexScan(IndexHolder indexHolder, String country) {
+    public CountryEqIndexScan(IndexHolder indexHolder, byte country) {
         super(indexHolder);
         this.indexList = indexHolder.countryIndex.get(country);
     }

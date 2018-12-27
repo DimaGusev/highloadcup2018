@@ -162,8 +162,9 @@ public class AccountService {
             } else if (key.equals("interests")) {
 
             } else if (key.equals("country")) {
-                group.add(account.country);
-                hashcode = 31* hashcode + (account.country == null ? 0 : account.country.hashCode());
+                String country = dictionary.getCountry(account.country);
+                group.add(country);
+                hashcode = 31* hashcode + (country == null ? 0 : country.hashCode());
             } else if (key.equals("city")) {
                 group.add(account.city);
                 hashcode = 31* hashcode + (account.city == null ? 0 : account.city.hashCode());
@@ -595,7 +596,7 @@ public class AccountService {
             oldAcc.birth = accountDTO.birth;
         }
         if (accountDTO.country != null) {
-            oldAcc.country = accountDTO.country;
+            oldAcc.country = dictionary.getOrCreateCountry(accountDTO.country);
         }
         if (accountDTO.city != null) {
             oldAcc.city = accountDTO.city;
