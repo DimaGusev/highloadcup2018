@@ -7,7 +7,7 @@ public class Account {
     public String fname;
     public String sname;
     public String phone;
-    public String sex;
+    public boolean sex;
     public int birth = Integer.MIN_VALUE;
     public String country;
     public String city;

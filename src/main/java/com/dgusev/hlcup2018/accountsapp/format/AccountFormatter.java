@@ -48,7 +48,7 @@ public class AccountFormatter {
                  }
             } else if (field.equals("sex")) {
                 writeField(responseBuf, first, field);
-                writeStringValue(responseBuf, account.sex);
+                writeStringValue(responseBuf, convertSex(account.sex));
                 first = false;
             } else if (field.equals("birth")) {
                 writeField(responseBuf, first, field);
@@ -166,6 +166,14 @@ public class AccountFormatter {
             responseBuf.writeByte((byte)(48 + digit));
             printZero=true;
             value -= (value/POW10[i]) * POW10[i];
+        }
+    }
+
+    private String convertSex(boolean sex) {
+        if (sex) {
+            return "m";
+        } else {
+            return "f";
         }
     }
 

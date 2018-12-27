@@ -2,6 +2,7 @@ package com.dgusev.hlcup2018.accountsapp.service;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -14,7 +15,8 @@ public class AccountConverter {
         account.fname = accountDTO.fname;
         account.sname = accountDTO.sname;
         account.phone = accountDTO.phone;
-        account.sex = accountDTO.sex;
+
+        account.sex = ConvertorUtills.convertSex(accountDTO.sex);
         account.birth = accountDTO.birth;
         account.country = accountDTO.country;
         account.city = accountDTO.city;
@@ -26,5 +28,6 @@ public class AccountConverter {
         account.likes = accountDTO.likes;
         return account;
     }
+
 
 }

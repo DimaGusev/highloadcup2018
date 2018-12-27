@@ -6,9 +6,9 @@ public class SexEqIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public SexEqIndexScan(IndexHolder indexHolder, String sex) {
+    public SexEqIndexScan(IndexHolder indexHolder, boolean sex) {
         super(indexHolder);
-        this.indexList = indexHolder.sexIndex.get(sex);
+        this.indexList = indexHolder.sexIndex.get(sex ? (byte) 1: 0);
     }
 
     @Override

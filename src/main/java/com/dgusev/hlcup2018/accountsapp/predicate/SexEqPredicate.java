@@ -6,19 +6,18 @@ import java.util.function.Predicate;
 
 public class SexEqPredicate implements Predicate<Account> {
 
-    private String sex;
+    private boolean sex;
 
-    public SexEqPredicate(String sex) {
-        PredicateStatistics.sexe.incrementAndGet();
+    public SexEqPredicate(boolean sex) {
         this.sex = sex;
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.sex.equals(sex);
+    public boolean test(Account account) {
+        return account.sex == sex;
     }
 
-    public String getSex() {
+    public boolean getSex() {
         return sex;
     }
 }

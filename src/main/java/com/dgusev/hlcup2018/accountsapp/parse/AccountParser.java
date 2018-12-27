@@ -210,6 +210,9 @@ public class AccountParser {
                        end--;
                    }
                    accountDTO.sex = parseString(array, colon, end + 1 - colon);
+                   if (!accountDTO.sex.equals("m") && !accountDTO.sex.equals("f")) {
+                       throw new BadRequest();
+                   }
                }
                currentIndex = totalEnd;
            } else if (field.equals("birth")) {

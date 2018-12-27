@@ -8,6 +8,7 @@ import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
 import com.dgusev.hlcup2018.accountsapp.parse.LikeParser;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
+import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
 import io.netty.buffer.ByteBuf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -64,7 +65,7 @@ public class AccountsController {
                 fields.add(name.substring(0, name.indexOf("_")));
                 if (name.startsWith("sex_")) {
                     if (name.equals("sex_eq")) {
-                        predicates.add(new SexEqPredicate(parameter.getValue().get(0)));
+                        predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -213,7 +214,7 @@ public class AccountsController {
                 } else if (name.equals("limit")) {
                     limit = Integer.parseInt(parameter.getValue().get(0));
                 } else if (name.equals("sex")) {
-                    predicates.add(new SexEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue().get(0))));
                 } else if (name.equals("email")) {
                     predicates.add(new EmailEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("status")) {

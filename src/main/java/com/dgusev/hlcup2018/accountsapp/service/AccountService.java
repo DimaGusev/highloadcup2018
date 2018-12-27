@@ -153,8 +153,8 @@ public class AccountService {
         for (int i = 0; i < keys.size(); i++) {
             String key = keys.get(i);
             if (key.equals("sex")) {
-                group.add(account.sex);
-                hashcode = 31* hashcode + (account.sex.hashCode());
+                group.add(ConvertorUtills.convertSex(account.sex));
+                hashcode = 31* hashcode + (Boolean.valueOf(account.sex).hashCode());
             } else if (key.equals("status")) {
                 group.add(account.status);
                 hashcode = 31* hashcode + (account.status.hashCode());
@@ -220,11 +220,8 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
-        if (account.sex.equals("m")) {
-            predicates.add(new SexEqPredicate("f"));
-        } else {
-            predicates.add(new SexEqPredicate("m"));
-        }
+        predicates.add(new SexEqPredicate(!account.sex));
+
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
             if (account.interests == null || a.interests == null || account.interests.length == 0 || a.interests.length == 0) {
@@ -364,14 +361,7 @@ public class AccountService {
         predicates.add(new SexEqPredicate(account.sex));
         predicates.add(a -> a.id != id);
 
-        String targetSex = null;
-        if (account.sex.equals("m")) {
-            targetSex = "f";
-        } else {
-            targetSex = "m";
-        }
-
-        final String ts = targetSex;
+        boolean targetSex = !account.sex;
         if (account.likes == null || account.likes.length == 0) {
             return Collections.EMPTY_LIST;
         }
@@ -424,7 +414,7 @@ public class AccountService {
             int[] likers = Arrays.stream(s.account.likes).mapToInt(l -> (Integer)(int)(l & 0x0000ffff)).toArray();
             Arrays.sort(likers);
             for (int j = likers.length -1; j >= 0; j--) {
-                if (!myLikes.contains(likers[j]) && findById(likers[j]).sex.equals(ts)) {
+                if (!myLikes.contains(likers[j]) && findById(likers[j]).sex==targetSex) {
                     if (!likersSet.contains(likers[j])) {
                         likersSet.add(likers[j]);
                         result.add(accountIdMap[likers[j]]);
@@ -608,7 +598,7 @@ public class AccountService {
             oldAcc.phone = accountDTO.phone;
         }
         if (accountDTO.sex != null) {
-            oldAcc.sex = accountDTO.sex;
+            oldAcc.sex = ConvertorUtills.convertSex(accountDTO.sex);
         }
         if (accountDTO.birth != Integer.MIN_VALUE) {
             oldAcc.birth = accountDTO.birth;

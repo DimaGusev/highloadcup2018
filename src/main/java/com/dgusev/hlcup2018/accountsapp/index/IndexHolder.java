@@ -3,6 +3,8 @@ package com.dgusev.hlcup2018.accountsapp.index;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import gnu.trove.map.TByteObjectMap;
+import gnu.trove.map.hash.TByteObjectHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -12,7 +14,7 @@ import java.util.*;
 public class IndexHolder {
 
     public Map<String, int[]> countryIndex;
-    public Map<String, int[]> sexIndex;
+    public TByteObjectMap<int[]> sexIndex;
     public Map<Integer, int[]> statusIndex;
     public Map<String, int[]> interestsIndex;
     public Map<String, int[]> cityIndex;
@@ -31,7 +33,7 @@ public class IndexHolder {
     public synchronized void init(Account[] accountDTOList, int size) {
         int now = nowProvider.getNow();
         Map<String, List<Integer>> tmpCountryIndex = new HashMap<>();
-        Map<String, List<Integer>> tmpSexIndex = new HashMap<>();
+        Map<Boolean, List<Integer>> tmpSexIndex = new HashMap<>();
         Map<String, List<Integer>> tmpEmailDomainIndex = new HashMap<>();
         List<Integer> tmpNotNullCountry = new ArrayList<>();
         List<Integer> tmpNullCountry = new ArrayList<>();
@@ -39,8 +41,8 @@ public class IndexHolder {
         List<Integer> tmpNullCity = new ArrayList<>();
         Map<Integer, List<Integer>> tmpStatusIndex = new HashMap<>();
         Map<Integer, List<Integer>> tmpBirthYearIndex = new HashMap<>();
-        tmpSexIndex.put("m", new ArrayList<>());
-        tmpSexIndex.put("f", new ArrayList<>());
+        tmpSexIndex.put(true, new ArrayList<>());
+        tmpSexIndex.put(false, new ArrayList<>());
         for (int i = 0; i< 3; i++) {
             tmpStatusIndex.put(i, new ArrayList<>());
         }
@@ -99,9 +101,9 @@ public class IndexHolder {
                     .mapToInt(Integer::intValue)
                     .toArray());
         }
-        sexIndex = new HashMap<>();
-        for (Map.Entry<String, List<Integer>> entry: tmpSexIndex.entrySet()) {
-            sexIndex.put(entry.getKey(), entry.getValue().stream()
+        sexIndex = new TByteObjectHashMap<>();
+        for (Map.Entry<Boolean, List<Integer>> entry: tmpSexIndex.entrySet()) {
+            sexIndex.put(entry.getKey() ? (byte)1 : 0, entry.getValue().stream()
                     .mapToInt(Integer::intValue)
                     .toArray());
         }
