@@ -68,9 +68,9 @@ public class AccountFormatter {
                     first = false;
                 }
             } else if (field.equals("city")) {
-                if (account.city != null) {
+                if (account.city != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
                     writeField(responseBuf, first, field);
-                    writeStringValue(responseBuf, account.city);
+                    writeStringValue(responseBuf, dictionary.getCity(account.city));
                     first = false;
                 }
             } else if (field.equals("joined")) {

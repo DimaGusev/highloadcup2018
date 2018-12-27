@@ -5,7 +5,9 @@ import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import gnu.trove.impl.Constants;
 import gnu.trove.map.TByteObjectMap;
+import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TByteObjectHashMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -18,7 +20,7 @@ public class IndexHolder {
     public TByteObjectMap<int[]> sexIndex;
     public TByteObjectMap<int[]> statusIndex;
     public Map<String, int[]> interestsIndex;
-    public Map<String, int[]> cityIndex;
+    public TIntObjectMap<int[]> cityIndex;
     public Map<Integer, int[]> birthYearIndex;
     public Map<String, int[]> emailDomainIndex;
     public int[] notNullCountry;
@@ -48,7 +50,7 @@ public class IndexHolder {
             tmpStatusIndex.put((byte)i, new ArrayList<>());
         }
         Map<String, List<Integer>> tmpInterestsIndex = new HashMap<>();
-        Map<String, List<Integer>> tmpCityIndex = new HashMap<>();
+        Map<Integer, List<Integer>> tmpCityIndex = new HashMap<>();
         Map<Integer, Set<Integer>> tmpLikesIndex = new HashMap<>();
         List<Integer> tmpPremiumIndex = new ArrayList<>();
         for (int i = 0; i < size; i++) {
@@ -59,7 +61,7 @@ public class IndexHolder {
             } else {
                 tmpNullCountry.add(account.id);
             }
-            if (account.city != null) {
+            if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                 tmpCityIndex.computeIfAbsent(account.city, k -> new ArrayList<>()).add(account.id);
                 tmpNotNullCity.add(account.id);
             } else {
@@ -127,8 +129,8 @@ public class IndexHolder {
         nullCity = tmpNullCity.stream()
                 .mapToInt(Integer::intValue)
                 .toArray();
-        cityIndex = new HashMap<>();
-        for (Map.Entry<String, List<Integer>> entry: tmpCityIndex.entrySet()) {
+        cityIndex = new TIntObjectHashMap<>();
+        for (Map.Entry<Integer, List<Integer>> entry: tmpCityIndex.entrySet()) {
             cityIndex.put(entry.getKey(), entry.getValue().stream()
                     .mapToInt(Integer::intValue)
                     .toArray());

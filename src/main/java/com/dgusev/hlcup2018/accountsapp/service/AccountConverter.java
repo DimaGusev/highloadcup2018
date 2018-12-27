@@ -28,7 +28,11 @@ public class AccountConverter {
         } else  {
             account.country = Constants.DEFAULT_BYTE_NO_ENTRY_VALUE;
         }
-        account.city = accountDTO.city;
+        if (accountDTO.city != null) {
+            account.city = dictionary.getOrCreateCity(accountDTO.city);
+        } else  {
+            account.city = Constants.DEFAULT_INT_NO_ENTRY_VALUE;
+        }
         account.joined = accountDTO.joined;
         account.status = ConvertorUtills.convertStatusNumber(accountDTO.status);
         account.interests = accountDTO.interests;

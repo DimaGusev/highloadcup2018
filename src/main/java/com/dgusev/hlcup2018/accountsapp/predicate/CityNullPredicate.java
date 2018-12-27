@@ -1,6 +1,7 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
+import gnu.trove.impl.Constants;
 
 import java.util.function.Predicate;
 
@@ -9,16 +10,15 @@ public class CityNullPredicate implements Predicate<Account> {
     private int nill;
 
     public CityNullPredicate(int nill) {
-        PredicateStatistics.cin.incrementAndGet();
         this.nill = nill;
     }
 
     @Override
-    public boolean test(Account Account) {
+    public boolean test(Account account) {
         if (nill == 0) {
-            return Account.city != null;
+            return account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE;
         } else  {
-            return Account.city == null;
+            return account.city == Constants.DEFAULT_INT_NO_ENTRY_VALUE;
         }
     }
 

@@ -1,9 +1,13 @@
 package com.dgusev.hlcup2018.accountsapp.service;
 
 import gnu.trove.map.TByteObjectMap;
+import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TObjectByteMap;
+import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TByteObjectHashMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TObjectByteHashMap;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -16,6 +20,10 @@ public class Dictionary {
     private TByteObjectMap<String> countryDictionary = new TByteObjectHashMap<>();
     private TObjectByteMap<String> countryReverseDictionary = new TObjectByteHashMap<>();
     private AtomicInteger countrySequence = new AtomicInteger();
+
+    private TIntObjectMap<String> cityDictionary = new TIntObjectHashMap<>();
+    private TObjectIntMap<String> cityReverseDictionary = new TObjectIntHashMap<>();
+    private AtomicInteger citySequence = new AtomicInteger();
 
 
     public String getCountry(byte country) {
@@ -34,6 +42,25 @@ public class Dictionary {
             return (byte) id;
         } else {
             return countryReverseDictionary.get(country);
+        }
+    }
+
+    public String getCity(int city) {
+        return cityDictionary.get(city);
+    }
+
+    public int getCity(String city) {
+        return cityReverseDictionary.get(city);
+    }
+
+    public int getOrCreateCity(String city) {
+        if (!cityReverseDictionary.containsKey(city)) {
+            int id = citySequence.incrementAndGet();
+            cityDictionary.put(id, city);
+            cityReverseDictionary.put(city, id);
+            return id;
+        } else {
+            return cityReverseDictionary.get(city);
         }
     }
 

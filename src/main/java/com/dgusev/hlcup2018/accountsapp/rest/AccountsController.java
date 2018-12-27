@@ -66,7 +66,10 @@ public class AccountsController {
                     limit = Integer.parseInt(parameter.getValue().get(0));
                     continue;
                 }
-                fields.add(name.substring(0, name.indexOf("_")));
+                String field = name.substring(0, name.indexOf("_"));
+                if (!fields.contains(field)) {
+                    fields.add(field);
+                }
                 if (name.startsWith("sex_")) {
                     if (name.equals("sex_eq")) {
                         predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue().get(0))));
@@ -131,9 +134,14 @@ public class AccountsController {
                     }
                 } else if (name.startsWith("city_")) {
                     if (name.equals("city_eq")) {
-                        predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
+                        predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
                     } else if (name.equals("city_any")) {
-                        predicates.add(new CityAnyPredicate(parameter.getValue().get(0).split(",")));
+                        String[] cities = parameter.getValue().get(0).split(",");
+                        int[] values = new int[cities.length];
+                        for (int i = 0; i < cities.length; i ++) {
+                            values[i] = dictionary.getCity(cities[i]);
+                        }
+                        predicates.add(new CityAnyPredicate(values));
                     } else if (name.equals("city_null")) {
                         predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
                     } else {
@@ -233,7 +241,7 @@ public class AccountsController {
                 } else if (name.equals("country")) {
                     predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue().get(0))));
                 } else if (name.equals("city")) {
-                    predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
                 } else if (name.equals("birth")) {
                     predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
                 } else if (name.equals("interests")) {
@@ -288,7 +296,7 @@ public class AccountsController {
                     if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
                         throw new BadRequest();
                     }
-                    predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
                 } else {
                     throw new BadRequest();
                 }
@@ -334,7 +342,7 @@ public class AccountsController {
                 if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
                     throw new BadRequest();
                 }
-                predicates.add(new CityEqPredicate(parameter.getValue().get(0)));
+                predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
             } else {
                 throw new BadRequest();
             }

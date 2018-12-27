@@ -4,7 +4,7 @@ public class CityEqIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public CityEqIndexScan(IndexHolder indexHolder, String city) {
+    public CityEqIndexScan(IndexHolder indexHolder, int city) {
         super(indexHolder);
         this.indexList = indexHolder.cityIndex.get(city);
     }

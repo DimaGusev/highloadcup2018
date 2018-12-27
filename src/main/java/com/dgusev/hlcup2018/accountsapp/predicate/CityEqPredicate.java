@@ -6,19 +6,18 @@ import java.util.function.Predicate;
 
 public class CityEqPredicate implements Predicate<Account> {
 
-    private String city;
+    private int city;
 
-    public CityEqPredicate(String city) {
-        PredicateStatistics.cie.incrementAndGet();
+    public CityEqPredicate(int city) {
         this.city = city;
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.city != null && Account.city.equals(city);
+    public boolean test(Account account) {
+        return account.city == city;
     }
 
-    public String getCity() {
+    public int getCity() {
         return city;
     }
 }

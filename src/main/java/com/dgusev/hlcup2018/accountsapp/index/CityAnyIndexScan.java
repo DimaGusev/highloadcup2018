@@ -7,19 +7,19 @@ public class CityAnyIndexScan extends AbstractIndexScan {
     private int[] minIds;
     private int prev = Integer.MAX_VALUE;
 
-    public CityAnyIndexScan(IndexHolder indexHolder, String[] cities) {
+    public CityAnyIndexScan(IndexHolder indexHolder, int[] cities) {
         super(indexHolder);
         int count = 0;
-        for (String interes: cities) {
-            if (indexHolder.cityIndex.containsKey(interes)) {
+        for (int city: cities) {
+            if (indexHolder.cityIndex.containsKey(city)) {
                 count++;
             }
         }
         indexList = new int[count][];
         index = 0;
-        for (String interes: cities) {
-            if (indexHolder.cityIndex.containsKey(interes)) {
-                indexList[index++] = indexHolder.cityIndex.get(interes);
+        for (int city: cities) {
+            if (indexHolder.cityIndex.containsKey(city)) {
+                indexList[index++] = indexHolder.cityIndex.get(city);
             }
         }
         indexes = new int[count];

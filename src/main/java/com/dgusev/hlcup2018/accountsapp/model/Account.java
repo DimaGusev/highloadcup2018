@@ -10,7 +10,7 @@ public class Account {
     public boolean sex;
     public int birth = Integer.MIN_VALUE;
     public byte country;
-    public String city;
+    public int city;
     public int joined = Integer.MIN_VALUE;
     public byte status;
     public String[] interests;
