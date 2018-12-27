@@ -6,19 +6,18 @@ import java.util.function.Predicate;
 
 public class StatusEqPredicate implements Predicate<Account> {
 
-    private String status;
+    private byte status;
 
-    public StatusEqPredicate(String status) {
-        PredicateStatistics.ste.incrementAndGet();
+    public StatusEqPredicate(byte status) {
         this.status = status;
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.status.equals(status);
+    public boolean test(Account account) {
+        return account.status == status;
     }
 
-    public String getStatus() {
+    public byte getStatus() {
         return status;
     }
 }

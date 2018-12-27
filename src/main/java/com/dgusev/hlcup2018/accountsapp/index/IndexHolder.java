@@ -15,7 +15,7 @@ public class IndexHolder {
 
     public Map<String, int[]> countryIndex;
     public TByteObjectMap<int[]> sexIndex;
-    public Map<Integer, int[]> statusIndex;
+    public TByteObjectMap<int[]> statusIndex;
     public Map<String, int[]> interestsIndex;
     public Map<String, int[]> cityIndex;
     public Map<Integer, int[]> birthYearIndex;
@@ -39,12 +39,12 @@ public class IndexHolder {
         List<Integer> tmpNullCountry = new ArrayList<>();
         List<Integer> tmpNotNullCity = new ArrayList<>();
         List<Integer> tmpNullCity = new ArrayList<>();
-        Map<Integer, List<Integer>> tmpStatusIndex = new HashMap<>();
+        Map<Byte, List<Integer>> tmpStatusIndex = new HashMap<>();
         Map<Integer, List<Integer>> tmpBirthYearIndex = new HashMap<>();
         tmpSexIndex.put(true, new ArrayList<>());
         tmpSexIndex.put(false, new ArrayList<>());
         for (int i = 0; i< 3; i++) {
-            tmpStatusIndex.put(i, new ArrayList<>());
+            tmpStatusIndex.put((byte)i, new ArrayList<>());
         }
         Map<String, List<Integer>> tmpInterestsIndex = new HashMap<>();
         Map<String, List<Integer>> tmpCityIndex = new HashMap<>();
@@ -65,13 +65,8 @@ public class IndexHolder {
                 tmpNullCity.add(account.id);
             }
             tmpSexIndex.get(account.sex).add(account.id);
-            if (account.status.equals("свободны")) {
-                tmpStatusIndex.get(0).add(account.id);
-            } else if (account.status.equals("всё сложно")) {
-                tmpStatusIndex.get(1).add(account.id);
-            } else {
-                tmpStatusIndex.get(2).add(account.id);
-            }
+            tmpStatusIndex.get(account.status).add(account.id);
+
             if (account.interests != null) {
                 for (String interes: account.interests) {
                     tmpInterestsIndex.computeIfAbsent(interes, k -> new ArrayList<>()).add(account.id);
@@ -107,8 +102,8 @@ public class IndexHolder {
                     .mapToInt(Integer::intValue)
                     .toArray());
         }
-        statusIndex = new HashMap<>();
-        for (Map.Entry<Integer, List<Integer>> entry: tmpStatusIndex.entrySet()) {
+        statusIndex = new TByteObjectHashMap<>();
+        for (Map.Entry<Byte, List<Integer>> entry: tmpStatusIndex.entrySet()) {
             statusIndex.put(entry.getKey(), entry.getValue().stream()
                     .mapToInt(Integer::intValue)
                     .toArray());

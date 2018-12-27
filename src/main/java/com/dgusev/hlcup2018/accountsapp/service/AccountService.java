@@ -156,8 +156,9 @@ public class AccountService {
                 group.add(ConvertorUtills.convertSex(account.sex));
                 hashcode = 31* hashcode + (Boolean.valueOf(account.sex).hashCode());
             } else if (key.equals("status")) {
-                group.add(account.status);
-                hashcode = 31* hashcode + (account.status.hashCode());
+                String status = ConvertorUtills.convertStatusNumber(account.status);
+                group.add(status);
+                hashcode = 31* hashcode + (status.hashCode());
             } else if (key.equals("interests")) {
 
             } else if (key.equals("country")) {
@@ -221,7 +222,6 @@ public class AccountService {
             throw new NotFoundRequest();
         }
         predicates.add(new SexEqPredicate(!account.sex));
-
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
             if (account.interests == null || a.interests == null || account.interests.length == 0 || a.interests.length == 0) {
@@ -255,17 +255,17 @@ public class AccountService {
             Account acc = findById(next);
             if (accountPredicate.test(acc)) {
                 if (premiumNowPredicate.test(acc)) {
-                    if (acc.status.equals("свободны")) {
+                    if (acc.status == 0) {
                         result1.add(acc);
-                    } else if (acc.status.equals("всё сложно")) {
+                    } else if (acc.status == 1) {
                         result2.add(acc);
                     } else {
                         result3.add(acc);
                     }
                 } else {
-                    if (acc.status.equals("свободны")) {
+                    if (acc.status == 0) {
                         result4.add(acc);
-                    } else if (acc.status.equals("всё сложно")) {
+                    } else if (acc.status == 1) {
                         result5.add(acc);
                     } else {
                         result6.add(acc);
@@ -296,9 +296,7 @@ public class AccountService {
             } else if (!isPremium(a1) && isPremium(a2)) {
                 return 1;
             }
-            int status1 = getStatusNumber(a1.status);
-            int status2 = getStatusNumber(a2.status);
-            int cc1 = Integer.compare(status1, status2);
+            int cc1 = Integer.compare(a1.status, a2.status);
             if (cc1 != 0) {
                 return cc1;
             }
@@ -324,16 +322,6 @@ public class AccountService {
     }
 
 
-
-    private int getStatusNumber(String status) {
-        if (status.equals("свободны")) {
-            return 0;
-        } else if (status.equals("всё сложно")) {
-            return 1;
-        } else {
-            return 2;
-        }
-    }
 
     private int interestsMatched(Collection<String> myInterests, Collection<String> othersInterests) {
         if (othersInterests == null || othersInterests.isEmpty()) {
@@ -567,6 +555,9 @@ public class AccountService {
         if (accountDTO.email != null && !accountDTO.email.matches(EMAIL_REG)) {
             throw new BadRequest();
         }
+        if (accountDTO.status != null) {
+            ConvertorUtills.convertStatusNumber(accountDTO.status);
+        }
         if (accountDTO.email != null && !oldAcc.email.equals(accountDTO.email)) {
             if (emails.contains(accountDTO.email)) {
                 throw new BadRequest();
@@ -613,7 +604,7 @@ public class AccountService {
             oldAcc.joined = accountDTO.joined;
         }
         if (accountDTO.status != null) {
-            oldAcc.status = accountDTO.status;
+            oldAcc.status = ConvertorUtills.convertStatusNumber(accountDTO.status);
         }
         if (accountDTO.interests != null) {
             oldAcc.interests = accountDTO.interests;

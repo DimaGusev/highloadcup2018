@@ -21,7 +21,7 @@ public class AccountConverter {
         account.country = accountDTO.country;
         account.city = accountDTO.city;
         account.joined = accountDTO.joined;
-        account.status = accountDTO.status;
+        account.status = ConvertorUtills.convertStatusNumber(accountDTO.status);
         account.interests = accountDTO.interests;
         account.premiumStart = accountDTO.premiumStart;
         account.premiumFinish = accountDTO.premiumFinish;

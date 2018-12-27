@@ -7,17 +7,17 @@ public class StatusNotEqIndexScan extends AbstractIndexScan {
     private int index1;
     private int index2;
 
-    public StatusNotEqIndexScan(IndexHolder indexHolder, String status) {
+    public StatusNotEqIndexScan(IndexHolder indexHolder, byte status) {
         super(indexHolder);
-        if (status.equals("свободны")) {
-            this.statusIndex1 = indexHolder.statusIndex.get(1);
-            this.statusIndex2 = indexHolder.statusIndex.get(2);
-        } else if (status.equals("всё сложно")) {
-            this.statusIndex1 = indexHolder.statusIndex.get(0);
-            this.statusIndex2 = indexHolder.statusIndex.get(2);
+        if (status == 0) {
+            this.statusIndex1 = indexHolder.statusIndex.get((byte)1);
+            this.statusIndex2 = indexHolder.statusIndex.get((byte)2);
+        } else if (status == 1) {
+            this.statusIndex1 = indexHolder.statusIndex.get((byte)0);
+            this.statusIndex2 = indexHolder.statusIndex.get((byte)2);
         } else {
-            this.statusIndex1 = indexHolder.statusIndex.get(0);
-            this.statusIndex2 = indexHolder.statusIndex.get(1);
+            this.statusIndex1 = indexHolder.statusIndex.get((byte)0);
+            this.statusIndex2 = indexHolder.statusIndex.get((byte)1);
         }
 
     }

@@ -1,6 +1,7 @@
 package com.dgusev.hlcup2018.accountsapp.format;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
+import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
 import io.netty.buffer.ByteBuf;
 import org.springframework.stereotype.Component;
 
@@ -72,7 +73,7 @@ public class AccountFormatter {
                 first = false;
             } else if (field.equals("status")) {
                 writeField(responseBuf, first, field);
-                writeStringValue(responseBuf, account.status);
+                writeStringValue(responseBuf, ConvertorUtills.convertStatusNumber(account.status));
                 first = false;
             } else if (field.equals("premium")) {
                 if (account.premiumStart != 0) {
@@ -117,7 +118,7 @@ public class AccountFormatter {
 
     public void formatRecommend(Account account, ByteBuf responseBuf) {
         StringBuilder stringBuilder = new StringBuilder("{\"id\":");
-        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(account.status).append("\",\"birth\":").append(account.birth);
+        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(ConvertorUtills.convertStatusNumber(account.status)).append("\",\"birth\":").append(account.birth);
         if (account.fname != null) {
             stringBuilder.append(",\"fname\":\"").append(account.fname).append("\"");
         }
@@ -139,7 +140,7 @@ public class AccountFormatter {
 
     public void formatSuggest(Account account, ByteBuf responseBuf) {
         StringBuilder stringBuilder = new StringBuilder("{\"id\":");
-        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(account.status).append("\"");
+        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(ConvertorUtills.convertStatusNumber(account.status)).append("\"");
         if (account.fname != null) {
             stringBuilder.append(",\"fname\":\"").append(account.fname).append("\"");
         }

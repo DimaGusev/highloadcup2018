@@ -6,19 +6,18 @@ import java.util.function.Predicate;
 
 public class StatusNEqPredicate implements Predicate<Account> {
 
-    private String status;
+    private byte status;
 
-    public StatusNEqPredicate(String status) {
-        PredicateStatistics.sne.incrementAndGet();
+    public StatusNEqPredicate(byte status) {
         this.status = status;
     }
 
     @Override
-    public boolean test(Account Account) {
-        return !Account.status.equals(status);
+    public boolean test(Account account) {
+        return account.status != status;
     }
 
-    public String getStatus() {
+    public byte getStatus() {
         return status;
     }
 }

@@ -81,9 +81,9 @@ public class AccountsController {
                     }
                 } else if (name.startsWith("status_")) {
                     if (name.equals("status_eq")) {
-                        predicates.add(new StatusEqPredicate(parameter.getValue().get(0)));
+                        predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue().get(0))));
                     } else if (name.equals("status_neq")) {
-                        predicates.add(new StatusNEqPredicate(parameter.getValue().get(0)));
+                        predicates.add(new StatusNEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue().get(0))));
                     } else {
                         throw new BadRequest();
                     }
@@ -218,7 +218,7 @@ public class AccountsController {
                 } else if (name.equals("email")) {
                     predicates.add(new EmailEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("status")) {
-                    predicates.add(new StatusEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue().get(0))));
                 } else if (name.equals("fname")) {
                     predicates.add(new FnameEqPredicate(parameter.getValue().get(0)));
                 } else if (name.equals("sname")) {

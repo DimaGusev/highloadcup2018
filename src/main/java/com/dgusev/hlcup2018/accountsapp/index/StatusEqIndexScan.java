@@ -6,16 +6,9 @@ public class StatusEqIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public StatusEqIndexScan(IndexHolder indexHolder, String status) {
+    public StatusEqIndexScan(IndexHolder indexHolder, byte status) {
         super(indexHolder);
-        if (status.equals("свободны")) {
-            this.indexList = indexHolder.statusIndex.get(0);
-        } else if (status.equals("всё сложно")) {
-            this.indexList = indexHolder.statusIndex.get(1);
-        } else {
-            this.indexList = indexHolder.statusIndex.get(2);
-        }
-
+        this.indexList = indexHolder.statusIndex.get(status);
     }
 
     @Override
