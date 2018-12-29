@@ -3,6 +3,7 @@ package com.dgusev.hlcup2018.accountsapp.index;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.predicate.JoinedYearPredicate;
 import gnu.trove.impl.Constants;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TByteObjectMap;
@@ -25,6 +26,7 @@ public class IndexHolder {
     public TByteObjectMap<int[]> statusIndex;
     public TByteObjectMap<int[]> interestsIndex;
     public TIntObjectMap<int[]> cityIndex;
+    public TIntObjectMap<int[]> joinedIndex;
     public Map<Integer, int[]> birthYearIndex;
     public Map<String, int[]> emailDomainIndex;
     public int[] notNullCountry;
@@ -61,6 +63,7 @@ public class IndexHolder {
                 Map<Byte, List<Integer>> tmpInterestsIndex = new HashMap<>();
                 Map<Integer, List<Integer>> tmpCityIndex = new HashMap<>();
                 List<Integer> tmpPremiumIndex = new ArrayList<>();
+                Map<Integer, List<Integer>> tmpJoinedIndex = new HashMap<>();
                 System.out.println("Start iteration " + new Date());
 
 
@@ -94,6 +97,13 @@ public class IndexHolder {
                     }
                     int year = new Date(account.birth * 1000L).getYear() + 1900;
                     tmpBirthYearIndex.computeIfAbsent(year, k -> new ArrayList<>()).add(account.id);
+                    if (account.joined != Integer.MIN_VALUE) {
+                        int jyear = JoinedYearPredicate.calculateYear(account.joined);
+                        if (!tmpJoinedIndex.containsKey(jyear)) {
+                            tmpJoinedIndex.put(jyear, new ArrayList<>());
+                        }
+                        tmpJoinedIndex.get(jyear).add(account.id);
+                    }
                 }
                 System.out.println("End iteration " + new Date());
                 countryIndex = new TByteObjectHashMap<>();
@@ -150,6 +160,12 @@ public class IndexHolder {
                 emailDomainIndex = new HashMap<>();
                 for (Map.Entry<String, List<Integer>> entry : tmpEmailDomainIndex.entrySet()) {
                     emailDomainIndex.put(entry.getKey(), entry.getValue().stream()
+                            .mapToInt(Integer::intValue)
+                            .toArray());
+                }
+                joinedIndex = new TIntObjectHashMap<>();
+                for (Map.Entry<Integer, List<Integer>> entry : tmpJoinedIndex.entrySet()) {
+                    joinedIndex.put(entry.getKey(), entry.getValue().stream()
                             .mapToInt(Integer::intValue)
                             .toArray());
                 }

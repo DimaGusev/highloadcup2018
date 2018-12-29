@@ -192,7 +192,8 @@ public class AccountService {
                     long newHashcode = hashcode;
                     newHashcode = 31 * newHashcode + interes.hashCode();
                     List<String> newGroup = ObjectPool.acquireGroup();
-                    for (int i = 0; i < group.size(); i++) {
+                    int size = group.size();
+                    for (int i = 0; i < size; i++) {
                         newGroup.add(group.get(i));
                     }
                     newGroup.add(interes);
@@ -768,6 +769,10 @@ public class AccountService {
             } else if (predicate instanceof EmailDomainPredicate) {
                 EmailDomainPredicate emailDomainPredicate = (EmailDomainPredicate) predicate;
                 indexScans.add(new EmailDomainIndexScan(indexHolder, emailDomainPredicate.getDomain()));
+                iterator.remove();
+            } else if (predicate instanceof JoinedYearPredicate) {
+                JoinedYearPredicate joinedYearPredicate = (JoinedYearPredicate) predicate;
+                indexScans.add(new JoinedYearIndexScan(indexHolder, joinedYearPredicate.getYear()));
                 iterator.remove();
             }
         }

@@ -35,12 +35,16 @@ public class JoinedYearPredicate implements Predicate<Account> {
         return calculateYear(account.joined) == year;
     }
 
-    private static int calculateYear(int timestamp) {
+    public static int calculateYear(int timestamp) {
         int result = Arrays.binarySearch(YEARS_ARRAY, timestamp);
         if (result >= 0) {
             return 2010 + result;
         } else {
             return 2010 - result - 2;
         }
+    }
+
+    public int getYear() {
+        return year;
     }
 }

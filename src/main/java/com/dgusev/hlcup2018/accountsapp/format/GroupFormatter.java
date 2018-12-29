@@ -14,7 +14,7 @@ public class GroupFormatter {
 
     public void format(Group group, List<String> keys, ByteBuf responseBuf) {
         responseBuf.writeBytes(COUNT);
-        responseBuf.writeBytes(Integer.valueOf(group.count).toString().getBytes());
+        encodeLong(group.count, responseBuf);
         for (int i = 0; i < group.values.size() && i < keys.size(); i++) {
                     if (group.values.get(i) != null) {
                         responseBuf.writeByte(',');
@@ -28,5 +28,24 @@ public class GroupFormatter {
                     }
         }
         responseBuf.writeByte('}');
+    }
+
+    private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
+
+    public static void encodeLong(long value, ByteBuf responseBuf) {
+        if (value < 0) {
+            responseBuf.writeByte((byte)45);
+            value = -value;
+        }
+        boolean printZero = false;
+        for (int i = 9; i>=0; i--) {
+            int digit = (int)(value/POW10[i]);
+            if (digit == 0 && !printZero) {
+                continue;
+            }
+            responseBuf.writeByte((byte)(48 + digit));
+            printZero=true;
+            value -= (value/POW10[i]) * POW10[i];
+        }
     }
 }

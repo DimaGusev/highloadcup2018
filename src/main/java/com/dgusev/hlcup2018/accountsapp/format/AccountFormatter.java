@@ -123,38 +123,52 @@ public class AccountFormatter {
     }
 
     public void formatRecommend(Account account, ByteBuf responseBuf) {
-        StringBuilder stringBuilder = new StringBuilder("{\"id\":");
-        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(ConvertorUtills.convertStatusNumber(account.status)).append("\",\"birth\":").append(account.birth);
+        responseBuf.writeByte('{');
+        writeField(responseBuf, true, "id");
+        encodeLong(account.id, responseBuf);
+        writeField(responseBuf, false, "email");
+        writeStringValue(responseBuf, account.email);
+        writeField(responseBuf, false, "status");
+        writeStringValue(responseBuf, ConvertorUtills.convertStatusNumber(account.status));
+        writeField(responseBuf, false, "birth");
+        encodeLong(account.birth, responseBuf);
         if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-            stringBuilder.append(",\"fname\":\"").append(dictionary.getFname(account.fname)).append("\"");
+            writeField(responseBuf, false, "fname");
+            writeStringValue(responseBuf, dictionary.getFname(account.fname));
         }
         if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-            stringBuilder.append(",\"sname\":\"").append(dictionary.getSname(account.sname)).append("\"");
+            writeField(responseBuf, false, "sname");
+            writeStringValue(responseBuf, dictionary.getSname(account.sname));
         }
         if (account.premiumStart != 0) {
-            stringBuilder.append(",");
-            stringBuilder.append("\"").append("premium").append("\":");
-            stringBuilder.append("{\"start\":");
-            stringBuilder.append(account.premiumStart);
-            stringBuilder.append(",\"finish\":");
-            stringBuilder.append(account.premiumFinish);
-            stringBuilder.append("}");
+            writeField(responseBuf, false, "premium");
+            responseBuf.writeByte('{');
+            writeField(responseBuf, true, "start");
+            encodeLong(account.premiumStart, responseBuf);
+            writeField(responseBuf, false, "finish");
+            encodeLong(account.premiumFinish, responseBuf);
+            responseBuf.writeByte('}');
         }
-        stringBuilder.append("}");
-        responseBuf.writeBytes(stringBuilder.toString().getBytes());
+        responseBuf.writeByte('}');
     }
 
     public void formatSuggest(Account account, ByteBuf responseBuf) {
-        StringBuilder stringBuilder = new StringBuilder("{\"id\":");
-        stringBuilder.append(account.id).append(",\"email\":\"").append(account.email).append("\",\"status\":\"").append(ConvertorUtills.convertStatusNumber(account.status)).append("\"");
+        responseBuf.writeByte('{');
+        writeField(responseBuf, true, "id");
+        encodeLong(account.id, responseBuf);
+        writeField(responseBuf, false, "email");
+        writeStringValue(responseBuf, account.email);
+        writeField(responseBuf, false, "status");
+        writeStringValue(responseBuf, ConvertorUtills.convertStatusNumber(account.status));
         if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-            stringBuilder.append(",\"fname\":\"").append(dictionary.getFname(account.fname)).append("\"");
+            writeField(responseBuf, false, "fname");
+            writeStringValue(responseBuf, dictionary.getFname(account.fname));
         }
         if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-            stringBuilder.append(",\"sname\":\"").append(dictionary.getSname(account.sname)).append("\"");
+            writeField(responseBuf, false, "sname");
+            writeStringValue(responseBuf, dictionary.getSname(account.sname));
         }
-        stringBuilder.append("}");
-        responseBuf.writeBytes(stringBuilder.toString().getBytes());
+        responseBuf.writeByte('}');
     }
 
     private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
