@@ -428,60 +428,44 @@ public class AccountService {
     }
 
     private double getSimilarity(Account a1, Account a2) {
-        List<Like> like1 = a1.likes != null ? Arrays.stream( a1.likes).mapToObj(l -> {
-            Like like = new Like();
-            like.id = (int)(l >> 32);
-            like.ts = (int)(l & 0x00000000ffffffffL);
-            return like;
-        }).collect(Collectors.toList()) : new ArrayList<>();
-        List<Like> like2 = a2.likes != null ? Arrays.stream( a2.likes).mapToObj(l -> {
-            Like like = new Like();
-            like.id = (int)(l >> 32);
-            like.ts = (int)(l & 0x00000000ffffffffL);
-            return like;
-        }).collect(Collectors.toList()) : new ArrayList<>();
-        Set<Integer> setLike1 = new HashSet<>();
-        setLike1.addAll(like1.stream().map(l -> l.id).collect(Collectors.toList()));
-        Set<Integer> sharedLikes = new HashSet<>();
-        for (Like l: like2) {
-            if (setLike1.contains(l.id)) {
-                sharedLikes.add(l.id);
-            }
-        }
-        if (sharedLikes.isEmpty()) {
-            return 0;
-        }
-        Map<Integer, List<Like>> likeMap1 = new HashMap<>();
-        for (Like l: like1) {
-            if (sharedLikes.contains(l.id)) {
-                if (!likeMap1.containsKey(l.id)) {
-                    likeMap1.put(l.id, new ArrayList<>());
-                }
-                likeMap1.get(l.id).add(l);
-            }
-        }
-        Map<Integer, List<Like>> likeMap2 = new HashMap<>();
-        for (Like l: like2) {
-            if (sharedLikes.contains(l.id)) {
-                if (!likeMap2.containsKey(l.id)) {
-                    likeMap2.put(l.id, new ArrayList<>());
-                }
-                likeMap2.get(l.id).add(l);
-            }
-        }
+        Arrays.sort(a1.likes);
+        Arrays.sort(a2.likes);
+        int index1 = a1.likes.length - 1;
+        int index2 = a2.likes.length - 1;
         double similarity = 0;
-        for (Integer like: sharedLikes) {
-            List<Like> l1 = likeMap1.get(like);
-            List<Like> l2 = likeMap2.get(like);
-            double t1 = l1.stream().mapToDouble(l -> l.ts).average().getAsDouble();
-            double t2 = l2.stream().mapToDouble(l -> l.ts).average().getAsDouble();
-            if (t1 == t2) {
-                return Double.MAX_VALUE;
-            } else {
+        while (index1 >= 0 && index2 >= 0) {
+            int like1 = (int)(a1.likes[index1] >> 32);
+            int like2 = (int)(a2.likes[index2] >> 32);
+            if (like1 == like2) {
+                double sum1 = (int)a1.likes[index1];
+                double sum2 = (int)a2.likes[index2];
+                int cnt1 = 1;
+                int cnt2 = 1;
+                index1--;
+                index2--;
+                while (index1 >= 0 && (int)(a1.likes[index1] >> 32) == like1) {
+                    sum1+=(int)a1.likes[index1];
+                    cnt1++;
+                    index1--;
+                }
+                while (index2 >= 0 && (int)(a2.likes[index2] >> 32) == like2) {
+                    sum2+=(int)a2.likes[index2];
+                    cnt2++;
+                    index2--;
+                }
+                double t1 = sum1/cnt1;
+                double t2 = sum2/cnt2;
                 if (t1 == t2) {
                     similarity+=1;
                 } else {
                     similarity += 1 / Math.abs(t1 - t2);
+                }
+
+            } else {
+                if (like1 < like2) {
+                    index2--;
+                } else {
+                    index1--;
                 }
             }
         }
