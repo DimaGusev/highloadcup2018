@@ -3,8 +3,12 @@ package com.dgusev.hlcup2018.accountsapp.service;
 import com.dgusev.hlcup2018.accountsapp.index.*;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
+import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 
+import gnu.trove.map.TLongIntMap;
+import gnu.trove.map.TLongObjectMap;
+import gnu.trove.map.hash.TLongObjectHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -98,8 +102,8 @@ public class AccountService {
             throw new BadRequest();
         }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
-        HashMap<Long, IntegerHolder> groupHashMap = new HashMap<>();
-        HashMap<Long, List<String>> groupNameMap = new HashMap<>();
+        TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
+        TLongObjectMap<List<String>> groupNameMap = new TLongObjectHashMap<>();
         List<String> tmpGroupList = new ArrayList<>();
         if (!indexScans.isEmpty()) {
             Predicate<Account> accountPredicate = andPredicates(predicates);
@@ -123,31 +127,39 @@ public class AccountService {
                 }
             }
         }
-        return groupHashMap.entrySet().stream().map(e -> {
-            Group group = new Group();
-            group.count = e.getValue().count;
-            group.values = groupNameMap.get(e.getKey());
-            return group;
-        }).sorted((g1, g2) -> {
-            if (order == 1) {
-                int cc = Integer.compare(g1.count, g2.count);
-                if (cc == 0) {
-                    return compareGroups(g1.values, g2.values);
+        List<Group> groups = new ArrayList<>();
+        for (long hash: groupHashMap.keys()) {
+            Group group= new Group();
+            group.count = groupHashMap.get(hash).count;
+            group.values = groupNameMap.get(hash);
+            groups.add(group);
+        }
+        try {
+            return groups.stream().sorted((g1, g2) -> {
+                if (order == 1) {
+                    int cc = Integer.compare(g1.count, g2.count);
+                    if (cc == 0) {
+                        return compareGroups(g1.values, g2.values);
+                    } else {
+                        return cc;
+                    }
                 } else {
-                    return cc;
+                    int cc = Integer.compare(g2.count, g1.count);
+                    if (cc == 0) {
+                        return compareGroups(g2.values, g1.values);
+                    } else {
+                        return cc;
+                    }
                 }
-            } else {
-                int cc = Integer.compare(g2.count, g1.count);
-                if (cc == 0) {
-                    return compareGroups(g2.values, g1.values);
-                } else {
-                    return cc;
-                }
+            }).limit(limit).collect(Collectors.toList());
+        } finally {
+            for (int i = 0; i < groups.size(); i++) {
+                ObjectPool.releaseGroup(groups.get(i).values);
             }
-        }).limit(limit).collect(Collectors.toList());
+        }
     }
 
-    private void processRecord(Account account, Map<Long, IntegerHolder> groupHashMap, Map<Long, List<String>> groupNameMap, List<String> keys, List<String> group) {
+    private void processRecord(Account account, TLongObjectMap<IntegerHolder> groupHashMap, TLongObjectMap<List<String>> groupNameMap, List<String> keys, List<String> group) {
         group.clear();
         long hashcode =  0;
         for (int i = 0; i < keys.size(); i++) {
@@ -179,9 +191,13 @@ public class AccountService {
                     String interes = dictionary.getInteres(inter);
                     long newHashcode = hashcode;
                     newHashcode = 31 * newHashcode + interes.hashCode();
-                    List<String> newGroup = new ArrayList<>(group);
+                    List<String> newGroup = ObjectPool.acquireGroup();
+                    for (int i = 0; i < group.size(); i++) {
+                        newGroup.add(group.get(i));
+                    }
                     newGroup.add(interes);
                     incrementGroup(groupHashMap, groupNameMap, newGroup, newHashcode);
+                    ObjectPool.releaseGroup(newGroup);
                 }
             }
         } else {
@@ -189,9 +205,13 @@ public class AccountService {
         }
     }
 
-    private void incrementGroup(Map<Long, IntegerHolder> groupHashMap, Map<Long, List<String>> groupNameMap, List<String> group, Long hash) {
+    private void incrementGroup(TLongObjectMap<IntegerHolder> groupHashMap, TLongObjectMap<List<String>> groupNameMap, List<String> group, long hash) {
         if (!groupNameMap.containsKey(hash)) {
-            groupNameMap.put(hash, new ArrayList<>(group));
+            List<String> grp = ObjectPool.acquireGroup();
+            for (int i = 0; i < group.size(); i++) {
+                grp.add(group.get(i));
+            }
+            groupNameMap.put(hash, grp);
         }
         if (!groupHashMap.containsKey(hash)) {
             groupHashMap.put(hash, new IntegerHolder());
