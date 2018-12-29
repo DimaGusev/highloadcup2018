@@ -811,6 +811,10 @@ public class AccountService {
                 JoinedYearPredicate joinedYearPredicate = (JoinedYearPredicate) predicate;
                 indexScans.add(new JoinedYearIndexScan(indexHolder, joinedYearPredicate.getYear()));
                 iterator.remove();
+            } else if (predicate instanceof LikesContainsPredicate) {
+                LikesContainsPredicate likesContainsPredicate = (LikesContainsPredicate) predicate;
+                indexScans.add(new LikesContainsIndexScan(indexHolder, likesContainsPredicate.getLikes()));
+                iterator.remove();
             }
         }
 

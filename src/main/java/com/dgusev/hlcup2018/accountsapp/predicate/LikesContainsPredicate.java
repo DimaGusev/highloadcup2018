@@ -37,4 +37,8 @@ public class LikesContainsPredicate implements Predicate<Account> {
         }
         return false;
     }
+
+    public int[] getLikes() {
+        return likes;
+    }
 }

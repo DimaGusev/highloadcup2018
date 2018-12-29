@@ -191,7 +191,7 @@ public class IndexHolder {
                                 tmpLikesIndex.put(id, new TIntArrayList());
                             }
                             tmpLikesIndex.get(id).add(account.id);
-                            set.add(account.id);
+                            set.add(id);
                         }
                     }
                 }
