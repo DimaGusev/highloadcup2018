@@ -120,41 +120,78 @@ public class AccountService {
             }
         } else {
             Predicate<Account> accountPredicate = andPredicates(predicates);
-            for (int i = 0; i< size; i++) {
+            for (int i = 0; i < size; i++) {
                 Account account = accountList[i];
                 if (accountPredicate.test(account)) {
                     processRecord(account, groupHashMap, groupNameMap, keys, tmpGroupList);
                 }
             }
         }
-        List<Group> groups = new ArrayList<>();
-        for (long hash: groupHashMap.keys()) {
-            Group group= new Group();
-            group.count = groupHashMap.get(hash).count;
-            group.values = groupNameMap.get(hash);
-            groups.add(group);
-        }
-        try {
-            return groups.stream().sorted((g1, g2) -> {
-                if (order == 1) {
-                    int cc = Integer.compare(g1.count, g2.count);
-                    if (cc == 0) {
-                        return compareGroups(g1.values, g2.values);
-                    } else {
-                        return cc;
-                    }
+        Group[] groups = new Group[limit];
+        Group lastGroup = null;
+        for (long hash : groupHashMap.keys()) {
+            int count = groupHashMap.get(hash).count;
+            int insertPosition = -1;
+            if (lastGroup != null) {
+                int cmp = compare(count, groupNameMap.get(hash), lastGroup.count, lastGroup.values, order);
+                if (cmp > 0) {
+                    ObjectPool.releaseGroup(groupNameMap.get(hash));
+                    continue;
+                }
+            }
+            for (int i = 0; i < groups.length; i++) {
+                Group group = groups[i];
+                if (group == null) {
+                    insertPosition = i;
+                    break;
                 } else {
-                    int cc = Integer.compare(g2.count, g1.count);
-                    if (cc == 0) {
-                        return compareGroups(g2.values, g1.values);
-                    } else {
-                        return cc;
+                    int cmp = compare(count, groupNameMap.get(hash), group.count, group.values, order);
+                    if (cmp > 0) {
+                        continue;
+                    } else if (cmp < 0) {
+                        insertPosition = i;
+                        break;
                     }
                 }
-            }).limit(limit).collect(Collectors.toList());
-        } finally {
-            for (int i = 0; i < groups.size(); i++) {
-                ObjectPool.releaseGroup(groups.get(i).values);
+            }
+            if (insertPosition != -1) {
+                Group group = new Group();
+                group.count = groupHashMap.get(hash).count;
+                group.values = new ArrayList<>(groupNameMap.get(hash));
+                System.arraycopy(groups, insertPosition, groups, insertPosition + 1, limit - insertPosition - 1);
+                groups[insertPosition] = group;
+                if (groups[groups.length - 1] != null) {
+                    lastGroup = groups[groups.length - 1];
+                }
+            }
+            ObjectPool.releaseGroup(groupNameMap.get(hash));
+        }
+        List<Group> result = new ArrayList<>();
+        for (int i = 0; i < groups.length; i++) {
+            Group group = groups[i];
+            if (group != null) {
+                result.add(group);
+            } else {
+                break;
+            }
+        }
+        return result;
+    }
+
+    private int compare(int count1, List<String> group1, int count2, List<String> group2, int order) {
+        if (order == 1) {
+            int cc = Integer.compare(count1, count2);
+            if (cc == 0) {
+                return compareGroups(group1, group2);
+            } else {
+                return cc;
+            }
+        } else {
+            int cc = Integer.compare(count2, count1);
+            if (cc == 0) {
+                return compareGroups(group2, group1);
+            } else {
+                return cc;
             }
         }
     }

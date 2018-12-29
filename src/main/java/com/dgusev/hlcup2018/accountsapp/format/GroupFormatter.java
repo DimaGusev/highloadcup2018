@@ -17,14 +17,8 @@ public class GroupFormatter {
         encodeLong(group.count, responseBuf);
         for (int i = 0; i < group.values.size() && i < keys.size(); i++) {
                     if (group.values.get(i) != null) {
-                        responseBuf.writeByte(',');
-                        responseBuf.writeByte('\"');
-                        responseBuf.writeBytes(keys.get(i).getBytes());
-                        responseBuf.writeByte('\"');
-                        responseBuf.writeByte(':');
-                        responseBuf.writeByte('\"');
-                        responseBuf.writeBytes(group.values.get(i).getBytes());
-                        responseBuf.writeByte('\"');
+                        writeField(responseBuf, false, keys.get(i));
+                        writeStringValue(responseBuf, group.values.get(i));
                     }
         }
         responseBuf.writeByte('}');
@@ -47,5 +41,30 @@ public class GroupFormatter {
             printZero=true;
             value -= (value/POW10[i]) * POW10[i];
         }
+    }
+    private void writeField(ByteBuf responseBuf, boolean first, String field) {
+        if (!first) {
+            responseBuf.writeByte(',');
+        }
+        responseBuf.writeByte('\"');
+        for (int i = 0; i < field.length(); i++) {
+            responseBuf.writeByte(field.charAt(i));
+        }
+        responseBuf.writeByte('\"');
+        responseBuf.writeByte(':');
+    }
+
+    private void writeStringValue(ByteBuf responseBuf, String value) {
+        responseBuf.writeByte('\"');
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch < 0x7f) {
+                responseBuf.writeByte((byte)ch);
+            } else {
+                responseBuf.writeByte( (byte) ((ch >> 6) | 0xC0));
+                responseBuf.writeByte( (byte) ((ch & 0x3F) | 0x80));
+            }
+        }
+        responseBuf.writeByte('\"');
     }
 }
