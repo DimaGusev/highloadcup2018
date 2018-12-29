@@ -9,7 +9,6 @@ public class PhoneNullPredicate implements Predicate<Account> {
     private int nill;
 
     public PhoneNullPredicate(int nill) {
-        PredicateStatistics.pn.incrementAndGet();
         this.nill = nill;
     }
 

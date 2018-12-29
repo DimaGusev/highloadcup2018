@@ -9,7 +9,6 @@ public class EmailLtPredicate implements Predicate<Account> {
     private String email;
 
     public EmailLtPredicate(String email) {
-        PredicateStatistics.elt.incrementAndGet();
         this.email = email;
     }
 

@@ -529,8 +529,8 @@ public class AccountParser {
                                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                         endIndex--;
                                     }
-                                    like = like & 0xffffffff00000000L;
-                                    like = like | Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                                    like = like & 0xffffffffL;
+                                    like = like | (long)Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon)) << 32;
                                 } else if (subfield.equals("ts")) {
                                     int nextColon = indexOf(array, toSubField + 1, ':');
                                     int nextComma = indexOf(array, nextColon + 1, ',');
@@ -553,8 +553,8 @@ public class AccountParser {
                                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                         endIndex--;
                                     }
-                                    like = like & 0xffffffffL;
-                                    like = like | (long)Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon)) << 32;
+                                    like = like & 0xffffffff00000000L;
+                                    like = like | Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
                                 }
                             }
                             likesList.add(like);

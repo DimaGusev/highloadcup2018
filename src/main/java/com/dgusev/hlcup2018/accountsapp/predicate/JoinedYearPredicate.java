@@ -15,7 +15,7 @@ public class JoinedYearPredicate implements Predicate<Account> {
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.YEAR, i);
             calendar.set(Calendar.MONTH, 0);
-            calendar.set(Calendar.DAY_OF_MONTH, 0);
+            calendar.set(Calendar.DAY_OF_MONTH, 1);
             calendar.set(Calendar.HOUR, 0);
             calendar.set(Calendar.MINUTE, 0);
             calendar.set(Calendar.SECOND, 0);
@@ -27,13 +27,12 @@ public class JoinedYearPredicate implements Predicate<Account> {
     private int year;
 
     public JoinedYearPredicate(int birth) {
-        PredicateStatistics.jy.incrementAndGet();
         this.year = birth;
     }
 
     @Override
-    public boolean test(Account Account) {
-        return calculateYear(Account.joined) == year;
+    public boolean test(Account account) {
+        return calculateYear(account.joined) == year;
     }
 
     private static int calculateYear(int timestamp) {

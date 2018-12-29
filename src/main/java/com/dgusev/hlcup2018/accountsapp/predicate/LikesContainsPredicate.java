@@ -10,7 +10,6 @@ public class LikesContainsPredicate implements Predicate<Account> {
     private int[] likes;
 
     public LikesContainsPredicate(int[] interests) {
-        PredicateStatistics.lc.incrementAndGet();
         this.likes = interests;
     }
 
@@ -32,7 +31,7 @@ public class LikesContainsPredicate implements Predicate<Account> {
     private boolean containsLike(long[] likes, int like) {
         for (int i = 0; i < likes.length; i++) {
             long l = likes[i];
-            if ((int)(l & 0x0000ffff)== like) {
+            if ((int)(l >> 32)== like) {
                 return true;
             }
         }

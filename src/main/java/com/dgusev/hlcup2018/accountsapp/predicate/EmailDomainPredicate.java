@@ -10,7 +10,6 @@ public class EmailDomainPredicate implements Predicate<Account> {
     private String atDomain;
 
     public EmailDomainPredicate(String domain) {
-        PredicateStatistics.ed.incrementAndGet();
         this.atDomain = "@" + domain;
         this.domain = domain;
     }

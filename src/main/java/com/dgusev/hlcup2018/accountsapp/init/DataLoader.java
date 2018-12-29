@@ -1,5 +1,6 @@
 package com.dgusev.hlcup2018.accountsapp.init;
 
+import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.netty.NettyServer;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
@@ -12,6 +13,10 @@ import org.springframework.stereotype.Component;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -66,11 +71,80 @@ public class DataLoader implements CommandLineRunner {
         System.out.println("File count: " + accountsFileTreeMap.size());
         Statistics statistics = new Statistics();
         int count = 0;
-        byte[] buf = new byte[1000000];
-//        for (int k = 0; k < 22; k++) {
- //           System.out.println("Start " + k + " " + new Date());
-            for (Map.Entry<Integer, ZipEntry> entry : accountsFileTreeMap.entrySet()) {
+        int totalCount = accountsFileTreeMap.size();
+        int loadCount = totalCount/4 ==0 ? 1 : totalCount/4;
+        Map.Entry<Integer, ZipEntry>[] array = (Map.Entry<Integer, ZipEntry>[]) accountsFileTreeMap.entrySet().toArray(new Map.Entry[0]);
+        int currentIndex = 0;
+        List<ImporterCallable> importerCallables = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            int to = currentIndex + loadCount;
+            if (i == 3) {
+                to = array.length - 1;
+            }
+            importerCallables.add(new ImporterCallable(zipFile, array, i, currentIndex, to));
+            currentIndex = to;
+        }
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
+        executorService.invokeAll(importerCallables).stream().map(f -> {
+            try {
+                return f.get();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            } catch (ExecutionException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }).sorted(Comparator.comparingInt(r -> r.order)).forEach(r -> {
+            for (Account acc: r.result) {
+                accountService.loadSequentially(acc);
+            }
+        });
+        System.out.println("Rearrange " + new Date());
+        accountService.rearrange();
+        System.out.println("Finish load " + count + " accounts " + new Date());
+        System.out.println(statistics);
+        accountService.finishLoad();
+        System.out.println("Indexes created");
+        new Thread(() -> {
+            try {
+                nettyServer.start();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+    }
+
+    private static class ImportResult {
+        public int order;
+        public List<Account> result;
+    }
+
+    private class ImporterCallable implements Callable<ImportResult> {
+
+        private Map.Entry<Integer, ZipEntry>[] array;
+        private ZipFile zipFile;
+        private int order;
+        private int from;
+        private int to;
+
+        public ImporterCallable(ZipFile zipFile, Map.Entry<Integer, ZipEntry>[] array, int order, int from, int to) {
+            this.array = array;
+            this.order = order;
+            this.from = from;
+            this.to = to;
+            this.zipFile = zipFile;
+        }
+
+        @Override
+        public ImportResult call() throws Exception {
+            System.out.println("Start job " + order);
+            byte[] buf = new byte[1000000];
+            List<Account> accounts = new ArrayList<>();
+            for (int i = from; i < to; i++) {
+                Map.Entry<Integer, ZipEntry> entry = array[i];
                 Integer n = entry.getKey();
+                System.out.println("Start file " + n + " "+  new Date());
                 ZipEntry z = entry.getValue();
                 try {
                     InputStream inputStream = zipFile.getInputStream(z);
@@ -98,14 +172,7 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
- /*                           accountDTO.id = k* 30001  +  accountDTO.id;
-                            accountDTO.email = k + "" + accountDTO.email;
-                            if (accountDTO.phone != null) {
-                                accountDTO.phone = k + "" + accountDTO.phone;
-                            }*/
-                            accountService.load(accountConverter.convert(accountDTO));
-                            statistics.analyze(accountDTO);
-                            count++;
+                            accounts.add(accountConverter.convert(accountDTO));
                         }
 
                     }
@@ -114,18 +181,11 @@ public class DataLoader implements CommandLineRunner {
                     e.printStackTrace();
                 }
             }
- //       }
-        System.out.println("Finish load " + count + " accounts " + new Date());
-        System.out.println(statistics);
-        accountService.finishLoad();
-        System.out.println("Indexes created");
-        new Thread(() -> {
-            try {
-                nettyServer.start();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }).start();
-
+            System.out.println("End job " + order);
+            ImportResult importResult = new ImportResult();
+            importResult.order = order;
+            importResult.result = accounts;
+            return importResult;
+        }
     }
 }

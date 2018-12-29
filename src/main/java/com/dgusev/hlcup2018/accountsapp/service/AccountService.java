@@ -363,7 +363,7 @@ public class AccountService {
         }
         Set<Integer> myLikes = new HashSet<>();
         for (long like: account.likes) {
-            int lid = (int)(like & 0x0000ffff);
+            int lid = (int)(like >> 32);
             myLikes.add(lid);
         }
         Set<Integer> suggests = new HashSet<>();
@@ -407,7 +407,7 @@ public class AccountService {
         Set<Integer> likersSet = new HashSet<>();
         for (int i = 0; i < similarities.size(); i++) {
             Similarity s = similarities.get(i);
-            int[] likers = Arrays.stream(s.account.likes).mapToInt(l -> (Integer)(int)(l & 0x0000ffff)).toArray();
+            int[] likers = Arrays.stream(s.account.likes).mapToInt(l -> (Integer)(int)(l >> 32)).toArray();
             Arrays.sort(likers);
             for (int j = likers.length -1; j >= 0; j--) {
                 if (!myLikes.contains(likers[j]) && findById(likers[j]).sex==targetSex) {
@@ -428,17 +428,16 @@ public class AccountService {
     }
 
     private double getSimilarity(Account a1, Account a2) {
-
         List<Like> like1 = a1.likes != null ? Arrays.stream( a1.likes).mapToObj(l -> {
             Like like = new Like();
-            like.id = (int)(l & 0x00000000ffffffffL);
-            like.ts = (int)(l >> 32);
+            like.id = (int)(l >> 32);
+            like.ts = (int)(l & 0x00000000ffffffffL);
             return like;
         }).collect(Collectors.toList()) : new ArrayList<>();
         List<Like> like2 = a2.likes != null ? Arrays.stream( a2.likes).mapToObj(l -> {
             Like like = new Like();
-            like.id = (int)(l & 0x00000000ffffffffL);
-            like.ts = (int)(l >> 32);
+            like.id = (int)(l >> 32);
+            like.ts = (int)(l & 0x00000000ffffffffL);
             return like;
         }).collect(Collectors.toList()) : new ArrayList<>();
         Set<Integer> setLike1 = new HashSet<>();
@@ -508,6 +507,27 @@ public class AccountService {
         if (account.phone != null) {
             phones.add(account.phone);
         }
+    }
+
+    public synchronized void loadSequentially(Account account) {
+        accountList[size] = account;
+        size++;
+        accountIdMap[account.id] =  account;
+        emails.add(account.email);
+        if (account.phone != null) {
+            phones.add(account.phone);
+        }
+    }
+
+    public synchronized void rearrange() {
+        for (int i = 0; i < size/2; i++) {
+            Account tmp = accountList[i];
+            accountList[i] = accountList[size - 1 - i];
+            accountList[size - 1 - i] = tmp;
+        }
+        Arrays.sort(accountList, 0, size, (a1,a2) -> {
+            return Integer.compare(a2.id, a1.id);
+        });
     }
 
 
@@ -650,8 +670,8 @@ public class AccountService {
         for (LikeRequest likeRequest: likeRequests) {
             Account account = findById(likeRequest.liker);
             long like =0;
-            like = (int)(0x0000ffff & likeRequest.likee);
-            like = ((long)likeRequest.ts << 32 | like) ;
+            like = (long)likeRequest.likee << 32;
+            like = (likeRequest.ts | like) ;
             long[] oldArray = account.likes;
             if (oldArray == null) {
                 account.likes = new long[1];
@@ -680,7 +700,11 @@ public class AccountService {
     }
 
     public void finishLoad() {
-        indexHolder.init(this.accountList, size);
+        try {
+            indexHolder.init(this.accountList, size);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         System.gc();
     }
 

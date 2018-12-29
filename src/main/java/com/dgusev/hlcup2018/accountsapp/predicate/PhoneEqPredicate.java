@@ -9,7 +9,6 @@ public class PhoneEqPredicate implements Predicate<Account> {
     private String phone;
 
     public PhoneEqPredicate(String phone) {
-        PredicateStatistics.pe.incrementAndGet();
         this.phone = phone;
     }
 

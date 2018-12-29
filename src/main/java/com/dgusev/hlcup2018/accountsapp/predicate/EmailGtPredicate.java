@@ -9,7 +9,6 @@ public class EmailGtPredicate implements Predicate<Account> {
     private String email;
 
     public EmailGtPredicate(String email) {
-        PredicateStatistics.egt.incrementAndGet();
         this.email = email;
     }
 

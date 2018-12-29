@@ -12,7 +12,7 @@ public class AccountConverter {
     @Autowired
     private Dictionary dictionary;
 
-    public Account convert(AccountDTO accountDTO) {
+    public synchronized Account convert(AccountDTO accountDTO) {
         Account account = new Account();
         account.id = accountDTO.id;
         account.email = accountDTO.email;

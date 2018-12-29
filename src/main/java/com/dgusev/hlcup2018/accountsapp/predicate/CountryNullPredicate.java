@@ -10,7 +10,6 @@ public class CountryNullPredicate implements Predicate<Account> {
     private int nill;
 
     public CountryNullPredicate(int nill) {
-        PredicateStatistics.cnn.incrementAndGet();
         this.nill = nill;
     }
 
