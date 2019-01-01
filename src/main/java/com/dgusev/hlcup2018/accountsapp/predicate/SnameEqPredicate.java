@@ -17,4 +17,8 @@ public class SnameEqPredicate implements Predicate<Account> {
     public boolean test(Account account) {
         return account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE && account.sname != sname;
     }
+
+    public int getSname() {
+        return sname;
+    }
 }

@@ -20,4 +20,8 @@ public class PhoneNullPredicate implements Predicate<Account> {
             return Account.phone == null;
         }
     }
+
+    public int getNill() {
+        return nill;
+    }
 }

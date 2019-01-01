@@ -13,11 +13,15 @@ public class PremiumNullPredicate implements Predicate<Account> {
     }
 
     @Override
-    public boolean test(Account Account) {
+    public boolean test(Account account) {
         if (nill == 0) {
-            return Account.premiumStart != 0;
+            return account.premiumStart != 0;
         } else  {
-            return Account.premiumStart == 0;
+            return account.premiumStart == 0;
         }
+    }
+
+    public int getNill() {
+        return nill;
     }
 }

@@ -21,4 +21,8 @@ public class FnameNullPredicate implements Predicate<Account> {
             return Account.fname == Constants.DEFAULT_INT_NO_ENTRY_VALUE;
         }
     }
+
+    public int getNill() {
+        return nill;
+    }
 }

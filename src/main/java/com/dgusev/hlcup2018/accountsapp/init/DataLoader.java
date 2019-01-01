@@ -3,6 +3,7 @@ package com.dgusev.hlcup2018.accountsapp.init;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.netty.NettyServer;
+import com.dgusev.hlcup2018.accountsapp.netty.NioServer;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
 import com.dgusev.hlcup2018.accountsapp.service.AccountConverter;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
@@ -45,6 +46,9 @@ public class DataLoader implements CommandLineRunner {
     @Autowired
     private AccountConverter accountConverter;
 
+    @Autowired
+    private NioServer nioServer;
+
     @Override
     public void run(String... args) throws Exception {
         String initFile = null;
@@ -68,7 +72,6 @@ public class DataLoader implements CommandLineRunner {
         int now = new Scanner(new FileInputStream(new File(new File(initFile).getParentFile(), "options.txt") )).nextInt();
         nowProvider.initNow(now);
         System.out.println("Start load data" + new Date());
-        System.out.println("File count: " + accountsFileTreeMap.size());
         Statistics statistics = new Statistics();
         int count = 0;
         int totalCount = accountsFileTreeMap.size();
@@ -99,16 +102,15 @@ public class DataLoader implements CommandLineRunner {
                 accountService.loadSequentially(acc);
             }
         });
-        System.out.println("Rearrange " + new Date());
         accountService.rearrange();
-        System.out.println("Finish load " + count + " accounts " + new Date());
         System.out.println(statistics);
         accountService.finishLoad();
-        System.out.println("Indexes created");
+        System.out.println("Indexes created " + new Date());
         new Thread(() -> {
             try {
                 nettyServer.start();
-            } catch (InterruptedException e) {
+                //nioServer.start();
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }).start();
@@ -138,13 +140,11 @@ public class DataLoader implements CommandLineRunner {
 
         @Override
         public ImportResult call() throws Exception {
-            System.out.println("Start job " + order);
             byte[] buf = new byte[1000000];
             List<Account> accounts = new ArrayList<>();
             for (int i = from; i < to; i++) {
                 Map.Entry<Integer, ZipEntry> entry = array[i];
                 Integer n = entry.getKey();
-                System.out.println("Start file " + n + " "+  new Date());
                 ZipEntry z = entry.getValue();
                 try {
                     InputStream inputStream = zipFile.getInputStream(z);
@@ -173,6 +173,16 @@ public class DataLoader implements CommandLineRunner {
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
                             accounts.add(accountConverter.convert(accountDTO));
+                            /*for (int k = 0; k < 44;k++) {
+                                Account account = accountConverter.convert(accountDTO);
+                                account.id = k* 30001  +  accountDTO.id;
+                                account.email = k + "" + accountDTO.email;
+                                if (account.phone != null) {
+                                    account.phone = k + "" + accountDTO.phone;
+                                }
+                                accounts.add(account);
+                            }*/
+
                         }
 
                     }
@@ -181,7 +191,6 @@ public class DataLoader implements CommandLineRunner {
                     e.printStackTrace();
                 }
             }
-            System.out.println("End job " + order);
             ImportResult importResult = new ImportResult();
             importResult.order = order;
             importResult.result = accounts;

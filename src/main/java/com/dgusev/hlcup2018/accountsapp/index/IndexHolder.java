@@ -8,8 +8,10 @@ import gnu.trove.impl.Constants;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TByteObjectMap;
 import gnu.trove.map.TIntObjectMap;
+import gnu.trove.map.TObjectIntMap;
 import gnu.trove.map.hash.TByteObjectHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -27,12 +29,26 @@ public class IndexHolder {
     public TByteObjectMap<int[]> interestsIndex;
     public TIntObjectMap<int[]> cityIndex;
     public TIntObjectMap<int[]> joinedIndex;
-    public Map<Integer, int[]> birthYearIndex;
+    public TIntObjectMap<int[]> birthYearIndex;
     public Map<String, int[]> emailDomainIndex;
+    public TIntObjectMap<int[]> fnameIndex;
+    public TIntObjectMap<int[]> snameIndex;
+    public TObjectIntMap<String> emailIndex;
+    public TObjectIntMap<String> phoneIndex;
+    public Map<String, int[]> phoneCodeIndex;
+
     public int[] notNullCountry;
     public int[] nullCountry;
     public int[] notNullCity;
     public int[] nullCity;
+    public int[] notNullFname;
+    public int[] nullFname;
+    public int[] notNullSname;
+    public int[] nullSname;
+    public int[] notNullPhone;
+    public int[] nullPhone;
+    public int[] notNullPremium;
+    public int[] nullPremium;
     public int[] premiumIndex;
     public TIntObjectMap<int[]> likesIndex;
 
@@ -49,10 +65,19 @@ public class IndexHolder {
                 Map<Byte, List<Integer>> tmpCountryIndex = new HashMap<>();
                 Map<Boolean, List<Integer>> tmpSexIndex = new HashMap<>();
                 Map<String, List<Integer>> tmpEmailDomainIndex = new HashMap<>();
+                Map<String, List<Integer>> tmpPhoneCodeIndex = new HashMap<>();
                 List<Integer> tmpNotNullCountry = new ArrayList<>();
                 List<Integer> tmpNullCountry = new ArrayList<>();
                 List<Integer> tmpNotNullCity = new ArrayList<>();
                 List<Integer> tmpNullCity = new ArrayList<>();
+                List<Integer> tmpNotNullFname = new ArrayList<>();
+                List<Integer> tmpNullFname = new ArrayList<>();
+                List<Integer> tmpNotNullSname = new ArrayList<>();
+                List<Integer> tmpNullSname = new ArrayList<>();
+                List<Integer> tmpNotNullPhone = new ArrayList<>();
+                List<Integer> tmpNullPhone = new ArrayList<>();
+                List<Integer> tmpNotNullPremium = new ArrayList<>();
+                List<Integer> tmpNullPremium = new ArrayList<>();
                 Map<Byte, List<Integer>> tmpStatusIndex = new HashMap<>();
                 Map<Integer, List<Integer>> tmpBirthYearIndex = new HashMap<>();
                 tmpSexIndex.put(true, new ArrayList<>());
@@ -62,11 +87,12 @@ public class IndexHolder {
                 }
                 Map<Byte, List<Integer>> tmpInterestsIndex = new HashMap<>();
                 Map<Integer, List<Integer>> tmpCityIndex = new HashMap<>();
+                Map<Integer, List<Integer>> tmpFnameIndex = new HashMap<>();
+                Map<Integer, List<Integer>> tmpSnameIndex = new HashMap<>();
                 List<Integer> tmpPremiumIndex = new ArrayList<>();
                 Map<Integer, List<Integer>> tmpJoinedIndex = new HashMap<>();
-                System.out.println("Start iteration " + new Date());
-
-
+                emailIndex = new TObjectIntHashMap<>();
+                phoneIndex = new TObjectIntHashMap<>();
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
                     if (account.country != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
@@ -104,8 +130,50 @@ public class IndexHolder {
                         }
                         tmpJoinedIndex.get(jyear).add(account.id);
                     }
+                    if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                        tmpNotNullFname.add(account.id);
+                        if (!tmpFnameIndex.containsKey(account.fname)) {
+                            tmpFnameIndex.put(account.fname, new ArrayList<>());
+                        }
+                        tmpFnameIndex.get(account.fname).add(account.id);
+                    } else {
+                        tmpNullFname.add(account.id);
+                    }
+                    if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                        tmpNotNullSname.add(account.id);
+                        if (!tmpSnameIndex.containsKey(account.sname)) {
+                            tmpSnameIndex.put(account.sname, new ArrayList<>());
+                        }
+                        tmpSnameIndex.get(account.sname).add(account.id);
+                    } else {
+                        tmpNullSname.add(account.id);
+                    }
+                    if (account.email != null) {
+                        emailIndex.put(account.email, account.id);
+                    }
+                    if (account.phone != null) {
+                        phoneIndex.put(account.phone, account.id);
+                        tmpNotNullPhone.add(account.id);
+                        int open = account.phone.indexOf("(");
+                        if (open != -1) {
+                            int close = account.phone.indexOf(')', open + 1);
+                            if (close != -1) {
+                                String code = account.phone.substring(open + 1, close);
+                                if (!tmpPhoneCodeIndex.containsKey(code)) {
+                                    tmpPhoneCodeIndex.put(code, new ArrayList<>());
+                                }
+                                tmpPhoneCodeIndex.get(code).add(account.id);
+                            }
+                        }
+                    } else {
+                        tmpNullPhone.add(account.id);
+                    }
+                    if (account.premiumStart != 0) {
+                        tmpNotNullPremium.add(account.id);
+                    } else {
+                        tmpNullPremium.add(account.id);
+                    }
                 }
-                System.out.println("End iteration " + new Date());
                 countryIndex = new TByteObjectHashMap<>();
                 for (Map.Entry<Byte, List<Integer>> entry : tmpCountryIndex.entrySet()) {
                     countryIndex.put(entry.getKey(), entry.getValue().stream()
@@ -142,13 +210,49 @@ public class IndexHolder {
                 nullCity = tmpNullCity.stream()
                         .mapToInt(Integer::intValue)
                         .toArray();
+                notNullFname = tmpNotNullFname.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
+                nullFname = tmpNullFname.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
+                notNullSname = tmpNotNullSname.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
+                nullSname = tmpNullSname.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
+                notNullPhone = tmpNotNullPhone.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
+                nullPhone = tmpNullPhone.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
+                notNullPremium = tmpNotNullPremium.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
+                nullPremium = tmpNullPremium.stream()
+                        .mapToInt(Integer::intValue)
+                        .toArray();
                 cityIndex = new TIntObjectHashMap<>();
                 for (Map.Entry<Integer, List<Integer>> entry : tmpCityIndex.entrySet()) {
                     cityIndex.put(entry.getKey(), entry.getValue().stream()
                             .mapToInt(Integer::intValue)
                             .toArray());
                 }
-                birthYearIndex = new HashMap<>();
+                fnameIndex = new TIntObjectHashMap<>();
+                for (Map.Entry<Integer, List<Integer>> entry : tmpFnameIndex.entrySet()) {
+                    fnameIndex.put(entry.getKey(), entry.getValue().stream()
+                            .mapToInt(Integer::intValue)
+                            .toArray());
+                }
+                snameIndex = new TIntObjectHashMap<>();
+                for (Map.Entry<Integer, List<Integer>> entry : tmpSnameIndex.entrySet()) {
+                    snameIndex.put(entry.getKey(), entry.getValue().stream()
+                            .mapToInt(Integer::intValue)
+                            .toArray());
+                }
+                birthYearIndex = new TIntObjectHashMap<>();
                 for (Map.Entry<Integer, List<Integer>> entry : tmpBirthYearIndex.entrySet()) {
                     birthYearIndex.put(entry.getKey(), entry.getValue().stream()
                             .mapToInt(Integer::intValue)
@@ -160,6 +264,12 @@ public class IndexHolder {
                 emailDomainIndex = new HashMap<>();
                 for (Map.Entry<String, List<Integer>> entry : tmpEmailDomainIndex.entrySet()) {
                     emailDomainIndex.put(entry.getKey(), entry.getValue().stream()
+                            .mapToInt(Integer::intValue)
+                            .toArray());
+                }
+                phoneCodeIndex = new HashMap<>();
+                for (Map.Entry<String, List<Integer>> entry : tmpPhoneCodeIndex.entrySet()) {
+                    phoneCodeIndex.put(entry.getKey(), entry.getValue().stream()
                             .mapToInt(Integer::intValue)
                             .toArray());
                 }
@@ -202,13 +312,9 @@ public class IndexHolder {
                 }
             }
         };
-        System.out.println("Start task1 " + new Date());
         executorService.submit(task1).get();
-        System.out.println("Finish task1 " + new Date());
         System.gc();
-        System.out.println("Start task2 " + new Date());
         executorService.submit(task2).get();
-        System.out.println("Finish task2 " + new Date());
         System.gc();
     }
 

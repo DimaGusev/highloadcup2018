@@ -27,4 +27,8 @@ public class FnameAnyPredicate implements Predicate<Account> {
         }
         return false;
     }
+
+    public int[] getFnames() {
+        return fnames;
+    }
 }

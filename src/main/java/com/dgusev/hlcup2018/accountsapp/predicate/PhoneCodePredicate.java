@@ -13,25 +13,29 @@ public class PhoneCodePredicate implements Predicate<Account> {
     }
 
     @Override
-    public boolean test(Account Account) {
-        if (Account.phone == null) {
+    public boolean test(Account account) {
+        if (account.phone == null) {
             return false;
         }
-        int open = Account.phone.indexOf("(");
+        int open = account.phone.indexOf("(");
         if (open == -1) {
             return false;
         }
-        if (open + code.length() > Account.phone.length()) {
+        if (open + code.length() > account.phone.length()) {
             return false;
         }
-        if (Account.phone.charAt(open + code.length() + 1) != ')') {
+        if (account.phone.charAt(open + code.length() + 1) != ')') {
             return false;
         }
         for (int i = 0; i < code.length(); i++) {
-            if (Account.phone.charAt(open + i + 1) != code.charAt(i)) {
+            if (account.phone.charAt(open + i + 1) != code.charAt(i)) {
                 return false;
             }
         }
         return true;
+    }
+
+    public String getCode() {
+        return code;
     }
 }

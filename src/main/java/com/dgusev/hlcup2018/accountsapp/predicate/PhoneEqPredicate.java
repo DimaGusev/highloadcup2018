@@ -13,7 +13,11 @@ public class PhoneEqPredicate implements Predicate<Account> {
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.phone != null && Account.phone.equals(phone);
+    public boolean test(Account account) {
+        return account.phone != null && account.phone.equals(phone);
+    }
+
+    public String getPhone() {
+        return phone;
     }
 }

@@ -13,7 +13,7 @@ public class PremiumNowPredicate implements Predicate<Account> {
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.premiumStart != 0 && Account.premiumStart <= now && (Account.premiumFinish == 0 || Account.premiumFinish > now);
+    public boolean test(Account account) {
+        return account.premiumStart != 0 && account.premiumStart <= now && (account.premiumFinish == 0 || account.premiumFinish > now);
     }
 }

@@ -24,8 +24,6 @@ public class NettyServer {
 
     private static final byte[] EMPTY_OBJECT = "{}".getBytes();
 
-    public static volatile String LAST_FILTER_URL;
-
     @Value("${server.port}")
     private Integer port;
 
@@ -34,7 +32,7 @@ public class NettyServer {
 
     public void start() throws InterruptedException {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-                 EventLoopGroup workerGroup = new NioEventLoopGroup(4);
+                 EventLoopGroup workerGroup = new NioEventLoopGroup(3);
                   try {
                         ServerBootstrap b = new ServerBootstrap();
                        b.group(bossGroup, workerGroup)
@@ -82,7 +80,6 @@ public class NettyServer {
                     if (request.method() == HttpMethod.GET) {
 
                         if (queryStringDecoder.rawPath().equals("/accounts/filter/")) {
-                            LAST_FILTER_URL = queryStringDecoder.uri();
                             accountsController.accountsFilter(queryStringDecoder.parameters(), responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.rawPath().equals("/accounts/group/")) {

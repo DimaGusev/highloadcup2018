@@ -51,6 +51,7 @@ public class AccountsController {
 
 
     public void accountsFilter(Map<String,List<String>> allRequestParams, ByteBuf responseBuf) throws Exception {
+        long l1 = System.nanoTime();
         List<Predicate<Account>> predicates = new ArrayList<>();
         int limit = 0;
             List<String> fields = new ArrayList<>();
@@ -198,6 +199,10 @@ public class AccountsController {
                 }
             }
             List<Account> result = accountService.filter(predicates, limit);
+            long l2 = System.nanoTime();
+            if (l2 - l1 > 20000000) {
+                System.out.println("t=" + (l2-l1)  +", url=" + allRequestParams + ", count=" + result.size() + ", date=" + new Date());
+            }
             if (result.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {

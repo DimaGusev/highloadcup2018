@@ -9,6 +9,8 @@ import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import gnu.trove.map.TLongIntMap;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
+import gnu.trove.set.TIntSet;
+import gnu.trove.set.hash.TIntHashSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -72,6 +74,9 @@ public class AccountService {
             }
             return result;
         } else {
+            /*if (true) {
+                return Collections.EMPTY_LIST;
+            }*/
             Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
@@ -101,6 +106,9 @@ public class AccountService {
         if (limit <= 0) {
             throw new BadRequest();
         }
+        /*if (true) {
+            return Collections.EMPTY_LIST;
+        }*/
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
         TLongObjectMap<List<String>> groupNameMap = new TLongObjectHashMap<>();
@@ -282,6 +290,9 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
+        /*if (true) {
+            return Collections.EMPTY_LIST;
+        }*/
         predicates.add(new SexEqPredicate(!account.sex));
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
@@ -412,6 +423,9 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
+        /*if (true) {
+            return Collections.EMPTY_LIST;
+        }*/
         predicates.add(new SexEqPredicate(account.sex));
         predicates.add(a -> a.id != id);
 
@@ -419,16 +433,16 @@ public class AccountService {
         if (account.likes == null || account.likes.length == 0) {
             return Collections.EMPTY_LIST;
         }
-        Set<Integer> myLikes = new HashSet<>();
+        TIntHashSet myLikes = new TIntHashSet();
         for (long like: account.likes) {
             int lid = (int)(like >> 32);
             myLikes.add(lid);
         }
-        Set<Integer> suggests = new HashSet<>();
-        for (Integer a: myLikes) {
-            if (indexHolder.likesIndex.containsKey(a)) {
-                int[] likers = indexHolder.likesIndex.get(a);
-                for (int l: likers) {
+        TIntHashSet suggests = new TIntHashSet();
+        for (int a: myLikes.toArray()) {
+            int[] likers = indexHolder.likesIndex.get(a);
+            if (likers != null) {
+                for (int l : likers) {
                     suggests.add(l);
                 }
             }
@@ -436,9 +450,11 @@ public class AccountService {
         if (suggests.isEmpty()) {
             return Collections.EMPTY_LIST;
         }
-        List<Integer> likersIndex = new ArrayList<>(suggests);
-        likersIndex.sort(Comparator.reverseOrder());
-        IndexScan likersIndexScan = new ArrayIndexScan(likersIndex.stream().mapToInt(i->i).toArray());
+
+        int[] likersIndex = suggests.toArray();
+        Arrays.sort(likersIndex);
+        reverse(likersIndex);
+        IndexScan likersIndexScan = new ArrayIndexScan(likersIndex);
 
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         indexScans.add(likersIndexScan);
@@ -483,6 +499,16 @@ public class AccountService {
             }
         }
         return result;
+    }
+
+    private void reverse(int[] array) {
+        int size = array.length;
+        int half = size / 2;
+        for (int i = 0; i < half; i++) {
+            int tmp = array[i];
+            array[i] = array[size - 1 - i];
+            array[size - 1 - i] = tmp;
+        }
     }
 
     private double getSimilarity(Account a1, Account a2) {
@@ -814,6 +840,46 @@ public class AccountService {
             } else if (predicate instanceof LikesContainsPredicate) {
                 LikesContainsPredicate likesContainsPredicate = (LikesContainsPredicate) predicate;
                 indexScans.add(new LikesContainsIndexScan(indexHolder, likesContainsPredicate.getLikes()));
+                iterator.remove();
+            } else if (predicate instanceof FnameEqPredicate) {
+                FnameEqPredicate fnameEqPredicate = (FnameEqPredicate) predicate;
+                indexScans.add(new FnameEqIndexScan(indexHolder, fnameEqPredicate.getFname()));
+                iterator.remove();
+            } else if (predicate instanceof FnameAnyPredicate) {
+                FnameAnyPredicate fnameAnyPredicate = (FnameAnyPredicate) predicate;
+                indexScans.add(new FnameAnyIndexScan(indexHolder, fnameAnyPredicate.getFnames()));
+                iterator.remove();
+            } else if (predicate instanceof FnameNullPredicate) {
+                FnameNullPredicate fnameNullPredicate = (FnameNullPredicate) predicate;
+                indexScans.add(new FnameNullIndexScan(indexHolder, fnameNullPredicate.getNill()));
+                iterator.remove();
+            } else if (predicate instanceof SnameEqPredicate) {
+                SnameEqPredicate snameEqPredicate = (SnameEqPredicate) predicate;
+                indexScans.add(new SnameEqIndexScan(indexHolder, snameEqPredicate.getSname()));
+                iterator.remove();
+            } else if (predicate instanceof SnameNullPredicate) {
+                SnameNullPredicate snameNullPredicate = (SnameNullPredicate) predicate;
+                indexScans.add(new SnameNullIndexScan(indexHolder, snameNullPredicate.getNill()));
+                iterator.remove();
+            } else if (predicate instanceof EmailEqPredicate) {
+                EmailEqPredicate emailEqPredicate = (EmailEqPredicate) predicate;
+                indexScans.add(new EmailEqIndexScan(indexHolder, emailEqPredicate.getEmail()));
+                iterator.remove();
+            } else if (predicate instanceof PhoneCodePredicate) {
+                PhoneCodePredicate phoneCodePredicate = (PhoneCodePredicate) predicate;
+                indexScans.add(new PhoneCodeIndexScan(indexHolder, phoneCodePredicate.getCode()));
+                iterator.remove();
+            } else if (predicate instanceof PhoneEqPredicate) {
+                PhoneEqPredicate phoneEqPredicate = (PhoneEqPredicate) predicate;
+                indexScans.add(new PhoneEqIndexScan(indexHolder, phoneEqPredicate.getPhone()));
+                iterator.remove();
+            } else if (predicate instanceof PhoneNullPredicate) {
+                PhoneNullPredicate phoneNullPredicate = (PhoneNullPredicate) predicate;
+                indexScans.add(new PhoneNullIndexScan(indexHolder, phoneNullPredicate.getNill()));
+                iterator.remove();
+            } else if (predicate instanceof PremiumNullPredicate) {
+                PremiumNullPredicate premiumNullPredicate = (PremiumNullPredicate) predicate;
+                indexScans.add(new PremiumNullIndexScan(indexHolder, premiumNullPredicate.getNill()));
                 iterator.remove();
             }
         }

@@ -13,7 +13,11 @@ public class EmailEqPredicate implements Predicate<Account> {
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.email.equals(email);
+    public boolean test(Account account) {
+        return account.email.equals(email);
+    }
+
+    public String getEmail() {
+        return email;
     }
 }
