@@ -2,6 +2,8 @@ package com.dgusev.hlcup2018.accountsapp.parse;
 
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
+import gnu.trove.map.TLongObjectMap;
+import gnu.trove.map.hash.TLongObjectHashMap;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
@@ -27,13 +29,44 @@ public class AccountParser {
         }
     }
 
+    private static TLongObjectMap<String> parametersMap = new TLongObjectHashMap<>();
+
+    static {
+        List<String> values = Arrays.asList("id",
+                "email",
+                "fname",
+                "sname",
+                "phone",
+                "sex",
+                "birth",
+                "country",
+                "city",
+                "status",
+                "joined",
+                "interests",
+                "premium",
+                "start",
+                "finish",
+                "likes",
+                "id",
+                "ts");
+        for (String value:  values) {
+            long hash = 0;
+            for (int i = 0; i < value.length(); i++) {
+                hash = 31* hash + (byte)value.charAt(i);
+            }
+            parametersMap.put(hash, value);
+        }
+
+    }
+
     public AccountDTO parse(byte[] array) {
         return parse(array, array.length);
     }
 
     public AccountDTO parse(byte[] array, int length) {
         if (length < 2) {
-            throw new BadRequest();
+            throw BAD_REQUEST;
         }
         AccountDTO accountDTO = new AccountDTO();
         int currentIndex = indexOf(array, 0, length, '{');
@@ -43,7 +76,11 @@ public class AccountParser {
             }
             int fromField = indexOf(array, currentIndex, length, '"');
             int toField = indexOf(array, fromField + 1, length, '"');
-            String field = new String(array, fromField+1, toField - fromField - 1);
+            long fieldHash = calculateHash(array, fromField+1, toField - fromField - 1);
+            String field = parametersMap.get(fieldHash);
+            if (field == null) {
+                throw BAD_REQUEST;
+            }
             if (field.equals("id")) {
                 int colon = indexOf(array, toField + 1, length, ':');
                 int comma = indexOf(array, colon + 1, length, ',');
@@ -62,8 +99,8 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-                if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
-                    throw new IllegalArgumentException("id is null");
+                if (isNull(array, colon, end + 1 - colon)) {
+                    throw BAD_REQUEST;
                 } else {
                     accountDTO.id = decodeInt(array, colon, end + 1 - colon);
                 }
@@ -86,8 +123,8 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-                if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
-                    throw new IllegalArgumentException("email is null");
+                if (isNull(array, colon, end + 1 - colon)) {
+                    throw BAD_REQUEST;
                 } else {
                     while (array[colon] == '"') {
                         colon++;
@@ -116,7 +153,7 @@ public class AccountParser {
                while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                    end--;
                }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
+               if (isNull(array, colon, end + 1 - colon)) {
                    accountDTO.fname = null;
                } else {
                    while (array[colon] == '"') {
@@ -146,7 +183,7 @@ public class AccountParser {
                while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                    end--;
                }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
+               if (isNull(array, colon, end + 1 - colon)) {
                    accountDTO.sname = null;
                } else {
                    while (array[colon] == '"') {
@@ -176,7 +213,7 @@ public class AccountParser {
                while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                    end--;
                }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
+               if (isNull(array, colon, end + 1 - colon)) {
                    accountDTO.phone = null;
                } else {
                    while (array[colon] == '"') {
@@ -206,8 +243,8 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
-                   throw new IllegalArgumentException("sex is null");
+               if (isNull(array, colon, end + 1 - colon)) {
+                   throw BAD_REQUEST;
                } else {
                    while (array[colon] == '"') {
                        colon++;
@@ -217,7 +254,7 @@ public class AccountParser {
                    }
                    accountDTO.sex = parseString(array, colon, end + 1 - colon);
                    if (!accountDTO.sex.equals("m") && !accountDTO.sex.equals("f")) {
-                       throw new BadRequest();
+                       throw BAD_REQUEST;
                    }
                }
                currentIndex = totalEnd;
@@ -239,8 +276,8 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
-                   throw new IllegalArgumentException("birth is null");
+               if (isNull(array, colon, end + 1 - colon)) {
+                   throw BAD_REQUEST;
                } else {
                    accountDTO.birth = decodeInt(array, colon, end + 1 - colon);
                }
@@ -263,7 +300,7 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
+               if (isNull(array, colon, end + 1 - colon)) {
                    accountDTO.country = null;
                } else {
                    while (array[colon] == '"') {
@@ -293,8 +330,8 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
-                   throw new IllegalArgumentException("sex is null");
+               if (isNull(array, colon, end + 1 - colon)) {
+                   throw BAD_REQUEST;
                } else {
                    while (array[colon] == '"') {
                        colon++;
@@ -323,8 +360,8 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
-                   throw new IllegalArgumentException("status is null");
+               if (isNull(array, colon, end + 1 - colon)) {
+                   throw BAD_REQUEST;
                } else {
                    while (array[colon] == '"') {
                        colon++;
@@ -353,8 +390,8 @@ public class AccountParser {
                 while (array[end] == ' ' || array[end] == '\r' || array[end] == '\n') {
                     end--;
                 }
-               if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
-                   throw new IllegalArgumentException("joined is null");
+               if (isNull(array, colon, end + 1 - colon)) {
+                   throw BAD_REQUEST;
                } else {
                    accountDTO.joined = decodeInt(array, colon, end + 1 - colon);
                }
@@ -405,7 +442,7 @@ public class AccountParser {
                     int colon = indexOf(array, toField + 1, length,':');
                     while (array[colon] != '{') {
                         if (array[colon] == '"') {
-                            throw new BadRequest();
+                            throw BAD_REQUEST;
                         }
                         colon++;
                     }
@@ -423,7 +460,11 @@ public class AccountParser {
                             }
                             int fromSubField = indexOf(array, colon, length,'"');
                             int toSubField = indexOf(array, fromSubField + 1, length,'"');
-                            String subField = new String(array, fromSubField + 1, toSubField - fromSubField - 1);
+                            long subFieldHash = calculateHash(array, fromSubField + 1, toSubField - fromSubField - 1);
+                            String subField = parametersMap.get(subFieldHash);
+                            if (subField == null) {
+                                throw BAD_REQUEST;
+                            }
                             if (subField.equals("start")) {
                                 int nextColon = indexOf(array, toSubField + 1, length,':');
                                 int nextComma = indexOf(array, nextColon + 1, length,',');
@@ -471,7 +512,7 @@ public class AccountParser {
                                 }
                                 accountDTO.premiumFinish = decodeInt(array, nextColon, endIndex + 1 - nextColon);
                             } else {
-                                throw new BadRequest();
+                                throw BAD_REQUEST;
                             }
 
                         }
@@ -512,7 +553,11 @@ public class AccountParser {
                                 }
                                 int fromSubField = indexOf(array, colon, length,'"');
                                 int toSubField = indexOf(array, fromSubField + 1, length,'"');
-                                String subfield = new String(array, fromSubField + 1, toSubField - fromSubField - 1);
+                                long subFieldHash = calculateHash(array, fromSubField + 1, toSubField - fromSubField - 1);
+                                String subfield = parametersMap.get(subFieldHash);
+                                if (subfield == null) {
+                                    throw BAD_REQUEST;
+                                }
                                 if (subfield.equals("id")) {
                                     int nextColon = indexOf(array, toSubField + 1, length,':');
                                     int nextComma = indexOf(array, nextColon + 1, length,',');
@@ -623,7 +668,7 @@ public class AccountParser {
         int index = 0;
         while (index < count) {
             if (buf[start + index] == '\\') {
-                stringBuilder.append((char) Integer.parseInt(new String(buf, start + index + 2, 4), 16));
+                stringBuilder.append((char) decodeHexInt(buf, start + index + 2, 4));
                 index += 6;
             } else {
                 stringBuilder.append((char)buf[start + index]);
@@ -642,6 +687,8 @@ public class AccountParser {
     }
 
     private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
+    private static final int POW16[] = {1, 16, 256, 4096};
+
 
     private int decodeInt(byte[] buf, int from, int length) {
         if (length > 10) {
@@ -656,6 +703,71 @@ public class AccountParser {
             result+=POW10[length - (i - from) - 1]* value;
         }
         return result;
+    }
+
+    private boolean isNull(byte[] array, int from, int length) {
+        if (length != 4) {
+            return false;
+        }
+        if (array[from] != 'n' || array[from + 1] != 'u' || array[from + 2] != 'l' || array[from + 3] != 'l') {
+            return false;
+        }
+        return true;
+    }
+
+    private long calculateHash(byte[] array, int from, int length) {
+        long result = 0;
+        for (int i = from; i < from + length; i++) {
+            result =31* result + array[i];
+        }
+        return result;
+    }
+
+
+    private static int decodeHexInt(byte[] buf, int from, int length) {
+        int result = 0;
+        for (int i = 0; i < length; i++) {
+            result+=POW16[i] * convert(buf[from + length - 1 - i]);
+        }
+        return result;
+    }
+
+    private static int convert(byte ch) {
+        switch (ch) {
+            case '0':
+                return 0;
+            case '1':
+                return 1;
+            case '2':
+                return 2;
+            case '3':
+                return 3;
+            case '4':
+                return 4;
+            case '5':
+                return 5;
+            case '6':
+                return 6;
+            case '7':
+                return 7;
+            case '8':
+                return 8;
+            case '9':
+                return 9;
+            case 'a':
+                return 10;
+            case 'b':
+                return 11;
+            case 'c':
+                return 12;
+            case 'd':
+                return 13;
+            case 'e':
+                return 14;
+            case 'f':
+                return 15;
+        }
+        return 0;
     }
 
 }

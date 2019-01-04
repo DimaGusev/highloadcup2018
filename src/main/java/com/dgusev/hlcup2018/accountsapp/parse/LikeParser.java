@@ -2,15 +2,34 @@ package com.dgusev.hlcup2018.accountsapp.parse;
 
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import com.dgusev.hlcup2018.accountsapp.model.LikeRequest;
+import gnu.trove.map.TLongObjectMap;
+import gnu.trove.map.hash.TLongObjectHashMap;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Component
 public class LikeParser {
 
     private static final BadRequest BAD_REQUEST = new BadRequest();
+
+    private static TLongObjectMap<String> parametersMap = new TLongObjectHashMap<>();
+
+    static {
+        List<String> values = Arrays.asList("likee",
+                "ts",
+                "liker");
+        for (String value:  values) {
+            long hash = 0;
+            for (int i = 0; i < value.length(); i++) {
+                hash = 31* hash + (byte)value.charAt(i);
+            }
+            parametersMap.put(hash, value);
+        }
+
+    }
 
     public List<LikeRequest> parse(byte[] array, int length) {
         if (length < 2) {
@@ -30,7 +49,11 @@ public class LikeParser {
                 }
                 int fromField = indexOf(array, currentIndex, length,'"');
                 int toField = indexOf(array, fromField + 1, length,'"');
-                String subField = new String(array, fromField + 1, toField - fromField - 1 );
+                long hash = calculateHash(array, fromField + 1, toField - fromField - 1 );
+                String subField = parametersMap.get(hash);
+                if (subField == null) {
+                    throw BAD_REQUEST;
+                }
                 if (subField.equals("likee")) {
                     int nextColon = indexOf(array, toField + 1, length,':');
                     int nextComma = indexOf(array, nextColon + 1, length,',');
@@ -131,6 +154,14 @@ public class LikeParser {
                 throw BAD_REQUEST;
             }
             result+=POW10[length - (i - from) - 1]* value;
+        }
+        return result;
+    }
+
+    private long calculateHash(byte[] array, int from, int length) {
+        long result = 0;
+        for (int i = from; i < from + length; i++) {
+            result =31* result + array[i];
         }
         return result;
     }
