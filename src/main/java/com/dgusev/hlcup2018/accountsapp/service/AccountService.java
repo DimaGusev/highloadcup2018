@@ -476,10 +476,14 @@ public class AccountService {
             return Collections.EMPTY_LIST;
         }
         try {
-            int[] likersIndex = suggests.toArray();
-            Arrays.sort(likersIndex);
-            reverse(likersIndex);
-            IndexScan likersIndexScan = new ArrayIndexScan(likersIndex);
+            int[] likersIndex = ObjectPool.acquireLikersArray();
+            if (suggests.size() > likersIndex.length) {
+                System.out.println("Suggest array not enough " + suggests.size());
+            }
+            suggests.toArray(likersIndex);
+            Arrays.sort(likersIndex, 0, suggests.size());
+            reverse(likersIndex, 0, suggests.size());
+            IndexScan likersIndexScan = new ArrayIndexScan(likersIndex, 0, suggests.size());
 
             List<IndexScan> indexScans = getAvailableIndexScan(predicates);
             indexScans.add(likersIndexScan);
@@ -536,13 +540,13 @@ public class AccountService {
         }
     }
 
-    private void reverse(int[] array) {
-        int size = array.length;
-        int half = size / 2;
-        for (int i = 0; i < half; i++) {
+    private void reverse(int[] array, int from, int to) {
+        int size = (to - from);
+        int half = from + size / 2;
+        for (int i = from; i < half; i++) {
             int tmp = array[i];
-            array[i] = array[size - 1 - i];
-            array[size - 1 - i] = tmp;
+            array[i] = array[to - 1 - i];
+            array[to - 1 - i] = tmp;
         }
     }
 
@@ -948,9 +952,9 @@ public class AccountService {
 
         @Override
         public void run() {
-            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 1000){
+            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 2000){
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(2000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

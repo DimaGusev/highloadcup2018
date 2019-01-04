@@ -67,6 +67,13 @@ public class ObjectPool {
         }
     };
 
+    private static ThreadLocal<int[]> likersPool = new ThreadLocal<int[]>() {
+        @Override
+        protected int[] initialValue() {
+            return new int[30000];
+        }
+    };
+
 
 
 
@@ -163,6 +170,10 @@ public class ObjectPool {
         listSimilarityPool.get().addLast(list);
     }
 
+
+    public static int[] acquireLikersArray() {
+        return likersPool.get();
+    }
 
 
 }

@@ -13,6 +13,8 @@ import java.util.List;
 @Component
 public class AccountParser {
 
+    private static final BadRequest BAD_REQUEST = new BadRequest();
+
     private static Field fieldSB;
 
     static {
@@ -25,28 +27,31 @@ public class AccountParser {
         }
     }
 
-
     public AccountDTO parse(byte[] array) {
-        if (array.length < 2) {
+        return parse(array, array.length);
+    }
+
+    public AccountDTO parse(byte[] array, int length) {
+        if (length < 2) {
             throw new BadRequest();
         }
         AccountDTO accountDTO = new AccountDTO();
-        int currentIndex = indexOf(array, 0, '{');
+        int currentIndex = indexOf(array, 0, length, '{');
         while (true) {
             if (array[currentIndex] == '}') {
                 return accountDTO;
             }
-            int fromField = indexOf(array, currentIndex, '"');
-            int toField = indexOf(array, fromField + 1, '"');
+            int fromField = indexOf(array, currentIndex, length, '"');
+            int toField = indexOf(array, fromField + 1, length, '"');
             String field = new String(array, fromField+1, toField - fromField - 1);
             if (field.equals("id")) {
-                int colon = indexOf(array, toField + 1, ':');
-                int comma = indexOf(array, colon + 1, ',');
+                int colon = indexOf(array, toField + 1, length, ':');
+                int comma = indexOf(array, colon + 1, length, ',');
                 int totalEnd;
                 if (comma == -1) {
-                    totalEnd = indexOf(array, colon + 1, '}');
+                    totalEnd = indexOf(array, colon + 1, length, '}');
                 } else {
-                    totalEnd = indexOf(array, colon + 1, ',');
+                    totalEnd = indexOf(array, colon + 1, length, ',');
                 }
                 int end = totalEnd;
                 colon++;
@@ -60,17 +65,17 @@ public class AccountParser {
                 if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
                     throw new IllegalArgumentException("id is null");
                 } else {
-                    accountDTO.id = Integer.parseInt(new String(array, colon, end + 1 - colon));
+                    accountDTO.id = decodeInt(array, colon, end + 1 - colon);
                 }
                 currentIndex = totalEnd;
             } else if (field.equals("email")) {
-                int colon = indexOf(array, toField + 1, ':');
-                int comma = indexOf(array, colon + 1, ',');
+                int colon = indexOf(array, toField + 1, length, ':');
+                int comma = indexOf(array, colon + 1, length, ',');
                 int totalEnd;
                 if (comma == -1) {
-                    totalEnd = indexOf(array, colon + 1, '}');
+                    totalEnd = indexOf(array, colon + 1, length, '}');
                 } else {
-                    totalEnd = indexOf(array, colon + 1, ',');
+                    totalEnd = indexOf(array, colon + 1, length,  ',');
                 }
                 int end = totalEnd;
                 colon++;
@@ -94,13 +99,13 @@ public class AccountParser {
                 }
                 currentIndex = totalEnd;
             } else if (field.equals("fname")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length, ':');
+               int comma = indexOf(array, colon + 1, length, ',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length, '}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length, ',');
                }
                int end = totalEnd;
                colon++;
@@ -124,13 +129,13 @@ public class AccountParser {
                }
                currentIndex = totalEnd;
            } else if (field.equals("sname")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length, ':');
+               int comma = indexOf(array, colon + 1, length, ',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length, '}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length, ',');
                }
                int end = totalEnd;
                colon++;
@@ -154,13 +159,13 @@ public class AccountParser {
                }
                currentIndex = totalEnd;
            } else if (field.equals("phone")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length, ':');
+               int comma = indexOf(array, colon + 1, length, ',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length, '}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length, ',');
                }
                int end = totalEnd;
                colon++;
@@ -184,13 +189,13 @@ public class AccountParser {
                }
                currentIndex = totalEnd;
            } else if (field.equals("sex")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length, ':');
+               int comma = indexOf(array, colon + 1, length, ',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length, '}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length, ',');
                }
                int end = totalEnd;
                 colon++;
@@ -217,13 +222,13 @@ public class AccountParser {
                }
                currentIndex = totalEnd;
            } else if (field.equals("birth")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length, ':');
+               int comma = indexOf(array, colon + 1, length, ',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length,'}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length, ',');
                }
                int end = totalEnd;
                 colon++;
@@ -237,17 +242,17 @@ public class AccountParser {
                if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
                    throw new IllegalArgumentException("birth is null");
                } else {
-                   accountDTO.birth = Integer.parseInt(new String(array, colon, end + 1 - colon));
+                   accountDTO.birth = decodeInt(array, colon, end + 1 - colon);
                }
                currentIndex = totalEnd;
            } else if (field.equals("country")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length, ':');
+               int comma = indexOf(array, colon + 1, length, ',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length, '}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length, ',');
                }
                int end = totalEnd;
                 colon++;
@@ -271,13 +276,13 @@ public class AccountParser {
                }
                currentIndex = totalEnd;
            } else if (field.equals("city")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length, ':');
+               int comma = indexOf(array, colon + 1, length,',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length,'}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length,',');
                }
                int end = totalEnd;
                 colon++;
@@ -301,13 +306,13 @@ public class AccountParser {
                }
                currentIndex = totalEnd;
            } else if (field.equals("status")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length,':');
+               int comma = indexOf(array, colon + 1, length,',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length,'}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length,',');
                }
                int end = totalEnd;
                 colon++;
@@ -331,13 +336,13 @@ public class AccountParser {
                }
                currentIndex = totalEnd;
            } else if (field.equals("joined")) {
-               int colon = indexOf(array, toField + 1, ':');
-               int comma = indexOf(array, colon + 1, ',');
+               int colon = indexOf(array, toField + 1, length,':');
+               int comma = indexOf(array, colon + 1, length,',');
                int totalEnd;
                if (comma == -1) {
-                   totalEnd = indexOf(array, colon + 1, '}');
+                   totalEnd = indexOf(array, colon + 1, length,'}');
                } else {
-                   totalEnd = indexOf(array, colon + 1, ',');
+                   totalEnd = indexOf(array, colon + 1, length,',');
                }
                int end = totalEnd;
                 colon++;
@@ -351,11 +356,11 @@ public class AccountParser {
                if (end - colon == 3 && new String(array, colon, end + 1 - colon).equals("null")) {
                    throw new IllegalArgumentException("joined is null");
                } else {
-                   accountDTO.joined = Integer.parseInt(new String(array, colon, end + 1 - colon));
+                   accountDTO.joined = decodeInt(array, colon, end + 1 - colon);
                }
                currentIndex = totalEnd;
             } else if (field.equals("interests")) {
-               int colon = indexOf(array, toField + 1, ':');
+               int colon = indexOf(array, toField + 1, length,':');
                while (array[colon] != '[') {
                    colon++;
                }
@@ -371,12 +376,12 @@ public class AccountParser {
                        if (array[colon] == ']') {
                           break;
                        }
-                       int fromInteres = indexOf(array, colon, '"');
-                       int toInteres = indexOf(array, fromInteres + 1, '"');
+                       int fromInteres = indexOf(array, colon, length,'"');
+                       int toInteres = indexOf(array, fromInteres + 1, length,'"');
                        String interes = parseString(array, fromInteres + 1, toInteres - fromInteres - 1 );
                        interestsList.add(interes);
-                       int commaIndex = indexOf(array, toInteres, ',');
-                       int closeIndex = indexOf(array, toInteres, ']');
+                       int commaIndex = indexOf(array, toInteres, length,',');
+                       int closeIndex = indexOf(array, toInteres, length,']');
                        if (commaIndex == -1) {
                            colon = closeIndex;
                        } else {
@@ -388,16 +393,16 @@ public class AccountParser {
                        }
                    }
                    accountDTO.interests = interestsList.toArray(new String[interestsList.size()]);
-                   int nextIndex = indexOf(array, colon, ',');
+                   int nextIndex = indexOf(array, colon, length,',');
                    if (nextIndex == -1) {
-                       currentIndex = indexOf(array, colon, '}');
+                       currentIndex = indexOf(array, colon, length,'}');
                    } else {
-                       currentIndex = indexOf(array, colon, ',');
+                       currentIndex = indexOf(array, colon, length,',');
                    }
                }
 
                 } else if (field.equals("premium")) {
-                    int colon = indexOf(array, toField + 1, ':');
+                    int colon = indexOf(array, toField + 1, length,':');
                     while (array[colon] != '{') {
                         if (array[colon] == '"') {
                             throw new BadRequest();
@@ -416,15 +421,15 @@ public class AccountParser {
                             if (array[colon] == '}') {
                                 break;
                             }
-                            int fromSubField = indexOf(array, colon, '"');
-                            int toSubField = indexOf(array, fromSubField + 1, '"');
+                            int fromSubField = indexOf(array, colon, length,'"');
+                            int toSubField = indexOf(array, fromSubField + 1, length,'"');
                             String subField = new String(array, fromSubField + 1, toSubField - fromSubField - 1);
                             if (subField.equals("start")) {
-                                int nextColon = indexOf(array, toSubField + 1, ':');
-                                int nextComma = indexOf(array, nextColon + 1, ',');
-                                int nextClose = indexOf(array, nextColon + 1, '}');
+                                int nextColon = indexOf(array, toSubField + 1, length,':');
+                                int nextComma = indexOf(array, nextColon + 1, length,',');
+                                int nextClose = indexOf(array, nextColon + 1, length,'}');
                                 if (nextComma == -1) {
-                                    colon = indexOf(array, nextColon + 1, '}');
+                                    colon = indexOf(array, nextColon + 1, length,'}');
                                 } else {
                                     if (nextClose < nextComma) {
                                         colon = nextClose;
@@ -441,13 +446,13 @@ public class AccountParser {
                                 while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                     endIndex--;
                                 }
-                                accountDTO.premiumStart = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                                accountDTO.premiumStart = decodeInt(array, nextColon, endIndex + 1 - nextColon);
                             } else if (subField.equals("finish")) {
-                                int nextColon = indexOf(array, toSubField + 1, ':');
-                                int nextComma = indexOf(array, nextColon + 1, ',');
-                                int nextClose = indexOf(array, nextColon + 1, '}');
+                                int nextColon = indexOf(array, toSubField + 1, length,':');
+                                int nextComma = indexOf(array, nextColon + 1, length,',');
+                                int nextClose = indexOf(array, nextColon + 1, length,'}');
                                 if (nextComma == -1) {
-                                    colon = indexOf(array, nextColon + 1, '}');
+                                    colon = indexOf(array, nextColon + 1, length,'}');
                                 } else {
                                     if (nextClose < nextComma) {
                                         colon = nextClose;
@@ -464,22 +469,22 @@ public class AccountParser {
                                 while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                                     endIndex--;
                                 }
-                                accountDTO.premiumFinish = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                                accountDTO.premiumFinish = decodeInt(array, nextColon, endIndex + 1 - nextColon);
                             } else {
                                 throw new BadRequest();
                             }
 
                         }
-                        int nextIndex = indexOf(array, colon, ',');
+                        int nextIndex = indexOf(array, colon, length,',');
                         if (nextIndex == -1) {
-                            currentIndex = indexOf(array, colon, '}');
+                            currentIndex = indexOf(array, colon, length,'}');
                         } else {
-                            currentIndex = indexOf(array, colon, ',');
+                            currentIndex = indexOf(array, colon, length,',');
                         }
                     }
 
                 } else if (field.equals("likes")) {
-                    int colon = indexOf(array, toField + 1, ':');
+                    int colon = indexOf(array, toField + 1, length,':');
                     while (array[colon] != '[') {
                         colon++;
                     }
@@ -496,8 +501,8 @@ public class AccountParser {
                             if (array[colon] == ']') {
                                 break;
                             }
-                            int fromLike = indexOf(array, colon, '{');
-                            int toLike = indexOf(array, fromLike + 1, '}');
+                            int fromLike = indexOf(array, colon, length,'{');
+                            int toLike = indexOf(array, fromLike + 1, length,'}');
                             colon = fromLike;
 
                             long like = 0;
@@ -505,15 +510,15 @@ public class AccountParser {
                                 if (array[colon] == '}') {
                                     break;
                                 }
-                                int fromSubField = indexOf(array, colon, '"');
-                                int toSubField = indexOf(array, fromSubField + 1, '"');
+                                int fromSubField = indexOf(array, colon, length,'"');
+                                int toSubField = indexOf(array, fromSubField + 1, length,'"');
                                 String subfield = new String(array, fromSubField + 1, toSubField - fromSubField - 1);
                                 if (subfield.equals("id")) {
-                                    int nextColon = indexOf(array, toSubField + 1, ':');
-                                    int nextComma = indexOf(array, nextColon + 1, ',');
-                                    int nextClose = indexOf(array, nextColon + 1, '}');
+                                    int nextColon = indexOf(array, toSubField + 1, length,':');
+                                    int nextComma = indexOf(array, nextColon + 1, length,',');
+                                    int nextClose = indexOf(array, nextColon + 1, length,'}');
                                     if (nextComma == -1) {
-                                        colon = indexOf(array, nextColon + 1, '}');
+                                        colon = indexOf(array, nextColon + 1, length,'}');
                                     } else {
                                         if (nextClose < nextComma) {
                                             colon = nextClose;
@@ -531,13 +536,13 @@ public class AccountParser {
                                         endIndex--;
                                     }
                                     like = like & 0xffffffffL;
-                                    like = like | (long)Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon)) << 32;
+                                    like = like | (long)decodeInt(array, nextColon, endIndex + 1 - nextColon) << 32;
                                 } else if (subfield.equals("ts")) {
-                                    int nextColon = indexOf(array, toSubField + 1, ':');
-                                    int nextComma = indexOf(array, nextColon + 1, ',');
-                                    int nextClose = indexOf(array, nextColon + 1, '}');
+                                    int nextColon = indexOf(array, toSubField + 1, length,':');
+                                    int nextComma = indexOf(array, nextColon + 1, length,',');
+                                    int nextClose = indexOf(array, nextColon + 1, length,'}');
                                     if (nextComma == -1) {
-                                        colon = indexOf(array, nextColon + 1, '}');
+                                        colon = indexOf(array, nextColon + 1, length,'}');
                                     } else {
                                         if (nextClose < nextComma) {
                                             colon = nextClose;
@@ -555,13 +560,13 @@ public class AccountParser {
                                         endIndex--;
                                     }
                                     like = like & 0xffffffff00000000L;
-                                    like = like | Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                                    like = like | decodeInt(array, nextColon, endIndex + 1 - nextColon);
                                 }
                             }
                             likesList.add(like);
 
-                            int commaIndex = indexOf(array, toLike, ',');
-                            int closeIndex = indexOf(array, toLike, ']');
+                            int commaIndex = indexOf(array, toLike, length,',');
+                            int closeIndex = indexOf(array, toLike, length,']');
                             if (commaIndex == -1) {
                                 colon = closeIndex;
                             } else {
@@ -579,11 +584,11 @@ public class AccountParser {
                         Arrays.sort(arr);
                         reverse(arr);
                         accountDTO.likes = arr;
-                        int nextIndex = indexOf(array, colon, ',');
+                        int nextIndex = indexOf(array, colon, length,',');
                         if (nextIndex == -1) {
-                            currentIndex = indexOf(array, colon, '}');
+                            currentIndex = indexOf(array, colon, length,'}');
                         } else {
-                            currentIndex = indexOf(array, colon, ',');
+                            currentIndex = indexOf(array, colon, length,',');
                         }
                     }
 
@@ -594,8 +599,8 @@ public class AccountParser {
 
     }
 
-    private int indexOf(byte[] array, int from, char ch) {
-        for (int i = from; i < array.length; i++) {
+    private int indexOf(byte[] array, int from, int to, char ch) {
+        for (int i = from; i < to; i++) {
             if (array[i] == ch) {
                 return i;
             }
@@ -635,4 +640,22 @@ public class AccountParser {
             return null;
         }
     }
+
+    private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
+
+    private int decodeInt(byte[] buf, int from, int length) {
+        if (length > 10) {
+            throw BAD_REQUEST;
+        }
+        int result = 0;
+        for (int i = from; i < from + length; i++) {
+            int value = buf[i] - 48;
+            if (value <0 || value > 9) {
+                throw BAD_REQUEST;
+            }
+            result+=POW10[length - (i - from) - 1]* value;
+        }
+        return result;
+    }
+
 }

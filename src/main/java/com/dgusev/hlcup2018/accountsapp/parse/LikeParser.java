@@ -10,31 +10,33 @@ import java.util.List;
 @Component
 public class LikeParser {
 
-    public List<LikeRequest> parse(byte[] array) {
-        if (array.length < 2) {
+    private static final BadRequest BAD_REQUEST = new BadRequest();
+
+    public List<LikeRequest> parse(byte[] array, int length) {
+        if (length < 2) {
             throw new BadRequest();
         }
         List<LikeRequest> requests =  new ArrayList<>();
-        int currentIndex = indexOf(array, 0, '[');
+        int currentIndex = indexOf(array, 0, length, '[');
         while (true) {
-            if (indexOf(array, currentIndex, '{') == -1) {
+            if (indexOf(array, currentIndex, length,'{') == -1) {
                 break;
             }
-            currentIndex = indexOf(array, currentIndex, '{');
+            currentIndex = indexOf(array, currentIndex, length,'{');
             LikeRequest likeRequest = new LikeRequest();
             while (true) {
                 if (array[currentIndex] == '}') {
                     break;
                 }
-                int fromField = indexOf(array, currentIndex, '"');
-                int toField = indexOf(array, fromField + 1, '"');
+                int fromField = indexOf(array, currentIndex, length,'"');
+                int toField = indexOf(array, fromField + 1, length,'"');
                 String subField = new String(array, fromField + 1, toField - fromField - 1 );
                 if (subField.equals("likee")) {
-                    int nextColon = indexOf(array, toField + 1, ':');
-                    int nextComma = indexOf(array, nextColon + 1, ',');
-                    int nextClose = indexOf(array, nextColon + 1, '}');
+                    int nextColon = indexOf(array, toField + 1, length,':');
+                    int nextComma = indexOf(array, nextColon + 1, length,',');
+                    int nextClose = indexOf(array, nextColon + 1, length,'}');
                     if (nextComma == -1) {
-                        currentIndex = indexOf(array, nextColon + 1, '}');
+                        currentIndex = indexOf(array, nextColon + 1, length,'}');
                     } else {
                         if (nextClose < nextComma) {
                             currentIndex = nextClose;
@@ -51,13 +53,13 @@ public class LikeParser {
                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                         endIndex--;
                     }
-                    likeRequest.likee = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                    likeRequest.likee = decodeInt(array, nextColon, endIndex + 1 - nextColon);
                 } else if (subField.equals("ts")) {
-                    int nextColon = indexOf(array, toField + 1, ':');
-                    int nextComma = indexOf(array, nextColon + 1, ',');
-                    int nextClose = indexOf(array, nextColon + 1, '}');
+                    int nextColon = indexOf(array, toField + 1, length,':');
+                    int nextComma = indexOf(array, nextColon + 1, length,',');
+                    int nextClose = indexOf(array, nextColon + 1, length,'}');
                     if (nextComma == -1) {
-                        currentIndex = indexOf(array, nextColon + 1, '}');
+                        currentIndex = indexOf(array, nextColon + 1, length,'}');
                     } else {
                         if (nextClose < nextComma) {
                             currentIndex = nextClose;
@@ -74,13 +76,13 @@ public class LikeParser {
                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                         endIndex--;
                     }
-                    likeRequest.ts = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                    likeRequest.ts = decodeInt(array, nextColon, endIndex + 1 - nextColon);
                 } else if (subField.equals("liker")) {
-                    int nextColon = indexOf(array, toField + 1, ':');
-                    int nextComma = indexOf(array, nextColon + 1, ',');
-                    int nextClose = indexOf(array, nextColon + 1, '}');
+                    int nextColon = indexOf(array, toField + 1, length,':');
+                    int nextComma = indexOf(array, nextColon + 1, length,',');
+                    int nextClose = indexOf(array, nextColon + 1, length,'}');
                     if (nextComma == -1) {
-                        currentIndex = indexOf(array, nextColon + 1, '}');
+                        currentIndex = indexOf(array, nextColon + 1, length,'}');
                     } else {
                         if (nextClose < nextComma) {
                             currentIndex = nextClose;
@@ -97,7 +99,7 @@ public class LikeParser {
                     while (array[endIndex] == ' ' || array[endIndex] == '\r' || array[endIndex] == '\n') {
                         endIndex--;
                     }
-                    likeRequest.liker = Integer.parseInt(new String(array, nextColon, endIndex + 1 - nextColon));
+                    likeRequest.liker = decodeInt(array, nextColon, endIndex + 1 - nextColon);
                 } else {
                     throw new BadRequest();
                 }
@@ -107,12 +109,29 @@ public class LikeParser {
         return requests;
     }
 
-    private int indexOf(byte[] array, int from, char ch) {
-        for (int i = from; i < array.length; i++) {
+    private int indexOf(byte[] array, int from, int to, char ch) {
+        for (int i = from; i < to; i++) {
             if (array[i] == ch) {
                 return i;
             }
         }
         return -1;
+    }
+
+    private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
+
+    private int decodeInt(byte[] buf, int from, int length) {
+        if (length > 10) {
+            throw BAD_REQUEST;
+        }
+        int result = 0;
+        for (int i = from; i < from + length; i++) {
+            int value = buf[i] - 48;
+            if (value <0 || value > 9) {
+                throw BAD_REQUEST;
+            }
+            result+=POW10[length - (i - from) - 1]* value;
+        }
+        return result;
     }
 }

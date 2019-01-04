@@ -2,6 +2,7 @@ package com.dgusev.hlcup2018.accountsapp.netty;
 
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import com.dgusev.hlcup2018.accountsapp.model.NotFoundRequest;
+import com.dgusev.hlcup2018.accountsapp.parse.QueryParser;
 import com.dgusev.hlcup2018.accountsapp.rest.AccountsController;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import io.netty.bootstrap.ServerBootstrap;
@@ -17,12 +18,20 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Date;
 
 @Component
 public class NettyServer {
 
     private static final byte[] EMPTY_OBJECT = "{}".getBytes();
+
+    private static final ThreadLocal<byte[]> decodeBuffer = new ThreadLocal<byte[]>() {
+        @Override
+        protected byte[] initialValue() {
+            return new byte[5000];
+        }
+    };
 
     @Value("${server.port}")
     private Integer port;
@@ -80,12 +89,15 @@ public class NettyServer {
                     if (request.method() == HttpMethod.GET) {
 
                         if (queryStringDecoder.rawPath().equals("/accounts/filter/")) {
-                            accountsController.accountsFilter(queryStringDecoder.parameters(), responseBuf);
+                            int start = findPathEndIndex(queryStringDecoder.uri());
+                            accountsController.accountsFilter(QueryParser.parse(queryStringDecoder.uri(), start), responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.rawPath().equals("/accounts/group/")) {
-                            accountsController.group(queryStringDecoder.parameters(), responseBuf);
+                            int start = findPathEndIndex(queryStringDecoder.uri());
+                            accountsController.group(QueryParser.parse(queryStringDecoder.uri(), start), responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.uri().contains("recommend")) {
+                            int start = findPathEndIndex(queryStringDecoder.uri());
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
                             int id = 0;
                             try {
@@ -93,9 +105,10 @@ public class NettyServer {
                             } catch (NumberFormatException ex) {
                                 throw new NotFoundRequest();
                             }
-                            accountsController.recommend(queryStringDecoder.parameters(), id, responseBuf);
+                            accountsController.recommend(QueryParser.parse(queryStringDecoder.uri(), start), id, responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else if (queryStringDecoder.uri().contains("suggest")) {
+                            int start = findPathEndIndex(queryStringDecoder.uri());
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
                             int id = 0;
                             try {
@@ -103,7 +116,7 @@ public class NettyServer {
                             } catch (NumberFormatException ex) {
                                 throw new NotFoundRequest();
                             }
-                            accountsController.suggest(queryStringDecoder.parameters(), id, responseBuf);
+                            accountsController.suggest(QueryParser.parse(queryStringDecoder.uri(), start), id, responseBuf);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.OK, responseBuf);
                         } else {
                             throw new NotFoundRequest();
@@ -111,10 +124,16 @@ public class NettyServer {
                     } else {
                         responseBuf.writeBytes(EMPTY_OBJECT);
                         if (queryStringDecoder.rawPath().equals("/accounts/new/")) {
-                            accountsController.create(request.content().toString(StandardCharsets.UTF_8));
+                            byte[] buf = decodeBuffer.get();
+                            int count = request.content().readableBytes();
+                            request.content().readBytes(buf, 0, count);
+                            accountsController.create(buf, count);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.CREATED, responseBuf);
                         } else if (queryStringDecoder.rawPath().equals("/accounts/likes/")) {
-                            accountsController.like(request.content().toString(StandardCharsets.UTF_8));
+                            byte[] buf = decodeBuffer.get();
+                            int count = request.content().readableBytes();
+                            request.content().readBytes(buf, 0, count);
+                            accountsController.like(buf, count);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, responseBuf);
                         } else {
                             int fin = queryStringDecoder.uri().indexOf('/', 10);
@@ -124,7 +143,10 @@ public class NettyServer {
                             } catch (Exception ex) {
                                 throw new NotFoundRequest();
                             }
-                            accountsController.update(request.content().toString(StandardCharsets.UTF_8), id);
+                            byte[] buf = decodeBuffer.get();
+                            int count = request.content().readableBytes();
+                            request.content().readBytes(buf, 0, count);
+                            accountsController.update(buf, count, id);
                             writeResponse(channelHandlerContext, request, HttpResponseStatus.ACCEPTED, responseBuf);
                         }
                     }
@@ -134,7 +156,7 @@ public class NettyServer {
                     writeResponse(channelHandlerContext, request, HttpResponseStatus.NOT_FOUND, responseBuf);
                 } catch (Exception ex) {
                     //System.out.println(request.content().toString(StandardCharsets.UTF_8));
-                    //ex.printStackTrace();
+                    ex.printStackTrace();
                     writeResponse(channelHandlerContext, request, HttpResponseStatus.BAD_REQUEST, responseBuf);
                 }
             } else {
@@ -158,6 +180,17 @@ public class NettyServer {
             );
         }
         channelHandlerContext.writeAndFlush(response);
+    }
+
+    private static int findPathEndIndex(String uri) {
+        int len = uri.length();
+        for (int i = 0; i < len; i++) {
+            char c = uri.charAt(i);
+            if (c == '?' || c == '#') {
+                return i + 1;
+            }
+        }
+        return len;
     }
 
 }

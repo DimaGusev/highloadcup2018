@@ -51,20 +51,20 @@ public class AccountsController {
     private Dictionary dictionary;
 
 
-    public void accountsFilter(Map<String,List<String>> allRequestParams, ByteBuf responseBuf) throws Exception {
+    public void accountsFilter(Map<String,String> allRequestParams, ByteBuf responseBuf) throws Exception {
         long l1 = System.nanoTime();
         List<Predicate<Account>> predicates = new ArrayList<>();
         int limit = 0;
             List<String> fields = new ArrayList<>();
             fields.add("id");
             fields.add("email");
-            for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
+            for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
                 String name = parameter.getKey();
                 if (name.equals("query_id")) {
                     continue;
                 }
                 if (name.equals("limit")) {
-                    limit = Integer.parseInt(parameter.getValue().get(0));
+                    limit = Integer.parseInt(parameter.getValue());
                     continue;
                 }
                 String field = name.substring(0, name.indexOf("_"));
@@ -73,106 +73,106 @@ public class AccountsController {
                 }
                 if (name.startsWith("sex_")) {
                     if (name.equals("sex_eq")) {
-                        predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue().get(0))));
+                        predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("email_")) {
                     if (name.equals("email_domain")) {
-                        predicates.add(new EmailDomainPredicate(parameter.getValue().get(0)));
+                        predicates.add(new EmailDomainPredicate(parameter.getValue()));
                     } else if (name.equals("email_lt")) {
-                        predicates.add(new EmailLtPredicate(parameter.getValue().get(0)));
+                        predicates.add(new EmailLtPredicate(parameter.getValue()));
                     } else if (name.equals("email_gt")) {
-                        predicates.add(new EmailGtPredicate(parameter.getValue().get(0)));
+                        predicates.add(new EmailGtPredicate(parameter.getValue()));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("status_")) {
                     if (name.equals("status_eq")) {
-                        predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue().get(0))));
+                        predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
                     } else if (name.equals("status_neq")) {
-                        predicates.add(new StatusNEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue().get(0))));
+                        predicates.add(new StatusNEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
 
                 } else if (name.startsWith("fname_")) {
                     if (name.equals("fname_eq")) {
-                        predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue().get(0))));
+                        predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue())));
                     } else if (name.equals("fname_any")) {
-                        String[] fnames = parameter.getValue().get(0).split(",");
+                        String[] fnames = parameter.getValue().split(",");
                         int[] values = new int[fnames.length];
                         for (int i = 0; i < fnames.length; i ++) {
                             values[i] = dictionary.getFname(fnames[i]);
                         }
                         predicates.add(new FnameAnyPredicate(values));
                     } else if (name.equals("fname_null")) {
-                        predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("sname_")) {
                     if (name.equals("sname_eq")) {
-                        predicates.add(new SnameEqPredicate(dictionary.getFname(parameter.getValue().get(0))));
+                        predicates.add(new SnameEqPredicate(dictionary.getFname(parameter.getValue())));
                     } else if (name.equals("sname_starts")) {
-                        predicates.add(new SnameStartsPredicate(parameter.getValue().get(0), dictionary));
+                        predicates.add(new SnameStartsPredicate(parameter.getValue(), dictionary));
                     } else if (name.equals("sname_null")) {
-                        predicates.add(new SnameNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new SnameNullPredicate(Integer.parseInt(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("phone_")) {
                     if (name.equals("phone_code")) {
-                        predicates.add(new PhoneCodePredicate(parameter.getValue().get(0)));
+                        predicates.add(new PhoneCodePredicate(parameter.getValue()));
                     } else if (name.equals("phone_null")) {
-                        predicates.add(new PhoneNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new PhoneNullPredicate(Integer.parseInt(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("country_")) {
                     if (name.equals("country_eq")) {
-                        byte countryIndex = dictionary.getCountry(parameter.getValue().get(0));
+                        byte countryIndex = dictionary.getCountry(parameter.getValue());
                         predicates.add(new CountryEqPredicate(countryIndex));
                     } else if (name.equals("country_null")) {
-                        predicates.add(new CountryNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new CountryNullPredicate(Integer.parseInt(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("city_")) {
                     if (name.equals("city_eq")) {
-                        predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
+                        predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
                     } else if (name.equals("city_any")) {
-                        String[] cities = parameter.getValue().get(0).split(",");
+                        String[] cities = parameter.getValue().split(",");
                         int[] values = new int[cities.length];
                         for (int i = 0; i < cities.length; i ++) {
                             values[i] = dictionary.getCity(cities[i]);
                         }
                         predicates.add(new CityAnyPredicate(values));
                     } else if (name.equals("city_null")) {
-                        predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("birth_")) {
                     if (name.equals("birth_lt")) {
-                        predicates.add(new BirthLtPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new BirthLtPredicate(Integer.parseInt(parameter.getValue())));
                     } else if (name.equals("birth_gt")) {
-                        predicates.add(new BirthGtPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new BirthGtPredicate(Integer.parseInt(parameter.getValue())));
                     }  else if (name.equals("birth_year")) {
-                        predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
                 } else if (name.startsWith("interests_")) {
                     if (name.equals("interests_contains")) {
-                        String[] interests = parameter.getValue().get(0).split(",");
+                        String[] interests = parameter.getValue().split(",");
                         byte[] values = new byte[interests.length];
                         for (int i = 0; i < interests.length; i ++) {
                             values[i] = dictionary.getInteres(interests[i]);
                         }
                         predicates.add(new InterestsContainsPredicate(values));
                     } else if (name.equals("interests_any")) {
-                        String[] interests = parameter.getValue().get(0).split(",");
+                        String[] interests = parameter.getValue().split(",");
                         byte[] values = new byte[interests.length];
                         for (int i = 0; i < interests.length; i ++) {
                             values[i] = dictionary.getInteres(interests[i]);
@@ -183,7 +183,7 @@ public class AccountsController {
                     }
                 } else if (name.startsWith("likes_")) {
                     if (name.equals("likes_contains")) {
-                        predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().get(0).split(",")).mapToInt(Integer::parseInt).toArray()));
+                        predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray()));
                     } else {
                         throw new BadRequest();
                     }
@@ -191,7 +191,7 @@ public class AccountsController {
                     if (name.equals("premium_now")) {
                         predicates.add(new PremiumNowPredicate(nowProvider.getNow()));
                     } else if (name.equals("premium_null")) {
-                        predicates.add(new PremiumNullPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                        predicates.add(new PremiumNullPredicate(Integer.parseInt(parameter.getValue())));
                     } else {
                         throw new BadRequest();
                     }
@@ -219,19 +219,19 @@ public class AccountsController {
             }
     }
 
-    public void group(Map<String,List<String>> allRequestParams, ByteBuf responseBuf) {
+    public void group(Map<String,String> allRequestParams, ByteBuf responseBuf) {
             List<String> keys = new ArrayList<>();
             int order = 1;
             int limit = 0;
             List<Predicate<Account>> predicates = new ArrayList<>();
-            for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
+            for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
                 String name = parameter.getKey();
                 if (name.equals("query_id")) {
                     continue;
                 }
 
                 if (name.equals("keys")) {
-                    keys.addAll(Arrays.asList(parameter.getValue().get(0).split(",")));
+                    keys.addAll(Arrays.asList(parameter.getValue().split(",")));
 
                     if (keys.contains("interests")) {
                         keys.remove("interests");
@@ -244,37 +244,37 @@ public class AccountsController {
                     }
 
                 } else if (name.equals("order")) {
-                    order = Integer.parseInt(parameter.getValue().get(0));
+                    order = Integer.parseInt(parameter.getValue());
                 } else if (name.equals("limit")) {
-                    limit = Integer.parseInt(parameter.getValue().get(0));
+                    limit = Integer.parseInt(parameter.getValue());
                 } else if (name.equals("sex")) {
-                    predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue().get(0))));
+                    predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
                 } else if (name.equals("email")) {
-                    predicates.add(new EmailEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new EmailEqPredicate(parameter.getValue()));
                 } else if (name.equals("status")) {
-                    predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue().get(0))));
+                    predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
                 } else if (name.equals("fname")) {
-                    predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue().get(0))));
+                    predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue())));
                 } else if (name.equals("sname")) {
-                    predicates.add(new SnameEqPredicate(dictionary.getSname(parameter.getValue().get(0))));
+                    predicates.add(new SnameEqPredicate(dictionary.getSname(parameter.getValue())));
                 } else if (name.equals("phone")) {
-                    predicates.add(new PhoneEqPredicate(parameter.getValue().get(0)));
+                    predicates.add(new PhoneEqPredicate(parameter.getValue()));
                 } else if (name.equals("country")) {
-                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue().get(0))));
+                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue())));
                 } else if (name.equals("city")) {
-                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
+                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
                 } else if (name.equals("birth")) {
-                    predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                    predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue())));
                 } else if (name.equals("interests")) {
                     byte[] value = new byte[1];
-                    value[0] = dictionary.getInteres(parameter.getValue().get(0));
+                    value[0] = dictionary.getInteres(parameter.getValue());
                     predicates.add(new InterestsContainsPredicate(value));
                 } else if (name.equals("likes")) {
                     int[] array = new int[1];
-                    array[0] = Integer.parseInt(parameter.getValue().get(0));
+                    array[0] = Integer.parseInt(parameter.getValue());
                     predicates.add(new LikesContainsPredicate(array));
                 } else if (name.equals("joined")) {
-                    predicates.add(new JoinedYearPredicate(Integer.parseInt(parameter.getValue().get(0))));
+                    predicates.add(new JoinedYearPredicate(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw new BadRequest();
                 }
@@ -295,31 +295,31 @@ public class AccountsController {
             }
     }
 
-    public void recommend(Map<String,List<String>> allRequestParams, int id, ByteBuf responseBuf) {
+    public void recommend(Map<String, String> allRequestParams, int id, ByteBuf responseBuf) {
             if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
                 throw new NotFoundRequest();
             }
             int limit = 0;
             List<Predicate<Account>> predicates = new ArrayList<>();
-            for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
+            for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
                 String name = parameter.getKey();
                 if (name.equals("query_id")) {
                     continue;
                 } else if (name.equals("limit")) {
-                    limit = Integer.parseInt(parameter.getValue().get(0));
+                    limit = Integer.parseInt(parameter.getValue());
                     if (limit < 0) {
                         throw new BadRequest();
                     }
                 } else if (name.equals("country")) {
-                    if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
+                    if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
                         throw new BadRequest();
                     }
-                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue().get(0))));
+                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue())));
                 } else if (name.equals("city")) {
-                    if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
+                    if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
                         throw new BadRequest();
                     }
-                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
+                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
                 } else {
                     throw new BadRequest();
                 }
@@ -341,31 +341,31 @@ public class AccountsController {
     }
 
 
-    public void suggest(Map<String,List<String>> allRequestParams, int id, ByteBuf responseBuf) {
+    public void suggest(Map<String,String> allRequestParams, int id, ByteBuf responseBuf) {
         if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
             throw new NotFoundRequest();
         }
         int limit = 0;
         List<Predicate<Account>> predicates = new ArrayList<>();
-        for (Map.Entry<String, List<String>> parameter : allRequestParams.entrySet()) {
+        for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
             String name = parameter.getKey();
             if (name.equals("query_id")) {
                 continue;
             } else if (name.equals("limit")) {
-                limit = Integer.parseInt(parameter.getValue().get(0));
+                limit = Integer.parseInt(parameter.getValue());
                 if (limit <= 0) {
                     throw new BadRequest();
                 }
             } else if (name.equals("country")) {
-                if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
+                if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
                     throw new BadRequest();
                 }
-                predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue().get(0))));
+                predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue())));
             } else if (name.equals("city")) {
-                if (parameter.getValue().get(0) == null || parameter.getValue().get(0).isEmpty()) {
+                if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
                     throw new BadRequest();
                 }
-                predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue().get(0))));
+                predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
             } else {
                 throw new BadRequest();
             }
@@ -392,20 +392,20 @@ public class AccountsController {
 
 
 
-    public void create(String body) {
-            AccountDTO accountDTO = accountParser.parse(body.getBytes());
+    public void create(byte[] body, int length) {
+            AccountDTO accountDTO = accountParser.parse(body, length);
             accountService.add(accountDTO);
     }
 
-    public void update(String body, int id) {
-            AccountDTO accountDTO = accountParser.parse(body.getBytes());
+    public void update(byte[] body, int length, int id) {
+            AccountDTO accountDTO = accountParser.parse(body, length);
             accountDTO.id = id;
             accountService.update(accountDTO);
     }
 
 
-    public void like(String body) {
-            List<LikeRequest> requests = likeParser.parse(body.getBytes());
+    public void like(byte[] body, int length) {
+            List<LikeRequest> requests = likeParser.parse(body, length);
             accountService.like(requests);
     }
 
