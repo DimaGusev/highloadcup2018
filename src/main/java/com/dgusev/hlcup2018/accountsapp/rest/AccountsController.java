@@ -6,6 +6,7 @@ import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
 import com.dgusev.hlcup2018.accountsapp.parse.LikeParser;
+import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
@@ -200,18 +201,19 @@ public class AccountsController {
             }
             List<Account> result = accountService.filter(predicates, limit);
             long l2 = System.nanoTime();
-            if (l2 - l1 > 20000000) {
+            if (l2 - l1 > 10000000) {
                 System.out.println("t=" + (l2-l1)  +", url=" + allRequestParams + ", count=" + result.size() + ", date=" + new Date());
             }
             if (result.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {
+                byte[] arr = ObjectPool.acquireFormatterArray();
                 responseBuf.writeBytes(ACCOUNTS_LIST_START);
                 for (int i = 0; i < result.size(); i++) {
                     if (i != 0) {
                         responseBuf.writeByte(',');
                     }
-                    accountFormatter.format(result.get(i), fields, responseBuf);
+                    accountFormatter.format(result.get(i), fields, responseBuf, arr);
                 }
                 responseBuf.writeBytes(LIST_END);
             }
@@ -374,13 +376,17 @@ public class AccountsController {
             responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
         } else {
             responseBuf.writeBytes(ACCOUNTS_LIST_START);
+            byte[] arr = ObjectPool.acquireFormatterArray();
             for (int i = 0; i < result.size(); i++) {
                 if (i != 0) {
                     responseBuf.writeByte(',');
                 }
-                accountFormatter.formatSuggest(result.get(i), responseBuf);
+                accountFormatter.formatSuggest(result.get(i), responseBuf, arr);
             }
             responseBuf.writeBytes(LIST_END);
+        }
+        if (result != Collections.EMPTY_LIST ) {
+            ObjectPool.releaseSuggestList(result);
         }
     }
 

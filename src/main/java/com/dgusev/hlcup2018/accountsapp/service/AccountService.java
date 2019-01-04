@@ -63,7 +63,7 @@ public class AccountService {
                     break;
                 }
 
-                Account account = findById(next);
+                Account account = accountIdMap[next];
                 if (accountPredicate.test(account)) {
                     result.add(account);
                     count++;
@@ -121,7 +121,7 @@ public class AccountService {
                 if (next == -1) {
                     break;
                 }
-                Account account = findById(next);
+                Account account = accountIdMap[next];
                 if (accountPredicate.test(account)) {
                     processRecord(account, groupHashMap, groupNameMap , keys, tmpGroupList);
                 }
@@ -286,7 +286,8 @@ public class AccountService {
         if (limit <= 0) {
             throw new BadRequest();
         }
-        Account account = findById(id);
+
+        Account account = accountIdMap[id];
         if (account == null) {
             throw new NotFoundRequest();
         }
@@ -306,86 +307,110 @@ public class AccountService {
 
         });
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
+        if (indexScans.isEmpty()) {
+            indexScans.add(new SexEqIndexScan(indexHolder, !account.sex));
+        }
         Predicate<Account> accountPredicate = andPredicates(predicates);
-        List<Account> result1 = new ArrayList<>();
-        List<Account> result2 = new ArrayList<>();
-        List<Account> result3 = new ArrayList<>();
-        List<Account> result4 = new ArrayList<>();
-        List<Account> result5 = new ArrayList<>();
-        List<Account> result6 = new ArrayList<>();
-        IndexScan indexScan = new CompositeIndexScan(indexScans);
-        PremiumNowPredicate premiumNowPredicate = new PremiumNowPredicate(nowProvider.getNow());
-        while (true) {
-            int next = indexScan.getNext();
-            if (next == -1) {
-                break;
-            }
-            Account acc = findById(next);
-            if (accountPredicate.test(acc)) {
-                if (premiumNowPredicate.test(acc)) {
-                    if (acc.status == 0) {
-                        result1.add(acc);
-                    } else if (acc.status == 1) {
-                        result2.add(acc);
+        List<Account> result1 = ObjectPool.acquireRecommendList();
+        List<Account> result2 = ObjectPool.acquireRecommendList();
+        List<Account> result3 = ObjectPool.acquireRecommendList();
+        List<Account> result4 = ObjectPool.acquireRecommendList();
+        List<Account> result5 = ObjectPool.acquireRecommendList();
+        List<Account> result6 = ObjectPool.acquireRecommendList();
+        try {
+            IndexScan indexScan = new CompositeIndexScan(indexScans);
+            PremiumNowPredicate premiumNowPredicate = new PremiumNowPredicate(nowProvider.getNow());
+            while (true) {
+                int next = indexScan.getNext();
+                if (next == -1) {
+                    break;
+                }
+                Account acc = accountIdMap[next];
+                if (accountPredicate.test(acc)) {
+                    if (premiumNowPredicate.test(acc)) {
+                        if (acc.status == 0) {
+                            result1.add(acc);
+                        } else if (acc.status == 1) {
+                            result2.add(acc);
+                        } else {
+                            result3.add(acc);
+                        }
                     } else {
-                        result3.add(acc);
-                    }
-                } else {
-                    if (acc.status == 0) {
-                        result4.add(acc);
-                    } else if (acc.status == 1) {
-                        result5.add(acc);
-                    } else {
-                        result6.add(acc);
+                        if (acc.status == 0) {
+                            result4.add(acc);
+                        } else if (acc.status == 1) {
+                            result5.add(acc);
+                        } else {
+                            result6.add(acc);
+                        }
                     }
                 }
             }
-        }
-        List<Account> result = new ArrayList<>();
-        result.addAll(result1);
-        if (result.size() < limit) {
-            result.addAll(result2);
-        }
-        if (result.size() < limit) {
-            result.addAll(result3);
-        }
-        if (result.size() < limit) {
-            result.addAll(result4);
-        }
-        if (result.size() < limit) {
-            result.addAll(result5);
-        }
-        if (result.size() < limit) {
-            result.addAll(result6);
-        }
-        result.sort((a1, a2) -> {
-            if (isPremium(a1) && !isPremium(a2)) {
-                return -1;
-            } else if (!isPremium(a1) && isPremium(a2)) {
-                return 1;
+            List<Account> result = new ArrayList<>();
+            for (int i = 0; i < result1.size(); i++) {
+                result.add(result1.get(i));
             }
-            int cc1 = Integer.compare(a1.status, a2.status);
-            if (cc1 != 0) {
-                return cc1;
+            if (result.size() < limit) {
+                for (int i = 0; i < result2.size(); i++) {
+                    result.add(result2.get(i));
+                }
             }
-            int int1 = interestsMatched(account.interests, a1.interests != null ? a1.interests : new byte[0]);
-            int int2 = interestsMatched(account.interests, a2.interests != null ? a2.interests : new byte[0]);
-            int cc2 = Integer.compare(int1, int2);
-            if (cc2 != 0) {
-                return -cc2;
+            if (result.size() < limit) {
+                for (int i = 0; i < result3.size(); i++) {
+                    result.add(result3.get(i));
+                }
             }
-            int bd1 = Math.abs(a1.birth - account.birth);
-            int bd2 = Math.abs(a2.birth - account.birth);
-            int cc3 = Integer.compare(bd1, bd2);
-            if (cc3 != 0) {
-                return cc3;
+            if (result.size() < limit) {
+                for (int i = 0; i < result4.size(); i++) {
+                    result.add(result4.get(i));
+                }
             }
-            return Integer.compare(a1.id, a2.id);
-        });
-        if (result.size() > limit) {
-            return result.subList(0, limit);
-        } else  {
-            return result;
+            if (result.size() < limit) {
+                for (int i = 0; i < result5.size(); i++) {
+                    result.add(result5.get(i));
+                }
+            }
+            if (result.size() < limit) {
+                for (int i = 0; i < result6.size(); i++) {
+                    result.add(result6.get(i));
+                }
+            }
+            result.sort((a1, a2) -> {
+                if (isPremium(a1) && !isPremium(a2)) {
+                    return -1;
+                } else if (!isPremium(a1) && isPremium(a2)) {
+                    return 1;
+                }
+                int cc1 = Integer.compare(a1.status, a2.status);
+                if (cc1 != 0) {
+                    return cc1;
+                }
+                int int1 = interestsMatched(account.interests, a1.interests != null ? a1.interests : new byte[0]);
+                int int2 = interestsMatched(account.interests, a2.interests != null ? a2.interests : new byte[0]);
+                int cc2 = Integer.compare(int1, int2);
+                if (cc2 != 0) {
+                    return -cc2;
+                }
+                int bd1 = Math.abs(a1.birth - account.birth);
+                int bd2 = Math.abs(a2.birth - account.birth);
+                int cc3 = Integer.compare(bd1, bd2);
+                if (cc3 != 0) {
+                    return cc3;
+                }
+                return Integer.compare(a1.id, a2.id);
+            });
+            if (result.size() > limit) {
+                return result.subList(0, limit);
+            } else {
+                return result;
+            }
+        } finally {
+            ObjectPool.releaseRecommendList(result1);
+            ObjectPool.releaseRecommendList(result2);
+            ObjectPool.releaseRecommendList(result3);
+            ObjectPool.releaseRecommendList(result4);
+            ObjectPool.releaseRecommendList(result5);
+            ObjectPool.releaseRecommendList(result6);
         }
     }
 
@@ -419,86 +444,96 @@ public class AccountService {
 
 
     public List<Account> suggest(int id, List<Predicate<Account>> predicates, int limit) {
-        Account account = findById(id);
+        Account account = accountIdMap[id];
         if (account == null) {
             throw new NotFoundRequest();
         }
-        /*if (true) {
+        if (account.likes == null || account.likes.length == 0) {
             return Collections.EMPTY_LIST;
-        }*/
+        }
         predicates.add(new SexEqPredicate(account.sex));
         predicates.add(a -> a.id != id);
 
         boolean targetSex = !account.sex;
-        if (account.likes == null || account.likes.length == 0) {
-            return Collections.EMPTY_LIST;
-        }
-        TIntHashSet myLikes = new TIntHashSet();
+
+        TIntHashSet myLikes = ObjectPool.acquireTIntHash();
+        TIntHashSet suggests = ObjectPool.acquireTIntHash();
         for (long like: account.likes) {
             int lid = (int)(like >> 32);
-            myLikes.add(lid);
-        }
-        TIntHashSet suggests = new TIntHashSet();
-        for (int a: myLikes.toArray()) {
-            int[] likers = indexHolder.likesIndex.get(a);
-            if (likers != null) {
-                for (int l : likers) {
-                    suggests.add(l);
-                }
-            }
-        }
-        if (suggests.isEmpty()) {
-            return Collections.EMPTY_LIST;
-        }
-
-        int[] likersIndex = suggests.toArray();
-        Arrays.sort(likersIndex);
-        reverse(likersIndex);
-        IndexScan likersIndexScan = new ArrayIndexScan(likersIndex);
-
-        List<IndexScan> indexScans = getAvailableIndexScan(predicates);
-        indexScans.add(likersIndexScan);
-        IndexScan indexScan = new CompositeIndexScan(indexScans);
-        Predicate<Account> accountPredicate = andPredicates(predicates);
-        List<Account> suggestResult = new ArrayList<>();
-        while (true) {
-            int next = indexScan.getNext();
-            if (next == -1) {
-                break;
-            }
-            Account acc = findById(next);
-            if (accountPredicate.test(acc)) {
-                suggestResult.add(acc);
-            }
-        }
-        List<Similarity> similarities = suggestResult.stream().map(a ->  {
-            Similarity similarity = new Similarity();
-            similarity.account = a;
-            similarity.similarity = getSimilarity(account, a);
-            return similarity;
-        }).sorted(Comparator.comparingDouble((Similarity s) -> s.similarity).reversed()).collect(Collectors.toList());
-        List<Account> result = new ArrayList<>();
-        Set<Integer> likersSet = new HashSet<>();
-        for (int i = 0; i < similarities.size(); i++) {
-            Similarity s = similarities.get(i);
-            int[] likers = Arrays.stream(s.account.likes).mapToInt(l -> (Integer)(int)(l >> 32)).toArray();
-            Arrays.sort(likers);
-            for (int j = likers.length -1; j >= 0; j--) {
-                if (!myLikes.contains(likers[j]) && findById(likers[j]).sex==targetSex) {
-                    if (!likersSet.contains(likers[j])) {
-                        likersSet.add(likers[j]);
-                        result.add(accountIdMap[likers[j]]);
-                        if (result.size() == limit) {
-                            break;
-                        }
+            boolean newLike = myLikes.add(lid);
+            if (newLike) {
+                int[] likers = indexHolder.likesIndex.get(lid);
+                if (likers != null) {
+                    for (int l : likers) {
+                        suggests.add(l);
                     }
                 }
             }
-            if (result.size() == limit) {
-                break;
+        }
+        List<Similarity> suggestResult = null;
+        List<Account> result = null;
+        if (suggests.isEmpty()) {
+            return Collections.EMPTY_LIST;
+        }
+        try {
+            int[] likersIndex = suggests.toArray();
+            Arrays.sort(likersIndex);
+            reverse(likersIndex);
+            IndexScan likersIndexScan = new ArrayIndexScan(likersIndex);
+
+            List<IndexScan> indexScans = getAvailableIndexScan(predicates);
+            indexScans.add(likersIndexScan);
+            IndexScan indexScan = new CompositeIndexScan(indexScans);
+            Predicate<Account> accountPredicate = andPredicates(predicates);
+            suggestResult = ObjectPool.acquireSimilarityList();
+            while (true) {
+                int next = indexScan.getNext();
+                if (next == -1) {
+                    break;
+                }
+                Account acc = accountIdMap[next];
+                if (accountPredicate.test(acc)) {
+                    Similarity similarity = ObjectPool.acquireSimilarity();
+                    similarity.account = acc;
+                    similarity.similarity = getSimilarity(account, acc);
+                    suggestResult.add(similarity);
+                }
+            }
+            suggestResult.sort(Comparator.comparingDouble((Similarity s) -> s.similarity).reversed());
+            result = ObjectPool.acquireSuggestList();
+            Set<Integer> likersSet = new HashSet<>();
+            for (int i = 0; i < suggestResult.size(); i++) {
+                Similarity s = suggestResult.get(i);
+                for (int j = 0; j < s.account.likes.length; j++) {
+                    int lid = (int)(s.account.likes[j] >> 32);
+                    if (!myLikes.contains(lid) && accountIdMap[lid].sex == targetSex) {
+                        if (!likersSet.contains(lid)) {
+                            likersSet.add(lid);
+                            result.add(accountIdMap[lid]);
+                            if (result.size() == limit) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (result.size() == limit) {
+                    break;
+                }
+            }
+
+            return result;
+        } finally {
+            ObjectPool.releaseTIntHash(myLikes);
+            ObjectPool.releaseTIntHash(suggests);
+            if (suggestResult != null) {
+                try {
+                    ObjectPool.releaseSimilarityList(suggestResult);
+                    suggestResult.forEach(ObjectPool::releaseSimilarity);
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
         }
-        return result;
     }
 
     private void reverse(int[] array) {
@@ -511,13 +546,21 @@ public class AccountService {
         }
     }
 
+    private void reverse(long[] array) {
+        int size = array.length;
+        int half = size / 2;
+        for (int i = 0; i < half; i++) {
+            long tmp = array[i];
+            array[i] = array[size - 1 - i];
+            array[size - 1 - i] = tmp;
+        }
+    }
+
     private double getSimilarity(Account a1, Account a2) {
-        Arrays.sort(a1.likes);
-        Arrays.sort(a2.likes);
-        int index1 = a1.likes.length - 1;
-        int index2 = a2.likes.length - 1;
+        int index1 = 0;
+        int index2 = 0;
         double similarity = 0;
-        while (index1 >= 0 && index2 >= 0) {
+        while (index1 < a1.likes.length && index2 < a2.likes.length) {
             int like1 = (int)(a1.likes[index1] >> 32);
             int like2 = (int)(a2.likes[index2] >> 32);
             if (like1 == like2) {
@@ -525,17 +568,17 @@ public class AccountService {
                 double sum2 = (int)a2.likes[index2];
                 int cnt1 = 1;
                 int cnt2 = 1;
-                index1--;
-                index2--;
-                while (index1 >= 0 && (int)(a1.likes[index1] >> 32) == like1) {
+                index1++;
+                index2++;
+                while (index1 < a1.likes.length && (int)(a1.likes[index1] >> 32) == like1) {
                     sum1+=(int)a1.likes[index1];
                     cnt1++;
-                    index1--;
+                    index1++;
                 }
-                while (index2 >= 0 && (int)(a2.likes[index2] >> 32) == like2) {
+                while (index2 < a2.likes.length && (int)(a2.likes[index2] >> 32) == like2) {
                     sum2+=(int)a2.likes[index2];
                     cnt2++;
-                    index2--;
+                    index2++;
                 }
                 double t1 = sum1/cnt1;
                 double t2 = sum2/cnt2;
@@ -547,9 +590,9 @@ public class AccountService {
 
             } else {
                 if (like1 < like2) {
-                    index2--;
+                    index2++;
                 } else {
-                    index1--;
+                    index1++;
                 }
             }
         }
@@ -612,7 +655,7 @@ public class AccountService {
         if (!accountDTO.email.matches(EMAIL_REG)) {
             throw new BadRequest();
         }
-        if (findById(accountDTO.id) != null) {
+        if (accountIdMap[accountDTO.id] != null) {
             throw new BadRequest();
         }
         if (emails.contains(accountDTO.email)) {
@@ -644,7 +687,7 @@ public class AccountService {
         if (accountDTO.id >= MAX_ID) {
             throw new NotFoundRequest();
         }
-        Account oldAcc = findById(accountDTO.id);
+        Account oldAcc = accountIdMap[accountDTO.id];
         if (oldAcc == null) {
             throw new NotFoundRequest();
         }
@@ -730,13 +773,13 @@ public class AccountService {
 
     public synchronized void like(List<LikeRequest> likeRequests) {
         for (LikeRequest likeRequest: likeRequests) {
-            if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || findById(likeRequest.likee) == null || findById(likeRequest.liker) == null) {
+            if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || accountIdMap[likeRequest.likee] == null || accountIdMap[likeRequest.liker] == null) {
                 throw new BadRequest();
             }
         }
 
         for (LikeRequest likeRequest: likeRequests) {
-            Account account = findById(likeRequest.liker);
+            Account account = accountIdMap[likeRequest.liker];
             long like =0;
             like = (long)likeRequest.likee << 32;
             like = (likeRequest.ts | like) ;
@@ -749,7 +792,8 @@ public class AccountService {
                 System.arraycopy(oldArray, 0, account.likes, 0, oldArray.length);
                 account.likes[oldArray.length] = like;
             }
-
+            Arrays.sort(account.likes);
+            reverse(account.likes);
         }
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
@@ -927,7 +971,7 @@ public class AccountService {
         public int count;
     }
 
-    private static class Similarity {
+    public static class Similarity {
         public Account account;
         public double similarity;
     }

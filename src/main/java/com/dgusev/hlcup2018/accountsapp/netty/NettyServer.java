@@ -32,7 +32,7 @@ public class NettyServer {
 
     public void start() throws InterruptedException {
         EventLoopGroup bossGroup = new NioEventLoopGroup(1);
-                 EventLoopGroup workerGroup = new NioEventLoopGroup(3);
+                 EventLoopGroup workerGroup = new NioEventLoopGroup(4);
                   try {
                         ServerBootstrap b = new ServerBootstrap();
                        b.group(bossGroup, workerGroup)

@@ -51,6 +51,28 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        /*new Thread(()-> {
+            while (true) {
+                try {
+                    Thread.sleep(2000);
+                    Process process = Runtime.getRuntime().exec(new String[] {"jcmd", "1", "VM.native_memory summary"});
+                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+                    String line = null;
+                    List<String> list = new ArrayList<>();
+                    while ((line = bufferedReader.readLine())!=null) {
+                        if (line.contains("Total: reserved")) {
+                            list.add(line);
+                        } else if (line.startsWith("-")) {
+                            list.add(line.replaceAll(" ", ""));
+                        }
+                    }
+                    System.out.println("Date: " + new Date().getTime()/1000 + " " + list);
+                    bufferedReader.close();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }).start();*/
         String initFile = null;
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
             initFile = initFileWin;
@@ -82,7 +104,7 @@ public class DataLoader implements CommandLineRunner {
         for (int i = 0; i < 4; i++) {
             int to = currentIndex + loadCount;
             if (i == 3) {
-                to = array.length - 1;
+                to = array.length;
             }
             importerCallables.add(new ImporterCallable(zipFile, array, i, currentIndex, to));
             currentIndex = to;
@@ -99,6 +121,7 @@ public class DataLoader implements CommandLineRunner {
             return null;
         }).sorted(Comparator.comparingInt(r -> r.order)).forEach(r -> {
             for (Account acc: r.result) {
+                statistics.analyze(acc);
                 accountService.loadSequentially(acc);
             }
         });
@@ -172,16 +195,22 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
-                            accounts.add(accountConverter.convert(accountDTO));
-                            /*for (int k = 0; k < 44;k++) {
-                                Account account = accountConverter.convert(accountDTO);
-                                account.id = k* 30001  +  accountDTO.id;
-                                account.email = k + "" + accountDTO.email;
-                                if (account.phone != null) {
-                                    account.phone = k + "" + accountDTO.phone;
+                            /*if (i > 3) {
+                                accountDTO.id = 10000 * (i-1) + accountDTO.id;
+                                accountDTO.email = i + accountDTO.email;
+                                if (accountDTO.phone != null) {
+                                    accountDTO.phone = i + accountDTO.phone;
                                 }
-                                accounts.add(account);
+                                if (accountDTO.likes != null) {
+                                    for (int j = 0; j < accountDTO.likes.length; j++) {
+                                        int id = (int)(accountDTO.likes[j]>>32);
+                                        id = 10000 * (i-1) + id;
+                                        accountDTO.likes[j] = 0xffffffffL & accountDTO.likes[j];
+                                        accountDTO.likes[j] = accountDTO.likes[j] | ((long)id << 32);
+                                    }
+                                }
                             }*/
+                            accounts.add(accountConverter.convert(accountDTO));
 
                         }
 

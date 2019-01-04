@@ -50,7 +50,6 @@ public class CompositeIndexScan implements IndexScan {
             return result;
         }
         while (true) {
-           // System.out.println(cycles++);
             equals = true;
             for (int i = 0; i < indexScans.length; i++) {
                 while (state[i] != -1 && state[i] > min) {
@@ -74,43 +73,6 @@ public class CompositeIndexScan implements IndexScan {
         }
         return result;
 
-        /*while (true) {
-            System.out.println(cycles++);
-            boolean equals = true;
-            int min = Integer.MAX_VALUE;
-            int prev = -1;
-            for (int i = 0; i< state.length; i++) {
-                if (state[i] == -1) {
-                    return -1;
-                }
-                if (state[i] < min) {
-                    min = state[i];
-                }
-                if (prev != -1) {
-                    if (state[i] != prev) {
-                        equals = false;
-                    }
-                }
-                prev = state[i];
-            }
-
-            if (equals) {
-                int result = state[0];
-                for (int i = 0; i < indexScans.length; i++) {
-                    state[i] = indexScans[i].getNext();
-                }
-                return result;
-            }
-
-            for (int i = 0; i < indexScans.length; i++) {
-                if (state[i] != min) {
-                    state[i] = indexScans[i].getNext();
-                    if (state[i] == -1) {
-                        return -1;
-                    }
-                }
-            }
-        } */
     }
 
 

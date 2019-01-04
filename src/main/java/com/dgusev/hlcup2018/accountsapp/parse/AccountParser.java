@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -575,6 +576,8 @@ public class AccountParser {
                         for (int i = 0; i < likesList.size(); i++) {
                             arr[i] = likesList.get(i);
                         }
+                        Arrays.sort(arr);
+                        reverse(arr);
                         accountDTO.likes = arr;
                         int nextIndex = indexOf(array, colon, ',');
                         if (nextIndex == -1) {
@@ -598,6 +601,16 @@ public class AccountParser {
             }
         }
         return -1;
+    }
+
+    private void reverse(long[] array) {
+        int size = array.length;
+        int half = size / 2;
+        for (int i = 0; i < half; i++) {
+            long tmp = array[i];
+            array[i] = array[size - 1 - i];
+            array[size - 1 - i] = tmp;
+        }
     }
 
     private static String parseString(byte[] buf, int start, int count) {
