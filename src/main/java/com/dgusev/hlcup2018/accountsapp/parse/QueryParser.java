@@ -194,4 +194,96 @@ public class QueryParser {
         return 0;
     }
 
+
+    public static Map<String, String> parse(byte[] query, int start, int end) {
+        Map<String, String> result = parseMap.get();
+        result.clear();
+        if (start >= end) {
+            return result;
+        }
+        int index = start;
+        while (index != end) {
+            int from = index;
+            int eq = indexOf(query,index, end, '=');
+            int next = indexOf(query,eq + 1, end, '&');
+            if (next == -1) {
+                index = end;
+                next = index;
+            } else {
+                index = next + 1;
+            }
+
+            result.put(getField(query, from, eq), decode(query,eq + 1, next));
+        }
+        return result;
+    }
+
+    private static int indexOf(byte[] arr, int from, int to, char val) {
+        for (int i = from; i < to; i++) {
+            if (arr[i] == (byte) val) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static String getField(byte[] query, int from, int to) {
+        long hash = 0;
+        for (int i = from; i < to; i++) {
+            hash = 31* hash + query[i];
+        }
+        String result = parametersMap.get(hash);
+        if (result != null) {
+            return result;
+        } else {
+            throw BAD_REQUEST;
+        }
+    }
+
+    private static String decode(byte[] parameter, int from, int to) {
+        boolean decodingRequired = false;
+        for (int i = from; i < to; i++) {
+            byte ch = parameter[i];
+            if (ch == '%' || ch == '+') {
+                decodingRequired = true;
+                break;
+            }
+        }
+        if (decodingRequired) {
+            return decodePN(parameter, from, to);
+        } else  {
+            return new String(parameter, from, to - from);
+        }
+    }
+
+    private static String decodePN(byte[] parameter, int from, int to) {
+        int count = 0;
+        int index = from;
+        while (index != to) {
+            if (parameter[index] == '%') {
+                index+=3;
+                count++;
+            } else {
+                index++;
+                count++;
+            }
+        }
+        byte[] arr = new byte[count];
+        index = from;
+        int i = 0;
+        while (index != to) {
+            if (parameter[index] == '%') {
+                arr[i++] = (byte) (covert((char)parameter[index + 1]) * 16 + covert((char)parameter[index + 2]));
+                index+=3;
+            } else if (parameter[index] == '+') {
+                arr[i++] = ' ';
+                index++;
+            } else {
+                arr[i++] = (byte)parameter[index];
+                index++;
+            }
+        }
+        return new String(arr);
+    }
+
 }

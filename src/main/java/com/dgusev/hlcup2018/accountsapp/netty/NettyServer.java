@@ -156,7 +156,7 @@ public class NettyServer {
                     writeResponse(channelHandlerContext, request, HttpResponseStatus.NOT_FOUND, responseBuf);
                 } catch (Exception ex) {
                     //System.out.println(request.content().toString(StandardCharsets.UTF_8));
-                    ex.printStackTrace();
+                    //ex.printStackTrace();
                     writeResponse(channelHandlerContext, request, HttpResponseStatus.BAD_REQUEST, responseBuf);
                 }
             } else {

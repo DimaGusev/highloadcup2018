@@ -32,11 +32,15 @@ public class LikeParser {
     }
 
     public List<LikeRequest> parse(byte[] array, int length) {
-        if (length < 2) {
+        return parse(array, 0, length);
+    }
+
+    public List<LikeRequest> parse(byte[] array, int from,  int length) {
+        if (length - from < 2) {
             throw new BadRequest();
         }
         List<LikeRequest> requests =  new ArrayList<>();
-        int currentIndex = indexOf(array, 0, length, '[');
+        int currentIndex = indexOf(array, from, length, '[');
         while (true) {
             if (indexOf(array, currentIndex, length,'{') == -1) {
                 break;

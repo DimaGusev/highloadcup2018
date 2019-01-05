@@ -131,8 +131,8 @@ public class DataLoader implements CommandLineRunner {
         System.out.println("Indexes created " + new Date());
         new Thread(() -> {
             try {
-                nettyServer.start();
-                //nioServer.start();
+                //nettyServer.start();
+                nioServer.start();
             } catch (Exception e) {
                 e.printStackTrace();
             }

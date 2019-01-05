@@ -65,11 +65,15 @@ public class AccountParser {
     }
 
     public AccountDTO parse(byte[] array, int length) {
-        if (length < 2) {
+        return parse(array, 0, array.length);
+    }
+
+    public AccountDTO parse(byte[] array, int start, int length) {
+        if (length - start < 2) {
             throw BAD_REQUEST;
         }
         AccountDTO accountDTO = new AccountDTO();
-        int currentIndex = indexOf(array, 0, length, '{');
+        int currentIndex = indexOf(array, start, length, '{');
         while (true) {
             if (array[currentIndex] == '}') {
                 return accountDTO;
@@ -539,6 +543,9 @@ public class AccountParser {
                         List<Long> likesList = new ArrayList<>();
 
                         while (true) {
+                            if (colon < 0) {
+                                int i = 100;
+                            }
                             if (array[colon] == ']') {
                                 break;
                             }

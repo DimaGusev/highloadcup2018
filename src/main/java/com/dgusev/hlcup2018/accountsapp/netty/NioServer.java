@@ -1,9 +1,12 @@
 package com.dgusev.hlcup2018.accountsapp.netty;
 
+import io.netty.util.ReferenceCountUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.StandardSocketOptions;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.ArrayDeque;
@@ -15,8 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class NioServer {
-
-    private static final byte[] RESPONSE = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}".getBytes();
 
     private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger();
 
@@ -37,7 +38,10 @@ public class NioServer {
         }
     }
 
-    public static class Worker implements Runnable {
+    @Autowired
+    private RequestHandler requestHandler;
+
+    public class Worker implements Runnable {
 
         private Selector selector;
         private Queue<SocketChannel> queue = new ArrayDeque<>(20);
@@ -48,7 +52,8 @@ public class NioServer {
 
         @Override
         public void run() {
-            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(100000);
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10000);
+            byte[] buf = new byte[100000];
             try {
                 while (true) {
                     int count = selector.select();
@@ -62,22 +67,28 @@ public class NioServer {
                             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
                             try {
                                 if (selectionKey.isReadable()) {
+                                    byteBuffer.clear();
                                     int cnt = socketChannel.read(byteBuffer);
                                     if (cnt == -1) {
+                                        if (selectionKey.attachment() != null) {
+                                            ReferenceCountUtil.release(selectionKey.attachment());
+                                        }
                                         socketChannel.close();
                                         selectionKey.cancel();
                                         continue;
                                     } else {
-                                        //System.out.println(ATOMIC_INTEGER.incrementAndGet());
-                                        byteBuffer.clear();
-                                        byteBuffer.put(RESPONSE);
                                         byteBuffer.flip();
-                                        socketChannel.write(byteBuffer);
+                                        byteBuffer.get(buf, 0, cnt);
                                         byteBuffer.clear();
+                                        requestHandler.handleRead(selectionKey, buf, cnt, byteBuffer);
+
                                     }
                                 }
-                            } catch (IOException ex) {
+                            } catch (Exception ex) {
                                 try {
+                                    if (selectionKey.attachment() != null) {
+                                        ReferenceCountUtil.release(selectionKey.attachment());
+                                    }
                                     selectionKey.cancel();
                                     socketChannel.close();
                                 } catch (Exception e) {
@@ -98,7 +109,8 @@ public class NioServer {
             }
         }
 
-        public void register(SocketChannel socketChannel) throws ClosedChannelException {
+        public void register(SocketChannel socketChannel) throws IOException {
+            socketChannel.setOption(StandardSocketOptions.SO_LINGER, 0);
             queue.offer(socketChannel);
             selector.wakeup();
         }

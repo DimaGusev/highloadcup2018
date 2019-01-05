@@ -52,7 +52,6 @@ public class AccountsController {
 
 
     public void accountsFilter(Map<String,String> allRequestParams, ByteBuf responseBuf) throws Exception {
-        long l1 = System.nanoTime();
         List<Predicate<Account>> predicates = new ArrayList<>();
         int limit = 0;
             List<String> fields = new ArrayList<>();
@@ -200,10 +199,6 @@ public class AccountsController {
                 }
             }
             List<Account> result = accountService.filter(predicates, limit);
-            long l2 = System.nanoTime();
-            if (l2 - l1 > 10000000) {
-                System.out.println("t=" + (l2-l1)  +", url=" + allRequestParams + ", count=" + result.size() + ", date=" + new Date());
-            }
             if (result.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {
@@ -397,16 +392,32 @@ public class AccountsController {
             accountService.add(accountDTO);
     }
 
+    public void create(byte[] body, int from, int length) {
+        AccountDTO accountDTO = accountParser.parse(body, from, length);
+        accountService.add(accountDTO);
+    }
+
     public void update(byte[] body, int length, int id) {
             AccountDTO accountDTO = accountParser.parse(body, length);
             accountDTO.id = id;
             accountService.update(accountDTO);
     }
 
+    public void update(byte[] body, int from, int length, int id) {
+        AccountDTO accountDTO = accountParser.parse(body, from, length);
+        accountDTO.id = id;
+        accountService.update(accountDTO);
+    }
+
 
     public void like(byte[] body, int length) {
-            List<LikeRequest> requests = likeParser.parse(body, length);
-            accountService.like(requests);
+        List<LikeRequest> requests = likeParser.parse(body, length);
+        accountService.like(requests);
+    }
+
+    public void like(byte[] body, int from, int length) {
+        List<LikeRequest> requests = likeParser.parse(body, from, length);
+        accountService.like(requests);
     }
 
 
