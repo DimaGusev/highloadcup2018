@@ -1,6 +1,8 @@
 package com.dgusev.hlcup2018.accountsapp.pool;
 
+import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
+import com.dgusev.hlcup2018.accountsapp.model.LikeRequest;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import gnu.trove.set.hash.TIntHashSet;
 
@@ -24,6 +26,17 @@ public class ObjectPool {
             ArrayDeque arrayDeque =  new ArrayDeque<>(20000);
             for (int i = 0; i < 20000; i++) {
                 arrayDeque.add(new AccountService.Similarity());
+            }
+            return arrayDeque;
+        }
+    };
+
+    private static ThreadLocal<ArrayDeque<LikeRequest>> likeRequestPool = new ThreadLocal<ArrayDeque<LikeRequest>>() {
+        @Override
+        protected ArrayDeque<LikeRequest> initialValue() {
+            ArrayDeque<LikeRequest> arrayDeque =  new ArrayDeque<>(200);
+            for (int i = 0; i < 200; i++) {
+                arrayDeque.add(new LikeRequest());
             }
             return arrayDeque;
         }
@@ -64,6 +77,20 @@ public class ObjectPool {
         @Override
         protected byte[] initialValue() {
             return new byte[10000];
+        }
+    };
+
+    private static ThreadLocal<List<Account>> filterListPool = new ThreadLocal<List<Account>>() {
+        @Override
+        protected List<Account> initialValue() {
+            return new ArrayList<>(100);
+        }
+    };
+
+    private static ThreadLocal<List<IndexScan>> indexScanPool = new ThreadLocal<List<IndexScan>>() {
+        @Override
+        protected List<IndexScan> initialValue() {
+            return new ArrayList<>(10);
         }
     };
 
@@ -140,6 +167,23 @@ public class ObjectPool {
         similarityPool.get().addLast(similarity);
     }
 
+    public static LikeRequest acquireLikeRequest() {
+        ArrayDeque<LikeRequest> local = likeRequestPool.get();
+        LikeRequest likeRequest = local.pollFirst();
+        if (likeRequest != null) {
+            likeRequest.ts =0;
+            likeRequest.likee=0;
+            likeRequest.liker=0;
+            return likeRequest;
+        } else {
+            return new LikeRequest();
+        }
+    }
+
+    public static void releaseLikeRequest(LikeRequest likeRequest) {
+        likeRequestPool.get().addLast(likeRequest);
+    }
+
     public static List<Account> acquireSuggestList() {
         ArrayDeque<List<Account>> local = suggestListPool.get();
         List<Account> list = local.pollFirst();
@@ -173,6 +217,19 @@ public class ObjectPool {
 
     public static int[] acquireLikersArray() {
         return likersPool.get();
+    }
+
+
+    public static List<Account> acquireFilterList() {
+        List<Account> list =  filterListPool.get();
+        list.clear();
+        return list;
+    }
+
+    public static List<IndexScan> acquireIndexScanList() {
+        List<IndexScan> list =  indexScanPool.get();
+        list.clear();
+        return list;
     }
 
 

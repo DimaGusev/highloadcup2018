@@ -2,6 +2,7 @@ package com.dgusev.hlcup2018.accountsapp.parse;
 
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import com.dgusev.hlcup2018.accountsapp.model.LikeRequest;
+import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 import org.springframework.stereotype.Component;
@@ -31,22 +32,30 @@ public class LikeParser {
 
     }
 
+    private static final ThreadLocal<List<LikeRequest>> likeRequestList = new ThreadLocal<List<LikeRequest>>() {
+        @Override
+        protected List<LikeRequest> initialValue() {
+            return new ArrayList<>(200);
+        }
+    };
+
     public List<LikeRequest> parse(byte[] array, int length) {
         return parse(array, 0, length);
     }
 
     public List<LikeRequest> parse(byte[] array, int from,  int length) {
         if (length - from < 2) {
-            throw new BadRequest();
+            throw BAD_REQUEST;
         }
-        List<LikeRequest> requests =  new ArrayList<>();
+        List<LikeRequest> requests =  likeRequestList.get();
+        requests.clear();
         int currentIndex = indexOf(array, from, length, '[');
         while (true) {
             if (indexOf(array, currentIndex, length,'{') == -1) {
                 break;
             }
             currentIndex = indexOf(array, currentIndex, length,'{');
-            LikeRequest likeRequest = new LikeRequest();
+            LikeRequest likeRequest = ObjectPool.acquireLikeRequest();
             while (true) {
                 if (array[currentIndex] == '}') {
                     break;
@@ -128,7 +137,7 @@ public class LikeParser {
                     }
                     likeRequest.liker = decodeInt(array, nextColon, endIndex + 1 - nextColon);
                 } else {
-                    throw new BadRequest();
+                    throw BAD_REQUEST;
                 }
             }
             requests.add(likeRequest);

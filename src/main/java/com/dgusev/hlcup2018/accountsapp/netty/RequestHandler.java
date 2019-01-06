@@ -4,10 +4,8 @@ import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import com.dgusev.hlcup2018.accountsapp.model.NotFoundRequest;
 import com.dgusev.hlcup2018.accountsapp.parse.QueryParser;
 import com.dgusev.hlcup2018.accountsapp.rest.AccountsController;
-import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.util.ReferenceCountUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -153,7 +151,7 @@ public class RequestHandler {
             writeResponse(socketChannel, byteBuffer, NOT_FOUND);
         } catch (Exception ex) {
             //System.out.println(request.content().toString(StandardCharsets.UTF_8));
-            ex.printStackTrace();
+            //ex.printStackTrace();
             writeResponse(socketChannel, byteBuffer, BAD_REQUEST);
         } finally {
             if (tmpByteBuffer != null) {

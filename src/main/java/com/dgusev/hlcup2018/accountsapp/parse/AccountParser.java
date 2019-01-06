@@ -2,6 +2,8 @@ package com.dgusev.hlcup2018.accountsapp.parse;
 
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
+import gnu.trove.list.TLongList;
+import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 import org.springframework.stereotype.Component;
@@ -59,6 +61,20 @@ public class AccountParser {
         }
 
     }
+
+    private static final ThreadLocal<StringBuilder> parseStringBuilder = new ThreadLocal<StringBuilder>() {
+        @Override
+        protected StringBuilder initialValue() {
+            return new StringBuilder(100);
+        }
+    };
+
+    private static final ThreadLocal<TLongArrayList> likesListPool = new ThreadLocal<TLongArrayList>() {
+        @Override
+        protected TLongArrayList initialValue() {
+            return new TLongArrayList(50);
+        }
+    };
 
     public AccountDTO parse(byte[] array) {
         return parse(array, array.length);
@@ -540,8 +556,8 @@ public class AccountParser {
                     if (end - colon == 1) {
                         accountDTO.likes = null;
                     } else {
-                        List<Long> likesList = new ArrayList<>();
-
+                        TLongArrayList likesList = likesListPool.get();
+                        likesList.reset();
                         while (true) {
                             if (colon < 0) {
                                 int i = 100;
@@ -671,7 +687,8 @@ public class AccountParser {
     }
 
     private static String parseString(byte[] buf, int start, int count) {
-        StringBuilder stringBuilder = new StringBuilder(count / 6 + 1);
+        StringBuilder stringBuilder = parseStringBuilder.get();
+        stringBuilder.setLength(0);
         int index = 0;
         while (index < count) {
             if (buf[start + index] == '\\') {

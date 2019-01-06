@@ -50,168 +50,184 @@ public class AccountsController {
     @Autowired
     private Dictionary dictionary;
 
+    private static final ThreadLocal<List<Predicate<Account>>> predicateList = new ThreadLocal<List<Predicate<Account>>>() {
+        @Override
+        protected List<Predicate<Account>> initialValue() {
+            return new ArrayList<>(10);
+        }
+    };
 
-    public void accountsFilter(Map<String,String> allRequestParams, ByteBuf responseBuf) throws Exception {
-        List<Predicate<Account>> predicates = new ArrayList<>();
+    private static final ThreadLocal<List<String>> fieldsList = new ThreadLocal<List<String>>() {
+        @Override
+        protected List<String> initialValue() {
+            return new ArrayList<>(10);
+        }
+    };
+
+
+    public void accountsFilter(Map<String, String> allRequestParams, ByteBuf responseBuf) throws Exception {
+        List<Predicate<Account>> predicates = predicateList.get();
+        predicates.clear();
         int limit = 0;
-            List<String> fields = new ArrayList<>();
-            fields.add("id");
-            fields.add("email");
-            for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
-                String name = parameter.getKey();
-                if (name.equals("query_id")) {
-                    continue;
+        List<String> fields = fieldsList.get();
+        fields.clear();
+        fields.add("id");
+        fields.add("email");
+        for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
+            String name = parameter.getKey();
+            if (name.equals("query_id")) {
+                continue;
+            }
+            if (name.equals("limit")) {
+                limit = Integer.parseInt(parameter.getValue());
+                continue;
+            }
+            String field = name.substring(0, name.indexOf("_"));
+            if (!fields.contains(field)) {
+                fields.add(field);
+            }
+            if (name.startsWith("sex_")) {
+                if (name.equals("sex_eq")) {
+                    predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
                 }
-                if (name.equals("limit")) {
-                    limit = Integer.parseInt(parameter.getValue());
-                    continue;
+            } else if (name.startsWith("email_")) {
+                if (name.equals("email_domain")) {
+                    predicates.add(new EmailDomainPredicate(parameter.getValue()));
+                } else if (name.equals("email_lt")) {
+                    predicates.add(new EmailLtPredicate(parameter.getValue()));
+                } else if (name.equals("email_gt")) {
+                    predicates.add(new EmailGtPredicate(parameter.getValue()));
+                } else {
+                    throw BadRequest.INSTANCE;
                 }
-                String field = name.substring(0, name.indexOf("_"));
-                if (!fields.contains(field)) {
-                    fields.add(field);
+            } else if (name.startsWith("status_")) {
+                if (name.equals("status_eq")) {
+                    predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
+                } else if (name.equals("status_neq")) {
+                    predicates.add(new StatusNEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
                 }
-                if (name.startsWith("sex_")) {
-                    if (name.equals("sex_eq")) {
-                        predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
-                    }
-                } else if (name.startsWith("email_")) {
-                    if (name.equals("email_domain")) {
-                        predicates.add(new EmailDomainPredicate(parameter.getValue()));
-                    } else if (name.equals("email_lt")) {
-                        predicates.add(new EmailLtPredicate(parameter.getValue()));
-                    } else if (name.equals("email_gt")) {
-                        predicates.add(new EmailGtPredicate(parameter.getValue()));
-                    } else {
-                        throw new BadRequest();
-                    }
-                } else if (name.startsWith("status_")) {
-                    if (name.equals("status_eq")) {
-                        predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
-                    } else if (name.equals("status_neq")) {
-                        predicates.add(new StatusNEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
-                    }
 
-                } else if (name.startsWith("fname_")) {
-                    if (name.equals("fname_eq")) {
-                        predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue())));
-                    } else if (name.equals("fname_any")) {
-                        String[] fnames = parameter.getValue().split(",");
-                        int[] values = new int[fnames.length];
-                        for (int i = 0; i < fnames.length; i ++) {
-                            values[i] = dictionary.getFname(fnames[i]);
-                        }
-                        predicates.add(new FnameAnyPredicate(values));
-                    } else if (name.equals("fname_null")) {
-                        predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
+            } else if (name.startsWith("fname_")) {
+                if (name.equals("fname_eq")) {
+                    predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue())));
+                } else if (name.equals("fname_any")) {
+                    String[] fnames = parameter.getValue().split(",");
+                    int[] values = new int[fnames.length];
+                    for (int i = 0; i < fnames.length; i++) {
+                        values[i] = dictionary.getFname(fnames[i]);
                     }
-                } else if (name.startsWith("sname_")) {
-                    if (name.equals("sname_eq")) {
-                        predicates.add(new SnameEqPredicate(dictionary.getFname(parameter.getValue())));
-                    } else if (name.equals("sname_starts")) {
-                        predicates.add(new SnameStartsPredicate(parameter.getValue(), dictionary));
-                    } else if (name.equals("sname_null")) {
-                        predicates.add(new SnameNullPredicate(Integer.parseInt(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
+                    predicates.add(new FnameAnyPredicate(values));
+                } else if (name.equals("fname_null")) {
+                    predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("sname_")) {
+                if (name.equals("sname_eq")) {
+                    predicates.add(new SnameEqPredicate(dictionary.getFname(parameter.getValue())));
+                } else if (name.equals("sname_starts")) {
+                    predicates.add(new SnameStartsPredicate(parameter.getValue(), dictionary));
+                } else if (name.equals("sname_null")) {
+                    predicates.add(new SnameNullPredicate(Integer.parseInt(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("phone_")) {
+                if (name.equals("phone_code")) {
+                    predicates.add(new PhoneCodePredicate(parameter.getValue()));
+                } else if (name.equals("phone_null")) {
+                    predicates.add(new PhoneNullPredicate(Integer.parseInt(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("country_")) {
+                if (name.equals("country_eq")) {
+                    byte countryIndex = dictionary.getCountry(parameter.getValue());
+                    predicates.add(new CountryEqPredicate(countryIndex));
+                } else if (name.equals("country_null")) {
+                    predicates.add(new CountryNullPredicate(Integer.parseInt(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("city_")) {
+                if (name.equals("city_eq")) {
+                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
+                } else if (name.equals("city_any")) {
+                    String[] cities = parameter.getValue().split(",");
+                    int[] values = new int[cities.length];
+                    for (int i = 0; i < cities.length; i++) {
+                        values[i] = dictionary.getCity(cities[i]);
                     }
-                } else if (name.startsWith("phone_")) {
-                    if (name.equals("phone_code")) {
-                        predicates.add(new PhoneCodePredicate(parameter.getValue()));
-                    } else if (name.equals("phone_null")) {
-                        predicates.add(new PhoneNullPredicate(Integer.parseInt(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
+                    predicates.add(new CityAnyPredicate(values));
+                } else if (name.equals("city_null")) {
+                    predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("birth_")) {
+                if (name.equals("birth_lt")) {
+                    predicates.add(new BirthLtPredicate(Integer.parseInt(parameter.getValue())));
+                } else if (name.equals("birth_gt")) {
+                    predicates.add(new BirthGtPredicate(Integer.parseInt(parameter.getValue())));
+                } else if (name.equals("birth_year")) {
+                    predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue())));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("interests_")) {
+                if (name.equals("interests_contains")) {
+                    String[] interests = parameter.getValue().split(",");
+                    byte[] values = new byte[interests.length];
+                    for (int i = 0; i < interests.length; i++) {
+                        values[i] = dictionary.getInteres(interests[i]);
                     }
-                } else if (name.startsWith("country_")) {
-                    if (name.equals("country_eq")) {
-                        byte countryIndex = dictionary.getCountry(parameter.getValue());
-                        predicates.add(new CountryEqPredicate(countryIndex));
-                    } else if (name.equals("country_null")) {
-                        predicates.add(new CountryNullPredicate(Integer.parseInt(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
+                    predicates.add(new InterestsContainsPredicate(values));
+                } else if (name.equals("interests_any")) {
+                    String[] interests = parameter.getValue().split(",");
+                    byte[] values = new byte[interests.length];
+                    for (int i = 0; i < interests.length; i++) {
+                        values[i] = dictionary.getInteres(interests[i]);
                     }
-                } else if (name.startsWith("city_")) {
-                    if (name.equals("city_eq")) {
-                        predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
-                    } else if (name.equals("city_any")) {
-                        String[] cities = parameter.getValue().split(",");
-                        int[] values = new int[cities.length];
-                        for (int i = 0; i < cities.length; i ++) {
-                            values[i] = dictionary.getCity(cities[i]);
-                        }
-                        predicates.add(new CityAnyPredicate(values));
-                    } else if (name.equals("city_null")) {
-                        predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
-                    }
-                } else if (name.startsWith("birth_")) {
-                    if (name.equals("birth_lt")) {
-                        predicates.add(new BirthLtPredicate(Integer.parseInt(parameter.getValue())));
-                    } else if (name.equals("birth_gt")) {
-                        predicates.add(new BirthGtPredicate(Integer.parseInt(parameter.getValue())));
-                    }  else if (name.equals("birth_year")) {
-                        predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
-                    }
-                } else if (name.startsWith("interests_")) {
-                    if (name.equals("interests_contains")) {
-                        String[] interests = parameter.getValue().split(",");
-                        byte[] values = new byte[interests.length];
-                        for (int i = 0; i < interests.length; i ++) {
-                            values[i] = dictionary.getInteres(interests[i]);
-                        }
-                        predicates.add(new InterestsContainsPredicate(values));
-                    } else if (name.equals("interests_any")) {
-                        String[] interests = parameter.getValue().split(",");
-                        byte[] values = new byte[interests.length];
-                        for (int i = 0; i < interests.length; i ++) {
-                            values[i] = dictionary.getInteres(interests[i]);
-                        }
-                        predicates.add(new InterestsAnyPredicate(values));
-                    } else {
-                        throw new BadRequest();
-                    }
-                } else if (name.startsWith("likes_")) {
-                    if (name.equals("likes_contains")) {
-                        predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray()));
-                    } else {
-                        throw new BadRequest();
-                    }
-                } else if (name.startsWith("premium_")) {
-                    if (name.equals("premium_now")) {
-                        predicates.add(new PremiumNowPredicate(nowProvider.getNow()));
-                    } else if (name.equals("premium_null")) {
-                        predicates.add(new PremiumNullPredicate(Integer.parseInt(parameter.getValue())));
-                    } else {
-                        throw new BadRequest();
-                    }
+                    predicates.add(new InterestsAnyPredicate(values));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("likes_")) {
+                if (name.equals("likes_contains")) {
+                    predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray()));
+                } else {
+                    throw BadRequest.INSTANCE;
+                }
+            } else if (name.startsWith("premium_")) {
+                if (name.equals("premium_now")) {
+                    predicates.add(new PremiumNowPredicate(nowProvider.getNow()));
+                } else if (name.equals("premium_null")) {
+                    predicates.add(new PremiumNullPredicate(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw new BadRequest();
                 }
-            }
-            List<Account> result = accountService.filter(predicates, limit);
-            if (result.isEmpty()) {
-                responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {
-                byte[] arr = ObjectPool.acquireFormatterArray();
-                responseBuf.writeBytes(ACCOUNTS_LIST_START);
-                for (int i = 0; i < result.size(); i++) {
-                    if (i != 0) {
-                        responseBuf.writeByte(',');
-                    }
-                    accountFormatter.format(result.get(i), fields, responseBuf, arr);
-                }
-                responseBuf.writeBytes(LIST_END);
+                throw BadRequest.INSTANCE;
             }
+        }
+        List<Account> result = accountService.filter(predicates, limit);
+        if (result.isEmpty()) {
+            responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
+        } else {
+            byte[] arr = ObjectPool.acquireFormatterArray();
+            responseBuf.writeBytes(ACCOUNTS_LIST_START);
+            for (int i = 0; i < result.size(); i++) {
+                if (i != 0) {
+                    responseBuf.writeByte(',');
+                }
+                accountFormatter.format(result.get(i), fields, responseBuf, arr);
+            }
+            responseBuf.writeBytes(LIST_END);
+        }
     }
 
     public void group(Map<String,String> allRequestParams, ByteBuf responseBuf) {

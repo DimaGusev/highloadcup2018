@@ -57,7 +57,7 @@ public class NioServer {
             try {
                 while (true) {
                     int count = selector.select();
-                    if (!queue.isEmpty()) {
+                    while (!queue.isEmpty()) {
                         queue.poll().register(selector, SelectionKey.OP_READ);
                     }
                     if (count != 0) {
@@ -101,7 +101,6 @@ public class NioServer {
 
                         }
                     }
-
 
                 }
             } catch (Exception ex) {

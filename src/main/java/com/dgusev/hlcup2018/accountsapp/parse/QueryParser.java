@@ -4,14 +4,12 @@ import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class QueryParser {
 
     private static TLongObjectMap<String> parametersMap = new TLongObjectHashMap<>();
+    private static TLongObjectMap<String> valuesMap = new TLongObjectHashMap<>();
 
     private static final BadRequest BAD_REQUEST = new BadRequest();
 
@@ -67,12 +65,53 @@ public class QueryParser {
             parametersMap.put(hash, value);
         }
 
+        for (int i = -1; i <=50; i++) {
+            String value = Integer.toString(i);
+            long hash = 0;
+            for (int j = 0; j < value.length(); j++) {
+                hash = 31* hash + value.charAt(j);
+            }
+            valuesMap.put(hash, value);
+        }
+
+        for (int i = 1950; i <2020; i++) {
+            String value = Integer.toString(i);
+            long hash = 0;
+            for (int j = 0; j < value.length(); j++) {
+                hash = 31* hash + value.charAt(j);
+            }
+            valuesMap.put(hash, value);
+        }
+        List<String> values2 = Arrays.asList("m",
+                "f",
+                "status",
+                "sex",
+                "interests",
+                "city",
+                "country");
+        for (String value:  values2) {
+            long hash = 0;
+            for (int i = 0; i < value.length(); i++) {
+                hash = 31* hash + value.charAt(i);
+            }
+            valuesMap.put(hash, value);
+        }
+
+
+
     }
 
     private static final ThreadLocal<Map<String, String>> parseMap = new ThreadLocal<Map<String, String>>() {
         @Override
         protected Map<String, String> initialValue() {
             return new HashMap<>(500);
+        }
+    };
+
+    private static final ThreadLocal<byte[]> tmpByteBuffer = new ThreadLocal<byte[]>() {
+        @Override
+        protected byte[] initialValue() {
+            return new byte[500];
         }
     };
 
@@ -197,6 +236,7 @@ public class QueryParser {
 
     public static Map<String, String> parse(byte[] query, int start, int end) {
         Map<String, String> result = parseMap.get();
+        byte[] tmp = tmpByteBuffer.get();
         result.clear();
         if (start >= end) {
             return result;
@@ -212,8 +252,10 @@ public class QueryParser {
             } else {
                 index = next + 1;
             }
-
-            result.put(getField(query, from, eq), decode(query,eq + 1, next));
+            String field = getField(query, from, eq);
+            if (!field.equals("query_id")) {
+                result.put(field, decode(query, eq + 1, next, tmp));
+            }
         }
         return result;
     }
@@ -240,23 +282,30 @@ public class QueryParser {
         }
     }
 
-    private static String decode(byte[] parameter, int from, int to) {
+    private static String decode(byte[] parameter, int from, int to, byte[] tmp) {
         boolean decodingRequired = false;
+        long hash = 0;
         for (int i = from; i < to; i++) {
             byte ch = parameter[i];
             if (ch == '%' || ch == '+') {
                 decodingRequired = true;
                 break;
             }
+            hash = 31* hash + ch;
         }
         if (decodingRequired) {
-            return decodePN(parameter, from, to);
+            return decodePN(parameter, from, to, tmp);
         } else  {
-            return new String(parameter, from, to - from);
+            String value = valuesMap.get(hash);
+            if (value != null) {
+                return value;
+            } else {
+                return new String(parameter, from, to - from);
+            }
         }
     }
 
-    private static String decodePN(byte[] parameter, int from, int to) {
+    private static String decodePN(byte[] parameter, int from, int to, byte[] tmp) {
         int count = 0;
         int index = from;
         while (index != to) {
@@ -268,22 +317,21 @@ public class QueryParser {
                 count++;
             }
         }
-        byte[] arr = new byte[count];
         index = from;
         int i = 0;
         while (index != to) {
             if (parameter[index] == '%') {
-                arr[i++] = (byte) (covert((char)parameter[index + 1]) * 16 + covert((char)parameter[index + 2]));
+                tmp[i++] = (byte) (covert((char)parameter[index + 1]) * 16 + covert((char)parameter[index + 2]));
                 index+=3;
             } else if (parameter[index] == '+') {
-                arr[i++] = ' ';
+                tmp[i++] = ' ';
                 index++;
             } else {
-                arr[i++] = (byte)parameter[index];
+                tmp[i++] = (byte)parameter[index];
                 index++;
             }
         }
-        return new String(arr);
+        return new String(tmp, 0, count);
     }
 
 }

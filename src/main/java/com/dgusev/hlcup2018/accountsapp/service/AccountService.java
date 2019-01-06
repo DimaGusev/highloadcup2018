@@ -15,7 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -23,7 +25,10 @@ public class AccountService {
     public  static final int MAX_ID = 1520000;
     private static final Set<String> ALLOWED_SEX = new HashSet<>(Arrays.asList("m", "f"));
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
-    private static final String EMAIL_REG = "[0-9a-zA-z]+@[0-9a-zA-z]+\\.[0-9a-zA-z]+";
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("[0-9a-zA-z]+@[0-9a-zA-z]+\\\\.[0-9a-zA-z]+");
+    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger(0);
+
+    private static final Comparator<Similarity> SIMILARITY_COMPARATOR = Comparator.comparingDouble((Similarity s) -> s.similarity).reversed();
 
 
     @Autowired
@@ -54,7 +59,7 @@ public class AccountService {
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         if (!indexScans.isEmpty()) {
             Predicate<Account> accountPredicate = andPredicates(predicates);
-            List<Account> result = new ArrayList<>();
+            List<Account> result = ObjectPool.acquireFilterList();
             int count = 0;
             IndexScan indexScan = new CompositeIndexScan(indexScans);
             while (true) {
@@ -74,9 +79,9 @@ public class AccountService {
             }
             return result;
         } else {
-            /*if (true) {
+            if (true) {
                 return Collections.EMPTY_LIST;
-            }*/
+            }
             Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
@@ -84,7 +89,7 @@ public class AccountService {
 
     private List<Account> filterSeqScan(Predicate<Account> predicate, int limit) {
 
-        List<Account> result = new ArrayList<>();
+        List<Account> result = ObjectPool.acquireFilterList();;
         int count = 0;
         if (limit == 0) {
             return new ArrayList<>();
@@ -106,9 +111,9 @@ public class AccountService {
         if (limit <= 0) {
             throw new BadRequest();
         }
-        /*if (true) {
+        if (true) {
             return Collections.EMPTY_LIST;
-        }*/
+        }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
         TLongObjectMap<List<String>> groupNameMap = new TLongObjectHashMap<>();
@@ -291,9 +296,9 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
-        /*if (true) {
+        if (true) {
             return Collections.EMPTY_LIST;
-        }*/
+        }
         predicates.add(new SexEqPredicate(!account.sex));
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
@@ -503,9 +508,9 @@ public class AccountService {
                     suggestResult.add(similarity);
                 }
             }
-            suggestResult.sort(Comparator.comparingDouble((Similarity s) -> s.similarity).reversed());
+            suggestResult.sort(SIMILARITY_COMPARATOR);
             result = ObjectPool.acquireSuggestList();
-            Set<Integer> likersSet = new HashSet<>();
+            TIntSet likersSet = new TIntHashSet();
             for (int i = 0; i < suggestResult.size(); i++) {
                 Similarity s = suggestResult.get(i);
                 for (int j = 0; j < s.account.likes.length; j++) {
@@ -656,7 +661,7 @@ public class AccountService {
         if (!ALLOWED_STATUS.contains(accountDTO.status)) {
             throw new BadRequest();
         }
-        if (!accountDTO.email.matches(EMAIL_REG)) {
+        if (!accountDTO.email.contains("@")) {
             throw new BadRequest();
         }
         if (accountIdMap[accountDTO.id] != null) {
@@ -695,7 +700,7 @@ public class AccountService {
         if (oldAcc == null) {
             throw new NotFoundRequest();
         }
-        if (accountDTO.email != null && !accountDTO.email.matches(EMAIL_REG)) {
+        if (accountDTO.email != null && !accountDTO.email.contains("@")) {
             throw new BadRequest();
         }
         if (accountDTO.status != null) {
@@ -776,39 +781,47 @@ public class AccountService {
 
 
     public synchronized void like(List<LikeRequest> likeRequests) {
-        for (LikeRequest likeRequest: likeRequests) {
-            if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || accountIdMap[likeRequest.likee] == null || accountIdMap[likeRequest.liker] == null) {
-                throw new BadRequest();
-            }
-        }
-
-        for (LikeRequest likeRequest: likeRequests) {
-            Account account = accountIdMap[likeRequest.liker];
-            long like =0;
-            like = (long)likeRequest.likee << 32;
-            like = (likeRequest.ts | like) ;
-            long[] oldArray = account.likes;
-            if (oldArray == null) {
-                account.likes = new long[1];
-                account.likes[0] = like;
-            } else {
-                account.likes = new long[oldArray.length + 1];
-                System.arraycopy(oldArray, 0, account.likes, 0, oldArray.length);
-                account.likes[oldArray.length] = like;
-            }
-            Arrays.sort(account.likes);
-            reverse(account.likes);
-        }
-        if (LAST_UPDATE_TIMESTAMP == 0) {
-            synchronized (this) {
-                if (LAST_UPDATE_TIMESTAMP == 0) {
-                    LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
-                    new Thread(new IndexUpdater()).start();
+        try {
+            for (int i = 0; i < likeRequests.size(); i++) {
+                LikeRequest likeRequest = likeRequests.get(i);
+                if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || accountIdMap[likeRequest.likee] == null || accountIdMap[likeRequest.liker] == null) {
+                    throw new BadRequest();
                 }
             }
+            for (int i = 0; i < likeRequests.size(); i++) {
+                LikeRequest likeRequest = likeRequests.get(i);
+                Account account = accountIdMap[likeRequest.liker];
+                long like = 0;
+                like = (long) likeRequest.likee << 32;
+                like = (likeRequest.ts | like);
+                int count = ATOMIC_INTEGER.incrementAndGet();
+                if (count % 10000 == 0) {
+                    System.out.println(count);
+                }
+                /*long[] oldArray = account.likes;
+                if (oldArray == null) {
+                    account.likes = new long[1];
+                    account.likes[0] = like;
+                } else {
+                    account.likes = new long[oldArray.length + 1];
+                    System.arraycopy(oldArray, 0, account.likes, 0, oldArray.length);
+                    account.likes[oldArray.length] = like;
+                }
+                Arrays.sort(account.likes);
+                reverse(account.likes);*/
+            }
+            if (LAST_UPDATE_TIMESTAMP == 0) {
+                synchronized (this) {
+                    if (LAST_UPDATE_TIMESTAMP == 0) {
+                        LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
+                        new Thread(new IndexUpdater()).start();
+                    }
+                }
+            }
+            LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
+        } finally {
+            likeRequests.forEach(ObjectPool::releaseLikeRequest);
         }
-        LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
-
     }
 
     public Account findById(int id) {
@@ -826,7 +839,7 @@ public class AccountService {
 
 
     private List<IndexScan> getAvailableIndexScan(List<Predicate<Account>> predicates) {
-        List<IndexScan> indexScans = new ArrayList<>();
+        List<IndexScan> indexScans = ObjectPool.acquireIndexScanList();
         Iterator<Predicate<Account>> iterator = predicates.iterator();
         while (iterator.hasNext()) {
             Predicate<Account> predicate = iterator.next();
@@ -952,9 +965,9 @@ public class AccountService {
 
         @Override
         public void run() {
-            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 2000){
+            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 1000){
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -962,7 +975,7 @@ public class AccountService {
 
             try {
                 System.out.println("Start update indexes " + new Date());
-                indexHolder.init(accountList, size);
+                //indexHolder.init(accountList, size);
                 System.gc();
                 System.out.println("End update indexes " + new Date());
             } catch (Exception ex) {
