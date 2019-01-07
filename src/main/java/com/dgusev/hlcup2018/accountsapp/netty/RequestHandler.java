@@ -3,7 +3,10 @@ package com.dgusev.hlcup2018.accountsapp.netty;
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import com.dgusev.hlcup2018.accountsapp.model.NotFoundRequest;
 import com.dgusev.hlcup2018.accountsapp.parse.QueryParser;
+import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.rest.AccountsController;
+import gnu.trove.list.TIntList;
+import gnu.trove.list.array.TIntArrayList;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.util.ReferenceCountUtil;
@@ -27,6 +30,8 @@ public class RequestHandler {
     private static final byte[] OK_START = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: ".getBytes();
     private static final byte[] HEADERS_TERMINATOR = "\r\n\r\n".getBytes();
 
+    public static final TIntList INT_LIST = new TIntArrayList(23000);
+
 
     private static final PooledByteBufAllocator POOLED_BYTE_BUF_ALLOCATOR = new PooledByteBufAllocator();
 
@@ -34,22 +39,48 @@ public class RequestHandler {
     private AccountsController accountsController;
 
     public void handleRead(SelectionKey selectionKey, byte[] buf, int length, ByteBuffer byteBuffer) throws IOException {
+        if (length ==0) {
+            System.out.println("1Length = 0");
+        }
         SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
         ByteBuf tmpByteBuffer = null;
         try {
-            ByteBuf fragmentByteBuf = (ByteBuf) selectionKey.attachment();
+            /*ByteBuf fragmentByteBuf = (ByteBuf) selectionKey.attachment();
             if (fragmentByteBuf != null) {
                 fragmentByteBuf.writeBytes(buf, 0, length);
                 int newLength = fragmentByteBuf.writerIndex();
                 fragmentByteBuf.readerIndex(0);
                 fragmentByteBuf.readBytes(buf, 0, newLength);
                 length = newLength;
+                if (length ==0) {
+                    System.out.println("2Length = 0");
+                }
                 ReferenceCountUtil.release(fragmentByteBuf);
                 selectionKey.attach(null);
             }
             if ((buf[0] == 'G' && (buf[length - 1] != '\n' || buf[length - 2] != '\r' || buf[length - 3] != '\n' || buf[length - 4] != '\r')) || (buf[0] == 'P' && isFragmentedPost(buf, length))) {
                 ByteBuf fragment = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(5000);
+                fragment.clear();
                 fragment.writeBytes(buf, 0, length);
+                selectionKey.attach(fragment);
+                return;
+            }*/
+            ByteBuffer fragmentByteBuf = (ByteBuffer) selectionKey.attachment();
+            if (fragmentByteBuf != null) {
+                fragmentByteBuf.put(buf, 0, length);
+                int newLength = fragmentByteBuf.position();
+                fragmentByteBuf.flip();
+                fragmentByteBuf.get(buf, 0, newLength);
+                length = newLength;
+                if (length ==0) {
+                    System.out.println("2Length = 0");
+                }
+                ObjectPool.releaseBuffer(fragmentByteBuf);
+                selectionKey.attach(null);
+            }
+            if ((buf[0] == 'G' && (buf[length - 1] != '\n' || buf[length - 2] != '\r' || buf[length - 3] != '\n' || buf[length - 4] != '\r')) || (buf[0] == 'P' && isFragmentedPost(buf, length))) {
+                ByteBuffer fragment = ObjectPool.acquireBuffer();
+                fragment.put(buf, 0, length);
                 selectionKey.attach(fragment);
                 return;
             }
@@ -125,7 +156,7 @@ public class RequestHandler {
                 endIndex++;
                 if (equals(buf, queryStart, endPathIndex, "/accounts/new/")) {
                     accountsController.create(buf, pointer, endIndex);
-                    writeResponse(socketChannel, byteBuffer, RESPONSE_201);
+                    write201Response(socketChannel, byteBuffer, buf, length);
                 } else if (equals(buf, queryStart, endPathIndex, "/accounts/likes/")) {
                     accountsController.like(buf, pointer, endIndex);
                     writeResponse(socketChannel, byteBuffer, RESPONSE_202);
@@ -141,17 +172,28 @@ public class RequestHandler {
                     writeResponse(socketChannel, byteBuffer, RESPONSE_202);
                 }
             } else {
+                System.out.println("Bad first byte " + (byte)buf[0] + " with length=" + length + " |" + new String(buf, 0, length));
                 byteBuffer.put(BAD_REQUEST);
                 byteBuffer.flip();
                 socketChannel.write(byteBuffer);
             }
-        } catch (BadRequest | NumberFormatException badRequest) {
+        } catch (BadRequest badRequest) {
+            writeResponse(socketChannel, byteBuffer, BAD_REQUEST);
+        } catch (NumberFormatException nfex) {
+            if (buf[0] == 'P') {
+                System.out.println("1" + new String(buf, 0, length));
+            }
             writeResponse(socketChannel, byteBuffer, BAD_REQUEST);
         } catch (NotFoundRequest notFoundRequest) {
             writeResponse(socketChannel, byteBuffer, NOT_FOUND);
         } catch (Exception ex) {
             //System.out.println(request.content().toString(StandardCharsets.UTF_8));
             //ex.printStackTrace();
+            if (buf[0] == 'P') {
+                ex.printStackTrace();
+                System.out.println("2" + new String(buf, 0, length));
+
+            }
             writeResponse(socketChannel, byteBuffer, BAD_REQUEST);
         } finally {
             if (tmpByteBuffer != null) {
@@ -165,6 +207,48 @@ public class RequestHandler {
     private void writeResponse(SocketChannel socketChannel, ByteBuffer byteBuffer, byte[] response) throws IOException {
         byteBuffer.clear();
         byteBuffer.put(response);
+        byteBuffer.flip();
+        socketChannel.write(byteBuffer);
+    }
+
+    private void write201Response(SocketChannel socketChannel, ByteBuffer byteBuffer, byte[] buf, int length) throws IOException {
+        String contentLengthHeader = "query_id=";
+        int position = 0;
+        char first = contentLengthHeader.charAt(0);
+        int partSize = contentLengthHeader.length();
+        int q = -1;
+        while (position < length) {
+            if (buf[position] == first) {
+                if (position + partSize > length) {
+                    break;
+                } else {
+                    int partOffset = 0;
+                    while ((partOffset < partSize) && buf[position] == contentLengthHeader.charAt(partOffset)) {
+                        position++;
+                        partOffset++;
+                    }
+                    if (partOffset == partSize) {
+                        if (q != -1) {
+                            System.out.println("Two query_id!");
+                        }
+                        try {
+                            q = decodeInt(buf, position, indexOf(buf, position, length, ' ') - position);
+                        } catch (Exception ex) {
+                            System.out.println("Cannot read query id");
+                        }
+                    }
+                }
+            } else {
+                position++;
+            }
+        }
+        if (q == -1) {
+            System.out.println("There is no query_id");
+        } else {
+            INT_LIST.add(q);
+        }
+        byteBuffer.clear();
+        byteBuffer.put(RESPONSE_201);
         byteBuffer.flip();
         socketChannel.write(byteBuffer);
     }
@@ -263,16 +347,32 @@ public class RequestHandler {
     }
 
     private boolean isFragmentedPost(byte[] buf, int length) {
-        int contentLength = readContentLength(buf, length);
+        int contentLength = 0;
+        try {
+            contentLength = readContentLength(buf, length);
+        } catch (Exception ex) {
+            System.out.println("Cannot read content length: " + new String(buf, 0, length));
+            if (ex instanceof NotFoundRequest) {
+                throw  ex;
+            } else {
+                throw new RuntimeException(ex);
+            }
+        }
         if (contentLength == -1) {
             return true;
+        }
+        if (contentLength == 0) {
+            return false;
         }
         int pointer = 0;
         while (!(buf[pointer] == '\n' && buf[pointer - 1] == '\r' && buf[pointer - 2] == '\n' && buf[pointer - 3] == '\r')) {
             pointer++;
         }
         pointer++;
-        if (length - pointer < contentLength) {
+        if (length - pointer - 2 > contentLength ) {
+            System.out.println("Error, more data than needed, actual=" + (length - pointer) + " ,header=" + contentLength + ": " + new String(buf, 0, length));
+        }
+        if (length - pointer - 2  < contentLength ) {
             return true;
         }
         return false;

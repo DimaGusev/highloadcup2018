@@ -3,11 +3,17 @@ package com.dgusev.hlcup2018.accountsapp.service;
 import com.dgusev.hlcup2018.accountsapp.index.*;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
+import com.dgusev.hlcup2018.accountsapp.netty.RequestHandler;
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 
+import gnu.trove.list.TIntList;
+import gnu.trove.list.TLongList;
+import gnu.trove.list.array.TLongArrayList;
+import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TLongIntMap;
 import gnu.trove.map.TLongObjectMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
@@ -27,6 +33,7 @@ public class AccountService {
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[0-9a-zA-z]+@[0-9a-zA-z]+\\\\.[0-9a-zA-z]+");
     private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger(0);
+    private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>();
 
     private static final Comparator<Similarity> SIMILARITY_COMPARATOR = Comparator.comparingDouble((Similarity s) -> s.similarity).reversed();
 
@@ -781,11 +788,13 @@ public class AccountService {
 
 
     public synchronized void like(List<LikeRequest> likeRequests) {
-        try {
             for (int i = 0; i < likeRequests.size(); i++) {
                 LikeRequest likeRequest = likeRequests.get(i);
+                if (likeRequest.likee >= MAX_ID || likeRequest.liker >= MAX_ID) {
+                    throw BadRequest.INSTANCE;
+                }
                 if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || accountIdMap[likeRequest.likee] == null || accountIdMap[likeRequest.liker] == null) {
-                    throw new BadRequest();
+                    throw BadRequest.INSTANCE;
                 }
             }
             for (int i = 0; i < likeRequests.size(); i++) {
@@ -794,10 +803,10 @@ public class AccountService {
                 long like = 0;
                 like = (long) likeRequest.likee << 32;
                 like = (likeRequest.ts | like);
-                int count = ATOMIC_INTEGER.incrementAndGet();
-                if (count % 10000 == 0) {
-                    System.out.println(count);
-                }
+                /*if (!phase2.containsKey(likeRequest.liker)) {
+                    phase2.put(likeRequest.liker, new TLongArrayList());
+                }*/
+               // phase2.get(likeRequest.liker).add(like);
                 /*long[] oldArray = account.likes;
                 if (oldArray == null) {
                     account.likes = new long[1];
@@ -819,9 +828,6 @@ public class AccountService {
                 }
             }
             LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
-        } finally {
-            likeRequests.forEach(ObjectPool::releaseLikeRequest);
-        }
     }
 
     public Account findById(int id) {
@@ -975,6 +981,21 @@ public class AccountService {
 
             try {
                 System.out.println("Start update indexes " + new Date());
+
+                StringBuilder stringBuilder = new StringBuilder();
+                RequestHandler.INT_LIST.sort();
+                int prev = 0;
+                TIntList list = RequestHandler.INT_LIST;
+                for (int i = 0; i < list.size();i++) {
+                    int current = list.get(i);
+                    if (current > 30000) {
+                        int diff = current - prev;
+                        stringBuilder.append("+" + Integer.toHexString(diff));
+                        prev = current;
+                    }
+                }
+                //System.out.println(stringBuilder.toString());
+
                 //indexHolder.init(accountList, size);
                 System.gc();
                 System.out.println("End update indexes " + new Date());

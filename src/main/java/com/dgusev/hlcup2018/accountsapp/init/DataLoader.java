@@ -5,6 +5,7 @@ import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.netty.NettyServer;
 import com.dgusev.hlcup2018.accountsapp.netty.NioServer;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
+import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.service.AccountConverter;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -128,7 +129,9 @@ public class DataLoader implements CommandLineRunner {
         accountService.rearrange();
         System.out.println(statistics);
         accountService.finishLoad();
+        ObjectPool.init();
         System.out.println("Indexes created " + new Date());
+
         new Thread(() -> {
             try {
                 //nettyServer.start();

@@ -1,5 +1,6 @@
 package com.dgusev.hlcup2018.accountsapp.netty;
 
+import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import io.netty.util.ReferenceCountUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,8 @@ import java.nio.channels.*;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -44,7 +47,7 @@ public class NioServer {
     public class Worker implements Runnable {
 
         private Selector selector;
-        private Queue<SocketChannel> queue = new ArrayDeque<>(20);
+        private Queue<SocketChannel> queue = new ConcurrentLinkedQueue<>();
 
         public Worker() throws Exception {
             selector = Selector.open();
@@ -52,11 +55,15 @@ public class NioServer {
 
         @Override
         public void run() {
-            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10000);
+            ByteBuffer[] byteBuffers = new ByteBuffer[10];
+            for (int i = 0; i < 10; i++) {
+                byteBuffers[i] = ByteBuffer.allocateDirect(10000);
+            }
+            int counter = 0;
             byte[] buf = new byte[100000];
             try {
                 while (true) {
-                    int count = selector.select();
+                    int count = selector.select(10);
                     while (!queue.isEmpty()) {
                         queue.poll().register(selector, SelectionKey.OP_READ);
                     }
@@ -67,27 +74,29 @@ public class NioServer {
                             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
                             try {
                                 if (selectionKey.isReadable()) {
+                                    ByteBuffer byteBuffer = byteBuffers[counter++ % 10];
                                     byteBuffer.clear();
                                     int cnt = socketChannel.read(byteBuffer);
                                     if (cnt == -1) {
                                         if (selectionKey.attachment() != null) {
-                                            ReferenceCountUtil.release(selectionKey.attachment());
+                                            ObjectPool.releaseBuffer((ByteBuffer) selectionKey.attachment());
+                                            //ReferenceCountUtil.release(selectionKey.attachment());
                                         }
                                         socketChannel.close();
                                         selectionKey.cancel();
                                         continue;
-                                    } else {
+                                    } else if (cnt > 0) {
                                         byteBuffer.flip();
                                         byteBuffer.get(buf, 0, cnt);
                                         byteBuffer.clear();
                                         requestHandler.handleRead(selectionKey, buf, cnt, byteBuffer);
-
                                     }
                                 }
                             } catch (Exception ex) {
                                 try {
                                     if (selectionKey.attachment() != null) {
-                                        ReferenceCountUtil.release(selectionKey.attachment());
+                                       // ReferenceCountUtil.release(selectionKey.attachment());
+                                        ObjectPool.releaseBuffer((ByteBuffer) selectionKey.attachment());
                                     }
                                     selectionKey.cancel();
                                     socketChannel.close();

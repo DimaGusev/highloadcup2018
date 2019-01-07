@@ -6,6 +6,7 @@ import com.dgusev.hlcup2018.accountsapp.model.LikeRequest;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import gnu.trove.set.hash.TIntHashSet;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,17 @@ public class ObjectPool {
         }
     };
 
+    private static ThreadLocal<ArrayDeque<ByteBuffer>> buffersPool = new ThreadLocal<ArrayDeque<ByteBuffer>>() {
+        @Override
+        protected ArrayDeque<ByteBuffer> initialValue() {
+            ArrayDeque<ByteBuffer> byteBuffers =  new ArrayDeque<>(100);
+            for (int i = 0; i < 100; i++) {
+                byteBuffers.addLast(ByteBuffer.allocateDirect(10000));
+            }
+            return byteBuffers;
+        }
+    };
+
     private static ThreadLocal<ArrayDeque<AccountService.Similarity>> similarityPool = new ThreadLocal<ArrayDeque<AccountService.Similarity>>() {
         @Override
         protected ArrayDeque<AccountService.Similarity> initialValue() {
@@ -31,15 +43,11 @@ public class ObjectPool {
         }
     };
 
-    private static ThreadLocal<ArrayDeque<LikeRequest>> likeRequestPool = new ThreadLocal<ArrayDeque<LikeRequest>>() {
-        @Override
-        protected ArrayDeque<LikeRequest> initialValue() {
-            ArrayDeque<LikeRequest> arrayDeque =  new ArrayDeque<>(200);
-            for (int i = 0; i < 200; i++) {
-                arrayDeque.add(new LikeRequest());
+    private static ArrayDeque<LikeRequest> likeRequestPool = new ArrayDeque<LikeRequest>();
+    static {
+            for (int i = 0; i < 720000; i++) {
+   //             likeRequestPool.add(new LikeRequest());
             }
-            return arrayDeque;
-        }
     };
 
     private static ThreadLocal<ArrayDeque<List<AccountService.Similarity>>> listSimilarityPool = new ThreadLocal<ArrayDeque<List<AccountService.Similarity>>>() {
@@ -119,6 +127,21 @@ public class ObjectPool {
         groupsPools.get().addLast(group);
     }
 
+    public static ByteBuffer acquireBuffer() {
+        ArrayDeque<ByteBuffer> local = buffersPool.get();
+        ByteBuffer buffer = local.pollFirst();
+        if (buffer != null) {
+            buffer.clear();
+        } else {
+            buffer = ByteBuffer.allocateDirect(5000);
+        }
+        return buffer;
+    }
+
+    public static void releaseBuffer(ByteBuffer byteBuffer) {
+        buffersPool.get().addLast(byteBuffer);
+    }
+
     public static List<Account> acquireRecommendList() {
         ArrayDeque<List<Account>> local = recommendListPools.get();
         List<Account> group = local.pollFirst();
@@ -168,20 +191,12 @@ public class ObjectPool {
     }
 
     public static LikeRequest acquireLikeRequest() {
-        ArrayDeque<LikeRequest> local = likeRequestPool.get();
-        LikeRequest likeRequest = local.pollFirst();
+        LikeRequest likeRequest = likeRequestPool.pollFirst();
         if (likeRequest != null) {
-            likeRequest.ts =0;
-            likeRequest.likee=0;
-            likeRequest.liker=0;
             return likeRequest;
         } else {
             return new LikeRequest();
         }
-    }
-
-    public static void releaseLikeRequest(LikeRequest likeRequest) {
-        likeRequestPool.get().addLast(likeRequest);
     }
 
     public static List<Account> acquireSuggestList() {
@@ -231,6 +246,9 @@ public class ObjectPool {
         list.clear();
         return list;
     }
+
+    public static void init() {}
+
 
 
 }
