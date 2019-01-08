@@ -87,6 +87,9 @@ public class AccountService {
             }
             return result;
         } else {
+          //  if (true) {
+         //       return Collections.EMPTY_LIST;
+         //   }
             Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
@@ -116,6 +119,9 @@ public class AccountService {
         if (limit <= 0) {
             throw new BadRequest();
         }
+     //   if (true) {
+     //       return Collections.EMPTY_LIST;
+      //  }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
         TLongObjectMap<List<String>> groupNameMap = new TLongObjectHashMap<>();
@@ -298,6 +304,9 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
+     //   if (true) {
+      //      return Collections.EMPTY_LIST;
+      //  }
         predicates.add(new SexEqPredicate(!account.sex));
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
@@ -963,9 +972,9 @@ public class AccountService {
 
         @Override
         public void run() {
-            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 1000){
+            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 500){
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(500);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }

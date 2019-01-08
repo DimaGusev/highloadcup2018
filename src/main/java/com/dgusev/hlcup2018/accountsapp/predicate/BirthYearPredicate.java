@@ -15,8 +15,8 @@ public class BirthYearPredicate implements Predicate<Account> {
             Calendar calendar = Calendar.getInstance();
             calendar.set(Calendar.YEAR, i);
             calendar.set(Calendar.MONTH, 0);
-            calendar.set(Calendar.DAY_OF_MONTH, 0);
-            calendar.set(Calendar.HOUR, 0);
+            calendar.set(Calendar.DAY_OF_MONTH, 1);
+            calendar.set(Calendar.HOUR_OF_DAY, 0);
             calendar.set(Calendar.MINUTE, 0);
             calendar.set(Calendar.SECOND, 0);
             calendar.set(Calendar.MILLISECOND, 0);
@@ -36,7 +36,7 @@ public class BirthYearPredicate implements Predicate<Account> {
         return calculateYear(Account.birth) == year;
     }
 
-    private static int calculateYear(int timestamp) {
+    public static int calculateYear(int timestamp) {
         int result = Arrays.binarySearch(YEARS_ARRAY, timestamp);
         if (result >= 0) {
             return 1950 + result;

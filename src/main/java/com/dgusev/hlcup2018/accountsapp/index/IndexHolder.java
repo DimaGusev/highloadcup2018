@@ -3,6 +3,7 @@ package com.dgusev.hlcup2018.accountsapp.index;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import com.dgusev.hlcup2018.accountsapp.predicate.BirthYearPredicate;
 import com.dgusev.hlcup2018.accountsapp.predicate.JoinedYearPredicate;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import gnu.trove.impl.Constants;
@@ -22,6 +23,10 @@ import java.util.concurrent.Executors;
 
 @Component
 public class IndexHolder {
+
+    private static TLongObjectMap<String> domainsMap = new TLongObjectHashMap<>();
+    private static TLongObjectMap<String> phoneCodeMap = new TLongObjectHashMap<>();
+
 
     private static int[] LIKE_TMP_ARRAY = new int[AccountService.MAX_ID];
 
@@ -78,7 +83,7 @@ public class IndexHolder {
                 premiumIndex = null;
                 emailDomainIndex = null;
                 TByteIntMap tmpCountryIndex = new TByteIntHashMap();
-                Map<String, Integer> tmpEmailDomainIndex = new HashMap<>();
+                TObjectIntMap<String> tmpEmailDomainIndex = new TObjectIntHashMap<>();
                 int notNullCountryCounter = 0;
                 int nullCountryCounter = 0;
                 int notNullCityCounter = 0;
@@ -124,7 +129,12 @@ public class IndexHolder {
                         }
                     }
                     int at = account.email.lastIndexOf('@');
-                    String domain = account.email.substring(at + 1);
+                    long hash = calculateHash(account.email, at + 1 , account.email.length());
+                    String domain = domainsMap.get(hash);
+                    if (domain == null) {
+                        domain = account.email.substring(at + 1);
+                        domainsMap.put(hash, domain);
+                    }
                     if (!tmpEmailDomainIndex.containsKey(domain)) {
                         tmpEmailDomainIndex.put(domain,  1);
                     } else  {
@@ -184,9 +194,9 @@ public class IndexHolder {
                     tmpFnameIndex.put(entry, 0);
                 }
                 emailDomainIndex = new HashMap<>();
-                for (Map.Entry<String, Integer> entry: tmpEmailDomainIndex.entrySet()) {
-                    emailDomainIndex.put(entry.getKey(), new int[entry.getValue()]);
-                    tmpEmailDomainIndex.put(entry.getKey(), 0);
+                for (Object entry: tmpEmailDomainIndex.keys()) {
+                    emailDomainIndex.put((String)entry, new int[tmpEmailDomainIndex.get(entry)]);
+                    tmpEmailDomainIndex.put((String) entry, 0);
                 }
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
@@ -211,7 +221,12 @@ public class IndexHolder {
                         }
                     }
                     int at = account.email.lastIndexOf('@');
-                    String domain = account.email.substring(at + 1);
+                    long hash = calculateHash(account.email, at + 1 , account.email.length());
+                    String domain = domainsMap.get(hash);
+                    if (domain == null) {
+                        domain = account.email.substring(at + 1);
+                        domainsMap.put(hash, domain);
+                    }
                     emailDomainIndex.get(domain)[tmpEmailDomainIndex.get(domain)] = account.id;
                     tmpEmailDomainIndex.put(domain, tmpEmailDomainIndex.get(domain) + 1);
                     if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
@@ -271,7 +286,8 @@ public class IndexHolder {
                         }
                     }
                     tmpSexIndex.put(account.sex ? (byte)1 : 0, tmpSexIndex.get(account.sex ? (byte)1 : 0) + 1);
-                    int year = new Date(account.birth * 1000L).getYear() + 1900;
+
+                    int year = BirthYearPredicate.calculateYear( account.birth);
                     int count = tmpBirthYearIndex.get(year);
                     if (count == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
                         tmpBirthYearIndex.put(year, 1);
@@ -305,7 +321,12 @@ public class IndexHolder {
                         if (open != -1) {
                             int close = account.phone.indexOf(')', open + 1);
                             if (close != -1) {
-                                String code = account.phone.substring(open + 1, close);
+                                long hash = calculateHash(account.phone, open + 1, close);
+                                String code = phoneCodeMap.get(hash);
+                                if (code == null) {
+                                    code = account.phone.substring(open + 1, close);
+                                    phoneCodeMap.put(hash, code);
+                                }
                                 if (!tmpPhoneCodeIndex.containsKey(code)) {
                                     tmpPhoneCodeIndex.put(code, 1);
                                 } else  {
@@ -379,7 +400,7 @@ public class IndexHolder {
                     } else {
                         nullSname[nullSnameCounter++] = account.id;
                     }
-                    int year = new Date(account.birth * 1000L).getYear() + 1900;
+                    int year = BirthYearPredicate.calculateYear( account.birth);
                     birthYearIndex.get(year)[tmpBirthYearIndex.get(year)] = account.id;
                     tmpBirthYearIndex.put(year, tmpBirthYearIndex.get(year) + 1);
                     if (account.phone != null) {
@@ -388,7 +409,12 @@ public class IndexHolder {
                         if (open != -1) {
                             int close = account.phone.indexOf(')', open + 1);
                             if (close != -1) {
-                                String code = account.phone.substring(open + 1, close);
+                                long hash = calculateHash(account.phone, open + 1, close);
+                                String code = phoneCodeMap.get(hash);
+                                if (code == null) {
+                                    code = account.phone.substring(open + 1, close);
+                                    phoneCodeMap.put(hash, code);
+                                }
                                 phoneCodeIndex.get(code)[tmpPhoneCodeIndex.get(code)] = account.id;
                                 tmpPhoneCodeIndex.put(code, tmpPhoneCodeIndex.get(code) + 1);
                             }
@@ -471,10 +497,10 @@ public class IndexHolder {
         };
         System.out.println("Start tasks " + new Date());
         long t1 = System.currentTimeMillis();
-        //executorService.submit(task1).get();
-        //executorService.submit(task2).get();
-        //executorService.submit(task3).get();
-        executorService.invokeAll(Arrays.asList(task1, task2, task3));
+        executorService.submit(task1).get();
+        executorService.submit(task2).get();
+        executorService.submit(task3).get();
+        //executorService.invokeAll(Arrays.asList(task1, task2, task3));
         long t2 = System.currentTimeMillis();
         System.out.println("Finish tasks " + new Date() + " took " + (t2-t1));
     }
@@ -484,6 +510,14 @@ public class IndexHolder {
         for (int i = 0; i < AccountService.MAX_ID; i++) {
             LIKE_TMP_ARRAY[i] = 0;
         }
+    }
+
+    private long calculateHash(String values, int from, int to) {
+        long hash = 0;
+        for (int i = from; i < to; i++) {
+            hash = 31* hash + values.charAt(i);
+        }
+        return hash;
     }
 
 }
