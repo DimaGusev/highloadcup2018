@@ -47,7 +47,7 @@ public class NioServer {
     public class Worker implements Runnable {
 
         private Selector selector;
-        private Queue<SocketChannel> queue = new ConcurrentLinkedQueue<>();
+        private Queue<SocketChannel> queue = new ArrayDeque<>(100);
 
         public Worker() throws Exception {
             selector = Selector.open();
@@ -55,15 +55,15 @@ public class NioServer {
 
         @Override
         public void run() {
-            ByteBuffer[] byteBuffers = new ByteBuffer[10];
-            for (int i = 0; i < 10; i++) {
+            ByteBuffer[] byteBuffers = new ByteBuffer[5];
+            for (int i = 0; i < 5; i++) {
                 byteBuffers[i] = ByteBuffer.allocateDirect(10000);
             }
             int counter = 0;
             byte[] buf = new byte[100000];
             try {
                 while (true) {
-                    int count = selector.select(10);
+                    int count = selector.select();
                     while (!queue.isEmpty()) {
                         queue.poll().register(selector, SelectionKey.OP_READ);
                     }
@@ -74,7 +74,7 @@ public class NioServer {
                             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
                             try {
                                 if (selectionKey.isReadable()) {
-                                    ByteBuffer byteBuffer = byteBuffers[counter++ % 10];
+                                    ByteBuffer byteBuffer = byteBuffers[counter++ % 5];
                                     byteBuffer.clear();
                                     int cnt = socketChannel.read(byteBuffer);
                                     if (cnt == -1) {

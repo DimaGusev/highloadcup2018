@@ -30,8 +30,6 @@ public class RequestHandler {
     private static final byte[] OK_START = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: ".getBytes();
     private static final byte[] HEADERS_TERMINATOR = "\r\n\r\n".getBytes();
 
-    public static final TIntList INT_LIST = new TIntArrayList(23000);
-
 
     private static final PooledByteBufAllocator POOLED_BYTE_BUF_ALLOCATOR = new PooledByteBufAllocator();
 
@@ -244,8 +242,6 @@ public class RequestHandler {
         }
         if (q == -1) {
             System.out.println("There is no query_id");
-        } else {
-            INT_LIST.add(q);
         }
         byteBuffer.clear();
         byteBuffer.put(RESPONSE_201);

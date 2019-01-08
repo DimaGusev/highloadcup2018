@@ -15,6 +15,7 @@ import gnu.trove.map.TLongIntMap;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
+import gnu.trove.procedure.TIntObjectProcedure;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,7 +34,7 @@ public class AccountService {
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[0-9a-zA-z]+@[0-9a-zA-z]+\\\\.[0-9a-zA-z]+");
     private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger(0);
-    private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>();
+    private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>(180000, 1);
 
     private static final Comparator<Similarity> SIMILARITY_COMPARATOR = Comparator.comparingDouble((Similarity s) -> s.similarity).reversed();
 
@@ -86,9 +87,6 @@ public class AccountService {
             }
             return result;
         } else {
-            if (true) {
-                return Collections.EMPTY_LIST;
-            }
             Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
@@ -117,9 +115,6 @@ public class AccountService {
     public List<Group> group(List<String> keys, List<Predicate<Account>> predicates, int order, int limit) {
         if (limit <= 0) {
             throw new BadRequest();
-        }
-        if (true) {
-            return Collections.EMPTY_LIST;
         }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
@@ -303,9 +298,6 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
-        if (true) {
-            return Collections.EMPTY_LIST;
-        }
         predicates.add(new SexEqPredicate(!account.sex));
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
@@ -474,7 +466,7 @@ public class AccountService {
             int lid = (int)(like >> 32);
             boolean newLike = myLikes.add(lid);
             if (newLike) {
-                int[] likers = indexHolder.likesIndex.get(lid);
+                int[] likers = indexHolder.likesIndex[lid];
                 if (likers != null) {
                     for (int l : likers) {
                         suggests.add(l);
@@ -803,10 +795,10 @@ public class AccountService {
                 long like = 0;
                 like = (long) likeRequest.likee << 32;
                 like = (likeRequest.ts | like);
-                /*if (!phase2.containsKey(likeRequest.liker)) {
-                    phase2.put(likeRequest.liker, new TLongArrayList());
-                }*/
-               // phase2.get(likeRequest.liker).add(like);
+                if (!phase2.containsKey(likeRequest.liker)) {
+                    phase2.put(likeRequest.liker, ObjectPool.acquireLikeList());
+                }
+                phase2.get(likeRequest.liker).add(like);
                 /*long[] oldArray = account.likes;
                 if (oldArray == null) {
                     account.likes = new long[1];
@@ -837,10 +829,10 @@ public class AccountService {
     public void finishLoad() {
         try {
             indexHolder.init(this.accountList, size);
+            indexHolder.resetTempListArray();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
-        System.gc();
     }
 
 
@@ -981,22 +973,30 @@ public class AccountService {
 
             try {
                 System.out.println("Start update indexes " + new Date());
-
-                StringBuilder stringBuilder = new StringBuilder();
-                RequestHandler.INT_LIST.sort();
-                int prev = 0;
-                TIntList list = RequestHandler.INT_LIST;
-                for (int i = 0; i < list.size();i++) {
-                    int current = list.get(i);
-                    if (current > 30000) {
-                        int diff = current - prev;
-                        stringBuilder.append("+" + Integer.toHexString(diff));
-                        prev = current;
+                System.out.println("Start update likes" + new Date());
+                long t1 = System.currentTimeMillis();
+                phase2.forEachEntry((i, tLongList) -> {
+                    Account account = accountIdMap[i];
+                    if (account.likes == null || account.likes.length == 0) {
+                        account.likes = new long[tLongList.size()];
+                        tLongList.toArray(account.likes);
+                    } else {
+                        int oldCount = account.likes.length;
+                        int newSize = oldCount + tLongList.size();
+                        long[] newArray = new long[newSize];
+                        System.arraycopy(account.likes, 0, newArray, 0, oldCount);
+                        for (int j = oldCount; j < newSize; j++) {
+                            newArray[j] = tLongList.get(j - oldCount);
+                        }
+                        account.likes = newArray;
                     }
-                }
-                //System.out.println(stringBuilder.toString());
-
-                //indexHolder.init(accountList, size);
+                    Arrays.sort(account.likes);
+                    reverse(account.likes);
+                    return true;
+                });
+                long t2 = System.currentTimeMillis();
+                System.out.println("Finish update likes" + new Date() + " took " + (t2-t1));
+                indexHolder.init(accountList, size);
                 System.gc();
                 System.out.println("End update indexes " + new Date());
             } catch (Exception ex) {

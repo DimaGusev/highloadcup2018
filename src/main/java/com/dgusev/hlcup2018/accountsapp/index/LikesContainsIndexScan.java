@@ -11,15 +11,15 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
         super(indexHolder);
         int count = 0;
         for (int like: likes) {
-            if (indexHolder.likesIndex.containsKey(like)) {
+            if (indexHolder.likesIndex[like] != null) {
                 count++;
             }
         }
         indexList = new int[count][];
         index = 0;
         for (int like: likes) {
-            if (indexHolder.likesIndex.containsKey(like)) {
-                indexList[index++] = indexHolder.likesIndex.get(like);
+            if (indexHolder.likesIndex[like] != null) {
+                indexList[index++] = indexHolder.likesIndex[like];
             } else {
                 alwaysFalse = true;
             }

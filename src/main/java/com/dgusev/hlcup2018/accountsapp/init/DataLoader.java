@@ -122,7 +122,7 @@ public class DataLoader implements CommandLineRunner {
             return null;
         }).sorted(Comparator.comparingInt(r -> r.order)).forEach(r -> {
             for (Account acc: r.result) {
-                statistics.analyze(acc);
+                //statistics.analyze(acc);
                 accountService.loadSequentially(acc);
             }
         });
@@ -131,6 +131,7 @@ public class DataLoader implements CommandLineRunner {
         accountService.finishLoad();
         ObjectPool.init();
         System.out.println("Indexes created " + new Date());
+        System.gc();
 
         new Thread(() -> {
             try {
@@ -198,7 +199,7 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
-                            /*if (i > 3) {
+                            if (i > 3) {
                                 accountDTO.id = 10000 * (i-1) + accountDTO.id;
                                 accountDTO.email = i + accountDTO.email;
                                 if (accountDTO.phone != null) {
@@ -212,7 +213,7 @@ public class DataLoader implements CommandLineRunner {
                                         accountDTO.likes[j] = accountDTO.likes[j] | ((long)id << 32);
                                     }
                                 }
-                            }*/
+                            }
                             accounts.add(accountConverter.convert(accountDTO));
 
                         }

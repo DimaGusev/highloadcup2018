@@ -4,6 +4,8 @@ import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.LikeRequest;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
+import gnu.trove.list.TLongList;
+import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.set.hash.TIntHashSet;
 
 import java.nio.ByteBuffer;
@@ -44,10 +46,14 @@ public class ObjectPool {
     };
 
     private static ArrayDeque<LikeRequest> likeRequestPool = new ArrayDeque<LikeRequest>();
+    private static ArrayDeque<TLongArrayList> likeListPool = new ArrayDeque<TLongArrayList>();
     static {
             for (int i = 0; i < 720000; i++) {
-   //             likeRequestPool.add(new LikeRequest());
+                likeRequestPool.add(new LikeRequest());
             }
+        for (int i = 0; i < 180000; i++) {
+            likeListPool.add(new TLongArrayList(4));
+        }
     };
 
     private static ThreadLocal<ArrayDeque<List<AccountService.Similarity>>> listSimilarityPool = new ThreadLocal<ArrayDeque<List<AccountService.Similarity>>>() {
@@ -196,6 +202,15 @@ public class ObjectPool {
             return likeRequest;
         } else {
             return new LikeRequest();
+        }
+    }
+
+    public static TLongArrayList acquireLikeList() {
+        TLongArrayList tLongArrayList = likeListPool.pollFirst();
+        if (tLongArrayList != null) {
+            return tLongArrayList;
+        } else {
+            return new TLongArrayList();
         }
     }
 
