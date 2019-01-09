@@ -7,6 +7,7 @@ import com.dgusev.hlcup2018.accountsapp.predicate.BirthYearPredicate;
 import com.dgusev.hlcup2018.accountsapp.predicate.JoinedYearPredicate;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import gnu.trove.impl.Constants;
+import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.*;
 import gnu.trove.map.hash.*;
@@ -62,7 +63,7 @@ public class IndexHolder {
     @Autowired
     private NowProvider nowProvider;
 
-    public synchronized void init(Account[] accountDTOList, int size) throws ExecutionException, InterruptedException {
+    public synchronized void init(Account[] accountDTOList, int size, TIntObjectMap<TIntList> tIntListTIntObjectMap) throws ExecutionException, InterruptedException {
         System.out.println("Start init IndexHolder " + new Date());
         ExecutorService executorService = Executors.newFixedThreadPool(3);
         int now = nowProvider.getNow();
@@ -441,66 +442,98 @@ public class IndexHolder {
         Callable<Boolean> task3 = new Callable<Boolean>() {
             @Override
             public Boolean call() {
-                System.out.println("Phase1");
                 long t1 = System.currentTimeMillis();
-                likesIndex = null;
-                for (int i = 0; i < size; i++) {
-                    Account account = accountDTOList[i];
-                    if (account.likes != null && account.likes.length != 0) {
-                        int prev = -1;
-                        for (long like : account.likes) {
-                            int id = (int) (like >> 32);
-                            if (prev == id) {
-                                continue;
+                if (tIntListTIntObjectMap == null) {
+                    System.out.println("Phase1");
+                    likesIndex = null;
+                    for (int i = 0; i < size; i++) {
+                        Account account = accountDTOList[i];
+                        if (account.likes != null && account.likes.length != 0) {
+                            int prev = -1;
+                            for (long like : account.likes) {
+                                int id = (int) (like >> 32);
+                                if (prev == id) {
+                                    continue;
+                                }
+                                LIKE_TMP_ARRAY[id]++;
+                                prev = id;
                             }
-                            LIKE_TMP_ARRAY[id]++;
-                            prev = id;
                         }
                     }
-                }
-                System.out.println("Phase2");
+                    System.out.println("Phase2");
 
-                long t2 = System.currentTimeMillis();
+                    long t2 = System.currentTimeMillis();
 
-                likesIndex = new int[AccountService.MAX_ID][];
-                for (int i = 0; i < AccountService.MAX_ID; i++) {
-                    int count = LIKE_TMP_ARRAY[i];
-                    if (count != 0) {
-                        likesIndex[i] = new int[count];
-                        LIKE_TMP_ARRAY[i] = 0;
-                    }
-                }
-
-                long t3 = System.currentTimeMillis();
-                System.out.println("Phase3");
-                for (int i = 0; i < size; i++) {
-                    Account account = accountDTOList[i];
-                    if (account.likes != null && account.likes.length != 0) {
-                        int prev = -1;
-                        for (long like : account.likes) {
-                            int id = (int) (like >> 32);
-                            if (prev == id) {
-                                continue;
-                            }
-                            likesIndex[id][LIKE_TMP_ARRAY[id]] = account.id;
-                            LIKE_TMP_ARRAY[id]++;
-                            prev = id;
+                    likesIndex = new int[AccountService.MAX_ID][];
+                    for (int i = 0; i < AccountService.MAX_ID; i++) {
+                        int count = LIKE_TMP_ARRAY[i];
+                        if (count != 0) {
+                            likesIndex[i] = new int[count];
+                            LIKE_TMP_ARRAY[i] = 0;
                         }
                     }
+
+                    long t3 = System.currentTimeMillis();
+                    System.out.println("Phase3");
+                    for (int i = 0; i < size; i++) {
+                        Account account = accountDTOList[i];
+                        if (account.likes != null && account.likes.length != 0) {
+                            int prev = -1;
+                            for (long like : account.likes) {
+                                int id = (int) (like >> 32);
+                                if (prev == id) {
+                                    continue;
+                                }
+                                likesIndex[id][LIKE_TMP_ARRAY[id]] = account.id;
+                                LIKE_TMP_ARRAY[id]++;
+                                prev = id;
+                            }
+                        }
+                    }
+                    long t4 = System.currentTimeMillis();
+                    System.out.println(t2 - t1);
+                    System.out.println(t3 - t2);
+                    System.out.println(t4 - t3);
+                } else {
+                    System.out.println("Size=" + tIntListTIntObjectMap.size());
+                    int cnt = 0;
+                    long t11 = System.currentTimeMillis();
+                    for (int id:  tIntListTIntObjectMap.keys()) {
+                        TIntList tIntList = tIntListTIntObjectMap.get(id);
+                        if (likesIndex[id] == null) {
+                            int[] array = tIntList.toArray();
+                            Arrays.sort(array);
+                            reverse(array, 0, array.length);
+                            likesIndex[id] = array;
+                            cnt+=array.length;
+                        } else {
+                            int[] oldArray = likesIndex[id];
+                            int oldCount = oldArray.length;
+                            int newSize = oldCount + tIntList.size();
+                            int[] newArray = new int[newSize];
+                            System.arraycopy(oldArray, 0, newArray, 0, oldCount);
+                            for (int j = oldCount; j < newSize; j++) {
+                                newArray[j] = tIntList.get(j - oldCount);
+                            }
+                            Arrays.sort(newArray);
+                            reverse(newArray, 0, newArray.length);
+                            likesIndex[id] = newArray;
+                            cnt+=tIntList.size();
+                        }
+                    }
+                    long t22 = System.currentTimeMillis();
+                    System.out.println("Cnt=" + cnt);
+                    System.out.println("Like index update took " + (t22-t11));
                 }
-                long t4 = System.currentTimeMillis();
-                System.out.println(t2-t1);
-                System.out.println(t3-t2);
-                System.out.println(t4-t3);
                 return true;
             }
         };
         System.out.println("Start tasks " + new Date());
         long t1 = System.currentTimeMillis();
-        executorService.submit(task1).get();
-        executorService.submit(task2).get();
-        executorService.submit(task3).get();
-        //executorService.invokeAll(Arrays.asList(task1, task2, task3));
+        //executorService.submit(task1).get();
+        //executorService.submit(task2).get();
+        //executorService.submit(task3).get();
+        executorService.invokeAll(Arrays.asList(task1, task2, task3));
         long t2 = System.currentTimeMillis();
         System.out.println("Finish tasks " + new Date() + " took " + (t2-t1));
     }
@@ -518,6 +551,16 @@ public class IndexHolder {
             hash = 31* hash + values.charAt(i);
         }
         return hash;
+    }
+
+    private void reverse(int[] array, int from, int to) {
+        int size = (to - from);
+        int half = from + size / 2;
+        for (int i = from; i < half; i++) {
+            int tmp = array[i];
+            array[i] = array[to - 1 - i];
+            array[to - 1 - i] = tmp;
+        }
     }
 
 }

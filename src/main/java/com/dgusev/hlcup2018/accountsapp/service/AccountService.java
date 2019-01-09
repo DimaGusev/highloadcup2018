@@ -9,6 +9,7 @@ import com.dgusev.hlcup2018.accountsapp.predicate.*;
 
 import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
+import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TLongIntMap;
@@ -35,6 +36,7 @@ public class AccountService {
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[0-9a-zA-z]+@[0-9a-zA-z]+\\\\.[0-9a-zA-z]+");
     private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger(0);
     private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>(180000, 1);
+    private static final TIntObjectMap<TIntList> additionalLikes = new TIntObjectHashMap<>();
 
     private static final Comparator<Similarity> SIMILARITY_COMPARATOR = Comparator.comparingDouble((Similarity s) -> s.similarity).reversed();
 
@@ -87,9 +89,9 @@ public class AccountService {
             }
             return result;
         } else {
-          //  if (true) {
-         //       return Collections.EMPTY_LIST;
-         //   }
+           if (true) {
+                return Collections.EMPTY_LIST;
+           }
             Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
@@ -119,9 +121,9 @@ public class AccountService {
         if (limit <= 0) {
             throw new BadRequest();
         }
-     //   if (true) {
-     //       return Collections.EMPTY_LIST;
-      //  }
+        if (true) {
+            return Collections.EMPTY_LIST;
+        }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
         TLongObjectMap<List<String>> groupNameMap = new TLongObjectHashMap<>();
@@ -304,9 +306,9 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
-     //   if (true) {
-      //      return Collections.EMPTY_LIST;
-      //  }
+        if (true) {
+            return Collections.EMPTY_LIST;
+        }
         predicates.add(new SexEqPredicate(!account.sex));
         predicates.add(a -> a.id != id);
         predicates.add(a -> {
@@ -681,8 +683,25 @@ public class AccountService {
         if (accountDTO.phone != null && phones.contains(accountDTO.phone)) {
             throw new BadRequest();
         }
-
-        this.load(accountConverter.convert(accountDTO));
+        Account account = accountConverter.convert(accountDTO);
+        this.load(account);
+        if (account.likes != null && account.likes.length != 0) {
+            int prev = -1;
+            for (int j = 0; j < account.likes.length; j++) {
+                int id = (int)(account.likes[j] >> 32);
+                if (prev != id) {
+                    TIntList tIntList = additionalLikes.get(id);
+                    if (tIntList == null) {
+                        tIntList = new TIntArrayList();
+                        additionalLikes.put(id, tIntList);
+                    }
+                    if (!tIntList.contains(account.id)) {
+                        tIntList.add(account.id);
+                    }
+                }
+                prev = id;
+            }
+        }
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
                 if (LAST_UPDATE_TIMESTAMP == 0) {
@@ -837,7 +856,7 @@ public class AccountService {
 
     public void finishLoad() {
         try {
-            indexHolder.init(this.accountList, size);
+            indexHolder.init(this.accountList, size, null);
             indexHolder.resetTempListArray();
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -972,9 +991,9 @@ public class AccountService {
 
         @Override
         public void run() {
-            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 500){
+            while (LAST_UPDATE_TIMESTAMP == 0 || System.currentTimeMillis() - LAST_UPDATE_TIMESTAMP  < 1000){
                 try {
-                    Thread.sleep(500);
+                    Thread.sleep(1000);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
@@ -984,8 +1003,23 @@ public class AccountService {
                 System.out.println("Start update indexes " + new Date());
                 System.out.println("Start update likes" + new Date());
                 long t1 = System.currentTimeMillis();
+                int[] likeCount = new int[1];
                 phase2.forEachEntry((i, tLongList) -> {
                     Account account = accountIdMap[i];
+                    for (int j = 0; j < tLongList.size(); j++) {
+                        int id = (int)(tLongList.get(j) >> 32);
+                        if (!containsLike(account, id)) {
+                            TIntList tIntList = additionalLikes.get(id);
+                            if (tIntList == null) {
+                                tIntList = new TIntArrayList();
+                                additionalLikes.put(id, tIntList);
+                            }
+                            if (!tIntList.contains(i)) {
+                                likeCount[0]++;
+                                tIntList.add(i);
+                            }
+                        }
+                    }
                     if (account.likes == null || account.likes.length == 0) {
                         account.likes = new long[tLongList.size()];
                         tLongList.toArray(account.likes);
@@ -1005,13 +1039,30 @@ public class AccountService {
                 });
                 long t2 = System.currentTimeMillis();
                 System.out.println("Finish update likes" + new Date() + " took " + (t2-t1));
-                indexHolder.init(accountList, size);
+                System.out.println("Like count=" + likeCount[0] + ", accounts=" + additionalLikes.size());
+                indexHolder.init(accountList, size, additionalLikes);
                 System.gc();
                 System.out.println("End update indexes " + new Date());
             } catch (Exception ex) {
                 ex.printStackTrace();
             }
         }
+    }
+
+    private boolean containsLike(Account account, int like) {
+        if (account.likes == null || account.likes.length == 0){
+            return false;
+        }
+        for (long l : account.likes) {
+            int id = (int)(l >> 32);
+            if (id == like) {
+                return true;
+            }
+            if (id < like) {
+                return false;
+            }
+        }
+        return false;
     }
 
     private static class IntegerHolder {
