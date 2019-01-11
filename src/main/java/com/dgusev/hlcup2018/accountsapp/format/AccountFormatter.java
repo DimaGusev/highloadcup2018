@@ -154,34 +154,36 @@ public class AccountFormatter {
         return index;
     }
 
-    public void formatRecommend(Account account, ByteBuf responseBuf) {
-        responseBuf.writeByte('{');
-        writeField(responseBuf, true, "id");
-        encodeLong(account.id, responseBuf);
-        writeField(responseBuf, false, "email");
-        writeStringValue(responseBuf, account.email);
-        writeField(responseBuf, false, "status");
-        writeStringValue(responseBuf, ConvertorUtills.convertStatusNumber(account.status));
-        writeField(responseBuf, false, "birth");
-        encodeLong(account.birth, responseBuf);
+    public void formatRecommend(Account account, ByteBuf responseBuf, byte[] arr) {
+        int index = 0;
+        arr[index++] = '{';
+        index = writeField(arr, index, true, "id");
+        index = encodeLong(arr, index, account.id, responseBuf);
+        index = writeField(arr, index,false, "email");
+        index = writeStringValue(arr, index, account.email);
+        index = writeField(arr, index, false, "status");
+        index = writeStringValue(arr, index, ConvertorUtills.convertStatusNumber(account.status));
+        index = writeField(arr, index, false, "birth");
+        index = encodeLong(arr, index, account.birth, responseBuf);
         if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-            writeField(responseBuf, false, "fname");
-            writeStringValue(responseBuf, dictionary.getFname(account.fname));
+            index = writeField(arr, index, false, "fname");
+            index = writeStringValue(arr, index, dictionary.getFname(account.fname));
         }
         if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-            writeField(responseBuf, false, "sname");
-            writeStringValue(responseBuf, dictionary.getSname(account.sname));
+            index = writeField(arr, index, false, "sname");
+            index = writeStringValue(arr, index, dictionary.getSname(account.sname));
         }
         if (account.premiumStart != 0) {
-            writeField(responseBuf, false, "premium");
-            responseBuf.writeByte('{');
-            writeField(responseBuf, true, "start");
-            encodeLong(account.premiumStart, responseBuf);
-            writeField(responseBuf, false, "finish");
-            encodeLong(account.premiumFinish, responseBuf);
-            responseBuf.writeByte('}');
+            index = writeField(arr, index, false, "premium");
+            arr[index++] = '{';
+            index = writeField(arr, index, true, "start");
+            index = encodeLong(arr, index, account.premiumStart, responseBuf);
+            index = writeField(arr, index, false, "finish");
+            index = encodeLong(arr, index, account.premiumFinish, responseBuf);
+            arr[index++] = '}';
         }
-        responseBuf.writeByte('}');
+        arr[index++] = '}';
+        responseBuf.writeBytes(arr, 0, index);
     }
 
     public void formatSuggest(Account account, ByteBuf responseBuf, byte[] arr) {

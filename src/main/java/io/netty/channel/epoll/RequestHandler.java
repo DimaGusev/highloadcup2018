@@ -1,4 +1,4 @@
-package com.dgusev.hlcup2018.accountsapp.netty;
+package io.netty.channel.epoll;
 
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
 import com.dgusev.hlcup2018.accountsapp.model.NotFoundRequest;
@@ -7,8 +7,11 @@ import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.rest.AccountsController;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.TIntObjectMap;
+import gnu.trove.map.hash.TIntObjectHashMap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.epoll.Native;
 import io.netty.util.ReferenceCountUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -23,6 +26,8 @@ import java.util.Map;
 @Component
 public class RequestHandler {
 
+    public static final TIntObjectMap<ByteBuffer> attachments = new TIntObjectHashMap<>();
+
     private static final byte[] RESPONSE_201 = "HTTP/1.0 201 Created\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}".getBytes();
     private static final byte[] RESPONSE_202 = "HTTP/1.0 202 Accepted\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}".getBytes();
     private static final byte[] BAD_REQUEST = "HTTP/1.0 400 Bad Request\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}".getBytes();
@@ -36,50 +41,47 @@ public class RequestHandler {
     @Autowired
     private AccountsController accountsController;
 
-    public void handleRead(SelectionKey selectionKey, byte[] buf, int length, ByteBuffer byteBuffer) throws IOException {
-        if (length ==0) {
-            System.out.println("1Length = 0");
+    public void handleRead(SelectionKey selectionKey, LinuxSocket fd, byte[] buf, int length, ByteBuffer byteBuffer) throws IOException {
+        SocketChannel socketChannel = null;
+        if (selectionKey != null) {
+            socketChannel = (SocketChannel) selectionKey.channel();
         }
-        SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
         ByteBuf tmpByteBuffer = null;
         try {
-            /*ByteBuf fragmentByteBuf = (ByteBuf) selectionKey.attachment();
-            if (fragmentByteBuf != null) {
-                fragmentByteBuf.writeBytes(buf, 0, length);
-                int newLength = fragmentByteBuf.writerIndex();
-                fragmentByteBuf.readerIndex(0);
-                fragmentByteBuf.readBytes(buf, 0, newLength);
-                length = newLength;
-                if (length ==0) {
-                    System.out.println("2Length = 0");
-                }
-                ReferenceCountUtil.release(fragmentByteBuf);
-                selectionKey.attach(null);
+            ByteBuffer fragmentByteBuf = null;
+            if (selectionKey !=null) {
+                fragmentByteBuf = (ByteBuffer) selectionKey.attachment();
+            } else {
+                fragmentByteBuf = attachments.get(fd.intValue());
             }
-            if ((buf[0] == 'G' && (buf[length - 1] != '\n' || buf[length - 2] != '\r' || buf[length - 3] != '\n' || buf[length - 4] != '\r')) || (buf[0] == 'P' && isFragmentedPost(buf, length))) {
-                ByteBuf fragment = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(5000);
-                fragment.clear();
-                fragment.writeBytes(buf, 0, length);
-                selectionKey.attach(fragment);
-                return;
-            }*/
-            ByteBuffer fragmentByteBuf = (ByteBuffer) selectionKey.attachment();
             if (fragmentByteBuf != null) {
                 fragmentByteBuf.put(buf, 0, length);
                 int newLength = fragmentByteBuf.position();
                 fragmentByteBuf.flip();
                 fragmentByteBuf.get(buf, 0, newLength);
                 length = newLength;
-                if (length ==0) {
-                    System.out.println("2Length = 0");
-                }
                 ObjectPool.releaseBuffer(fragmentByteBuf);
-                selectionKey.attach(null);
+                if (selectionKey != null) {
+                    selectionKey.attach(null);
+                } else {
+                    attachments.remove(fd.intValue());
+                }
             }
             if ((buf[0] == 'G' && (buf[length - 1] != '\n' || buf[length - 2] != '\r' || buf[length - 3] != '\n' || buf[length - 4] != '\r')) || (buf[0] == 'P' && isFragmentedPost(buf, length))) {
                 ByteBuffer fragment = ObjectPool.acquireBuffer();
                 fragment.put(buf, 0, length);
-                selectionKey.attach(fragment);
+                if (buf[0] == 'G') {
+                    if (length > 30) {
+                        System.out.println(new String(buf, 0, 30));
+                    } else {
+                        System.out.println(new String(buf, 0, length));
+                    }
+                }
+                if (selectionKey != null) {
+                    selectionKey.attach(fragment);
+                } else {
+                    attachments.put(fd.intValue(), fragment);
+                }
                 return;
             }
 
@@ -98,7 +100,7 @@ public class RequestHandler {
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
                     tmpByteBuffer.readBytes(byteBuffer);
-                    writeResponse(socketChannel, byteBuffer);
+                    writeResponse(socketChannel, fd,  byteBuffer);
                 } else if (equals(buf, queryStart, endPathIndex, "/accounts/group/")) {
                     Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
                     tmpByteBuffer = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(10000);
@@ -109,7 +111,7 @@ public class RequestHandler {
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
                     tmpByteBuffer.readBytes(byteBuffer);
-                    writeResponse(socketChannel, byteBuffer);
+                    writeResponse(socketChannel, fd, byteBuffer);
                 } else if (contains(buf, queryStart, endPathIndex, "recommend")) {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                     int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
@@ -121,7 +123,7 @@ public class RequestHandler {
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
                     tmpByteBuffer.readBytes(byteBuffer);
-                    writeResponse(socketChannel, byteBuffer);
+                    writeResponse(socketChannel, fd, byteBuffer);
                 } else if (contains(buf, queryStart, endPathIndex, "suggest")) {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                     int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
@@ -133,7 +135,7 @@ public class RequestHandler {
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
                     tmpByteBuffer.readBytes(byteBuffer);
-                    writeResponse(socketChannel, byteBuffer);
+                    writeResponse(socketChannel, fd, byteBuffer);
                 } else  {
                     throw NotFoundRequest.INSTANCE;
                 }
@@ -154,10 +156,10 @@ public class RequestHandler {
                 endIndex++;
                 if (equals(buf, queryStart, endPathIndex, "/accounts/new/")) {
                     accountsController.create(buf, pointer, endIndex);
-                    write201Response(socketChannel, byteBuffer, buf, length);
+                    writeResponse(socketChannel, fd, byteBuffer, RESPONSE_201);
                 } else if (equals(buf, queryStart, endPathIndex, "/accounts/likes/")) {
                     accountsController.like(buf, pointer, endIndex);
-                    writeResponse(socketChannel, byteBuffer, RESPONSE_202);
+                    writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
                 } else {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                     int id = 0;
@@ -167,32 +169,31 @@ public class RequestHandler {
                         throw NotFoundRequest.INSTANCE;
                     }
                     accountsController.update(buf, pointer, endIndex, id);
-                    writeResponse(socketChannel, byteBuffer, RESPONSE_202);
+                    writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
                 }
             } else {
                 System.out.println("Bad first byte " + (byte)buf[0] + " with length=" + length + " |" + new String(buf, 0, length));
                 byteBuffer.put(BAD_REQUEST);
                 byteBuffer.flip();
-                socketChannel.write(byteBuffer);
+                if (socketChannel != null) {
+                    socketChannel.write(byteBuffer);
+                } else {
+                    fd.write(byteBuffer, byteBuffer.position(), byteBuffer.limit());
+                }
             }
         } catch (BadRequest badRequest) {
-            writeResponse(socketChannel, byteBuffer, BAD_REQUEST);
+            writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
         } catch (NumberFormatException nfex) {
             if (buf[0] == 'P') {
                 System.out.println("1" + new String(buf, 0, length));
             }
-            writeResponse(socketChannel, byteBuffer, BAD_REQUEST);
+            writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
         } catch (NotFoundRequest notFoundRequest) {
-            writeResponse(socketChannel, byteBuffer, NOT_FOUND);
+            writeResponse(socketChannel, fd, byteBuffer, NOT_FOUND);
         } catch (Exception ex) {
             //System.out.println(request.content().toString(StandardCharsets.UTF_8));
-            //ex.printStackTrace();
-            if (buf[0] == 'P') {
-                ex.printStackTrace();
-                System.out.println("2" + new String(buf, 0, length));
-
-            }
-            writeResponse(socketChannel, byteBuffer, BAD_REQUEST);
+            ex.printStackTrace();
+            writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
         } finally {
             if (tmpByteBuffer != null) {
                 ReferenceCountUtil.release(tmpByteBuffer);
@@ -202,56 +203,24 @@ public class RequestHandler {
     }
 
 
-    private void writeResponse(SocketChannel socketChannel, ByteBuffer byteBuffer, byte[] response) throws IOException {
+    private void writeResponse(SocketChannel socketChannel, LinuxSocket fd, ByteBuffer byteBuffer, byte[] response) throws IOException {
         byteBuffer.clear();
         byteBuffer.put(response);
         byteBuffer.flip();
-        socketChannel.write(byteBuffer);
+        if (socketChannel != null) {
+            socketChannel.write(byteBuffer);
+        } else {
+            fd.write(byteBuffer, byteBuffer.position(), byteBuffer.limit());
+        }
     }
 
-    private void write201Response(SocketChannel socketChannel, ByteBuffer byteBuffer, byte[] buf, int length) throws IOException {
-        String contentLengthHeader = "query_id=";
-        int position = 0;
-        char first = contentLengthHeader.charAt(0);
-        int partSize = contentLengthHeader.length();
-        int q = -1;
-        while (position < length) {
-            if (buf[position] == first) {
-                if (position + partSize > length) {
-                    break;
-                } else {
-                    int partOffset = 0;
-                    while ((partOffset < partSize) && buf[position] == contentLengthHeader.charAt(partOffset)) {
-                        position++;
-                        partOffset++;
-                    }
-                    if (partOffset == partSize) {
-                        if (q != -1) {
-                            System.out.println("Two query_id!");
-                        }
-                        try {
-                            q = decodeInt(buf, position, indexOf(buf, position, length, ' ') - position);
-                        } catch (Exception ex) {
-                            System.out.println("Cannot read query id");
-                        }
-                    }
-                }
-            } else {
-                position++;
-            }
-        }
-        if (q == -1) {
-            System.out.println("There is no query_id");
-        }
-        byteBuffer.clear();
-        byteBuffer.put(RESPONSE_201);
+    private void writeResponse(SocketChannel socketChannel, LinuxSocket fd, ByteBuffer byteBuffer) throws IOException {
         byteBuffer.flip();
-        socketChannel.write(byteBuffer);
-    }
-
-    private void writeResponse(SocketChannel socketChannel, ByteBuffer byteBuffer) throws IOException {
-        byteBuffer.flip();
-        socketChannel.write(byteBuffer);
+        if (socketChannel != null) {
+            socketChannel.write(byteBuffer);
+        } else {
+            fd.write(byteBuffer, byteBuffer.position(), byteBuffer.limit());
+        }
     }
 
     private int indexOf(byte[] arr, int from, int to, char val) {

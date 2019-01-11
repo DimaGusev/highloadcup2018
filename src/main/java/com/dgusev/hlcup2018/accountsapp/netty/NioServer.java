@@ -1,7 +1,7 @@
 package com.dgusev.hlcup2018.accountsapp.netty;
 
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
-import io.netty.util.ReferenceCountUtil;
+import io.netty.channel.epoll.RequestHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +13,6 @@ import java.nio.channels.*;
 import java.util.ArrayDeque;
 import java.util.Iterator;
 import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -89,7 +87,7 @@ public class NioServer {
                                         byteBuffer.flip();
                                         byteBuffer.get(buf, 0, cnt);
                                         byteBuffer.clear();
-                                        requestHandler.handleRead(selectionKey, buf, cnt, byteBuffer);
+                                        requestHandler.handleRead(selectionKey, null, buf, cnt, byteBuffer);
                                     }
                                 }
                             } catch (Exception ex) {

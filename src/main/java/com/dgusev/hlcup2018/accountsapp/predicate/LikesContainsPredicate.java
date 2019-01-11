@@ -31,8 +31,12 @@ public class LikesContainsPredicate implements Predicate<Account> {
     private boolean containsLike(long[] likes, int like) {
         for (int i = 0; i < likes.length; i++) {
             long l = likes[i];
-            if ((int)(l >> 32)== like) {
+            int id = (int)(l >> 32);
+            if (id == like) {
                 return true;
+            }
+            if (id < like) {
+                return false;
             }
         }
         return false;

@@ -52,6 +52,23 @@ public class AccountConverter {
         account.premiumStart = accountDTO.premiumStart;
         account.premiumFinish = accountDTO.premiumFinish;
         account.likes = accountDTO.likes;
+       /* if (account.likes != null && account.likes.length != 0) {
+            if (account.likes.length > 127) {
+                System.out.println("More than 127 likes!");
+            }
+            sun.misc.Unsafe unsafe = Unsafe.UNSAFE;
+            account.likeAddress = unsafe.allocateMemory(1 + 8*account.likes.length);
+            long position = account.likeAddress;
+            unsafe.putByte(position, (byte) account.likes.length);
+            position++;
+            for (int i = 0 ; i < account.likes.length; i++) {
+                unsafe.putLong(position, account.likes[i]);
+                position+=8;
+            }
+            account.likesCount = account.likes.length;
+        } else {
+            account.likesCount = 0;
+        } */
         return account;
     }
 

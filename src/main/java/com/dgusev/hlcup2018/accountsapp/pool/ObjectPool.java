@@ -56,10 +56,10 @@ public class ObjectPool {
         }
     };
 
-    private static ThreadLocal<ArrayDeque<List<AccountService.Similarity>>> listSimilarityPool = new ThreadLocal<ArrayDeque<List<AccountService.Similarity>>>() {
+    private static ThreadLocal<AccountService.Similarity[]> listSimilarityPool = new ThreadLocal<AccountService.Similarity[]>() {
         @Override
-        protected ArrayDeque<List<AccountService.Similarity>> initialValue() {
-            return new ArrayDeque<>(20);
+        protected AccountService.Similarity[] initialValue() {
+            return new AccountService.Similarity[100000];
         }
     };
 
@@ -95,6 +95,13 @@ public class ObjectPool {
     };
 
     private static ThreadLocal<List<Account>> filterListPool = new ThreadLocal<List<Account>>() {
+        @Override
+        protected List<Account> initialValue() {
+            return new ArrayList<>(100);
+        }
+    };
+
+    private static ThreadLocal<List<Account>> recommendListPool = new ThreadLocal<List<Account>>() {
         @Override
         protected List<Account> initialValue() {
             return new ArrayList<>(100);
@@ -229,20 +236,10 @@ public class ObjectPool {
         suggestListPool.get().addLast(group);
     }
 
-    public static List<AccountService.Similarity> acquireSimilarityList() {
-        ArrayDeque<List<AccountService.Similarity>> local = listSimilarityPool.get();
-        List<AccountService.Similarity> list = local.pollFirst();
-        if (list != null) {
-            list.clear();
-        } else {
-            list =  new ArrayList<>(5);
-        }
-        return list;
+    public static AccountService.Similarity[] acquireSimilarityList() {
+        return listSimilarityPool.get();
     }
 
-    public static void releaseSimilarityList(List<AccountService.Similarity> list) {
-        listSimilarityPool.get().addLast(list);
-    }
 
 
     public static int[] acquireLikersArray() {
@@ -252,6 +249,12 @@ public class ObjectPool {
 
     public static List<Account> acquireFilterList() {
         List<Account> list =  filterListPool.get();
+        list.clear();
+        return list;
+    }
+
+    public static List<Account> acquireRecommendListResult() {
+        List<Account> list =  recommendListPool.get();
         list.clear();
         return list;
     }

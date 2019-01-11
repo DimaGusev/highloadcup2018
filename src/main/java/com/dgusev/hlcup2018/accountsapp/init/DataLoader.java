@@ -8,6 +8,7 @@ import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.service.AccountConverter;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
+import io.netty.channel.epoll.EpollServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -49,6 +50,9 @@ public class DataLoader implements CommandLineRunner {
 
     @Autowired
     private NioServer nioServer;
+
+    @Autowired
+    private EpollServer epollServer;
 
     @Override
     public void run(String... args) throws Exception {
@@ -136,7 +140,11 @@ public class DataLoader implements CommandLineRunner {
         new Thread(() -> {
             try {
                 //nettyServer.start();
-                nioServer.start();
+                if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                    nioServer.start();
+                } else  {
+                    epollServer.start();
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }

@@ -3,20 +3,16 @@ package com.dgusev.hlcup2018.accountsapp.service;
 import com.dgusev.hlcup2018.accountsapp.index.*;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
-import com.dgusev.hlcup2018.accountsapp.netty.RequestHandler;
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 
 import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.TIntObjectMap;
-import gnu.trove.map.TLongIntMap;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
-import gnu.trove.procedure.TIntObjectProcedure;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +22,6 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 public class AccountService {
@@ -39,6 +34,19 @@ public class AccountService {
     private static final TIntObjectMap<TIntList> additionalLikes = new TIntObjectHashMap<>();
 
     private static final Comparator<Similarity> SIMILARITY_COMPARATOR = Comparator.comparingDouble((Similarity s) -> s.similarity).reversed();
+
+    private AtomicInteger r1 = new AtomicInteger(0);
+    private AtomicInteger r2 = new AtomicInteger(0);
+    private AtomicInteger r3 = new AtomicInteger(0);
+    private AtomicInteger r4 = new AtomicInteger(0);
+    private AtomicInteger r5 = new AtomicInteger(0);
+    private AtomicInteger r6 = new AtomicInteger(0);
+    private AtomicInteger s1 = new AtomicInteger(0);
+    private AtomicInteger s2 = new AtomicInteger(0);
+    private AtomicInteger s3 = new AtomicInteger(0);
+    private AtomicInteger s4 = new AtomicInteger(0);
+    private AtomicInteger s5 = new AtomicInteger(0);
+    private AtomicInteger s6 = new AtomicInteger(0);
 
 
     @Autowired
@@ -89,9 +97,9 @@ public class AccountService {
             }
             return result;
         } else {
-           if (true) {
-                return Collections.EMPTY_LIST;
-           }
+          // if (true) {
+           //     return Collections.EMPTY_LIST;
+          // }
             Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
@@ -121,9 +129,9 @@ public class AccountService {
         if (limit <= 0) {
             throw new BadRequest();
         }
-        if (true) {
-            return Collections.EMPTY_LIST;
-        }
+       // if (true) {
+       //     return Collections.EMPTY_LIST;
+       // }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
         TLongObjectMap<List<String>> groupNameMap = new TLongObjectHashMap<>();
@@ -222,7 +230,8 @@ public class AccountService {
     private void processRecord(Account account, TLongObjectMap<IntegerHolder> groupHashMap, TLongObjectMap<List<String>> groupNameMap, List<String> keys, List<String> group) {
         group.clear();
         long hashcode =  0;
-        for (int i = 0; i < keys.size(); i++) {
+        int ksize = keys.size();
+        for (int i = 0; i < ksize; i++) {
             String key = keys.get(i);
             if (key.equals("sex")) {
                 group.add(ConvertorUtills.convertSex(account.sex));
@@ -274,10 +283,12 @@ public class AccountService {
             }
             groupNameMap.put(hash, grp);
         }
-        if (!groupHashMap.containsKey(hash)) {
-            groupHashMap.put(hash, new IntegerHolder());
+        IntegerHolder integerHolder = groupHashMap.get(hash);
+        if (integerHolder == null) {
+            integerHolder = new IntegerHolder();
+            groupHashMap.put(hash, integerHolder);
         }
-        groupHashMap.get(hash).count++;
+        integerHolder.count++;
     }
 
     private int compareGroups(List<String> g1, List<String> g2) {
@@ -306,12 +317,15 @@ public class AccountService {
         if (account == null) {
             throw new NotFoundRequest();
         }
-        if (true) {
+        if (account.interests == null || account.interests.length == 0) {
             return Collections.EMPTY_LIST;
         }
-        predicates.add(new SexEqPredicate(!account.sex));
-        predicates.add(a -> a.id != id);
-        predicates.add(a -> {
+      //  if (true) {
+       //     return Collections.EMPTY_LIST;
+     //   }
+        boolean sex = !account.sex;
+        predicates.add(new InterestsAnyPredicate(account.interests));
+        /*predicates.add(a -> {
             if (account.interests == null || a.interests == null || account.interests.length == 0 || a.interests.length == 0) {
                 return false;
             }
@@ -320,11 +334,8 @@ public class AccountService {
             }
             return true;
 
-        });
+        });*/
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
-        if (indexScans.isEmpty()) {
-            indexScans.add(new SexEqIndexScan(indexHolder, !account.sex));
-        }
         Predicate<Account> accountPredicate = andPredicates(predicates);
         List<Account> result1 = ObjectPool.acquireRecommendList();
         List<Account> result2 = ObjectPool.acquireRecommendList();
@@ -341,7 +352,7 @@ public class AccountService {
                     break;
                 }
                 Account acc = accountIdMap[next];
-                if (accountPredicate.test(acc)) {
+                if (acc.sex == sex && accountPredicate.test(acc) && acc.id != id) {
                     if (premiumNowPredicate.test(acc)) {
                         if (acc.status == 0) {
                             result1.add(acc);
@@ -361,35 +372,53 @@ public class AccountService {
                     }
                 }
             }
-            List<Account> result = new ArrayList<>();
+            s1.addAndGet(result1.size());
+            s2.addAndGet(result2.size());
+            s3.addAndGet(result3.size());
+            s4.addAndGet(result4.size());
+            s5.addAndGet(result5.size());
+            s6.addAndGet(result6.size());
+            List<Account> result = ObjectPool.acquireRecommendListResult();
+            int r1number = r1.incrementAndGet();
+
             for (int i = 0; i < result1.size(); i++) {
                 result.add(result1.get(i));
             }
             if (result.size() < limit) {
+                r2.incrementAndGet();
                 for (int i = 0; i < result2.size(); i++) {
                     result.add(result2.get(i));
                 }
             }
             if (result.size() < limit) {
+                r3.incrementAndGet();
                 for (int i = 0; i < result3.size(); i++) {
                     result.add(result3.get(i));
                 }
             }
             if (result.size() < limit) {
+                r4.incrementAndGet();
                 for (int i = 0; i < result4.size(); i++) {
                     result.add(result4.get(i));
                 }
             }
             if (result.size() < limit) {
+                r5.incrementAndGet();
                 for (int i = 0; i < result5.size(); i++) {
                     result.add(result5.get(i));
                 }
             }
             if (result.size() < limit) {
+                r6.incrementAndGet();
                 for (int i = 0; i < result6.size(); i++) {
                     result.add(result6.get(i));
                 }
             }
+
+            if (r1number % 1000 == 0) {
+                System.out.println("r1=" + r1.get() + ",r2=" + r2.get() + ",r3=" + r3.get() + ",r4=" + r4.get() + ",r5=" + r5.get() + ",r6=" + r6.get() + ",s1=" + s1.get() + ",s2=" + s2.get() + ",s3=" + s3.get() + ",s4=" + s4.get() + ",s5=" + s5.get() + ",s6=" + s6.get());
+            }
+
             result.sort((a1, a2) -> {
                 if (isPremium(a1) && !isPremium(a2)) {
                     return -1;
@@ -485,7 +514,8 @@ public class AccountService {
                 }
             }
         }
-        List<Similarity> suggestResult = null;
+        Similarity[] suggestResult = null;
+        int size = 0;
         List<Account> result = null;
         if (suggests.isEmpty()) {
             return Collections.EMPTY_LIST;
@@ -515,14 +545,18 @@ public class AccountService {
                     Similarity similarity = ObjectPool.acquireSimilarity();
                     similarity.account = acc;
                     similarity.similarity = getSimilarity(account, acc);
-                    suggestResult.add(similarity);
+                    suggestResult[size++] = similarity;
                 }
             }
-            suggestResult.sort(SIMILARITY_COMPARATOR);
             result = ObjectPool.acquireSuggestList();
             TIntSet likersSet = new TIntHashSet();
-            for (int i = 0; i < suggestResult.size(); i++) {
-                Similarity s = suggestResult.get(i);
+            double maxSimilarity = Double.MAX_VALUE;
+            while (true) {
+                Similarity s = findNextMaxSimilarity(suggestResult, size, maxSimilarity);
+                if (s ==  null) {
+                    break;
+                }
+                maxSimilarity = s.similarity;
                 for (int j = 0; j < s.account.likes.length; j++) {
                     int lid = (int)(s.account.likes[j] >> 32);
                     if (!myLikes.contains(lid) && accountIdMap[lid].sex == targetSex) {
@@ -546,13 +580,29 @@ public class AccountService {
             ObjectPool.releaseTIntHash(suggests);
             if (suggestResult != null) {
                 try {
-                    ObjectPool.releaseSimilarityList(suggestResult);
-                    suggestResult.forEach(ObjectPool::releaseSimilarity);
+                    for (int i = 0; i < size; i++) {
+                        ObjectPool.releaseSimilarity(suggestResult[i]);
+                    }
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
             }
         }
+    }
+
+    private Similarity findNextMaxSimilarity(Similarity[] array, int size, double oldSimilarity) {
+        Similarity max = null;
+        double currentMax = 0;
+        for (int i =0; i < size; i++) {
+            Similarity similarity = array[i];
+            if (similarity.similarity < oldSimilarity) {
+                if (similarity.similarity > currentMax) {
+                    currentMax = similarity.similarity;
+                    max = similarity;
+                }
+            }
+        }
+        return max;
     }
 
     private void reverse(int[] array, int from, int to) {
@@ -793,7 +843,8 @@ public class AccountService {
             oldAcc.premiumFinish = accountDTO.premiumFinish;
         }
         if (accountDTO.likes != null) {
-            oldAcc.likes = accountDTO.likes;
+            System.out.println("Update likes!");
+            //oldAcc.likes = accountDTO.likes;
         }
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
@@ -875,8 +926,10 @@ public class AccountService {
                 iterator.remove();
             } else if (predicate instanceof CountryNullPredicate) {
                 CountryNullPredicate countryNullPredicate = (CountryNullPredicate) predicate;
-                indexScans.add(new CountryNullIndexScan(indexHolder, countryNullPredicate.getNill()));
-                iterator.remove();
+                if (countryNullPredicate.getNill() == 1) {
+                    indexScans.add(new CountryNullIndexScan(indexHolder, countryNullPredicate.getNill()));
+                    iterator.remove();
+                }
             } else if (predicate instanceof StatusEqPredicate) {
                 StatusEqPredicate statusEqPredicate = (StatusEqPredicate) predicate;
                 indexScans.add(new StatusEqIndexScan(indexHolder, statusEqPredicate.getStatus()));
@@ -889,7 +942,7 @@ public class AccountService {
                 InterestsAnyPredicate interestsAnyPredicate = (InterestsAnyPredicate) predicate;
                 indexScans.add(new InterestsAnyIndexScan(indexHolder, interestsAnyPredicate.getInterests()));
                 iterator.remove();
-            } else if (predicate instanceof SexEqPredicate) {
+            } /*else if (predicate instanceof SexEqPredicate) {
                 SexEqPredicate sexEqPredicate = (SexEqPredicate) predicate;
                 indexScans.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));
                 iterator.remove();
@@ -897,10 +950,12 @@ public class AccountService {
                 StatusNEqPredicate statusNEqPredicate = (StatusNEqPredicate) predicate;
                 indexScans.add(new StatusNotEqIndexScan(indexHolder, statusNEqPredicate.getStatus()));
                 iterator.remove();
-            } else if (predicate instanceof CityNullPredicate) {
+            } */else if (predicate instanceof CityNullPredicate) {
                 CityNullPredicate cityNullPredicate = (CityNullPredicate) predicate;
-                indexScans.add(new CityNullIndexScan(indexHolder, cityNullPredicate.getNill()));
-                iterator.remove();
+                if (cityNullPredicate.getNill() == 1) {
+                    indexScans.add(new CityNullIndexScan(indexHolder, cityNullPredicate.getNill()));
+                    iterator.remove();
+                }
             } else if (predicate instanceof CityEqPredicate) {
                 CityEqPredicate cityEqPredicate = (CityEqPredicate) predicate;
                 indexScans.add(new CityEqIndexScan(indexHolder, cityEqPredicate.getCity()));
@@ -938,16 +993,20 @@ public class AccountService {
                 iterator.remove();
             } else if (predicate instanceof FnameNullPredicate) {
                 FnameNullPredicate fnameNullPredicate = (FnameNullPredicate) predicate;
-                indexScans.add(new FnameNullIndexScan(indexHolder, fnameNullPredicate.getNill()));
-                iterator.remove();
+                if (fnameNullPredicate.getNill() == 1) {
+                    indexScans.add(new FnameNullIndexScan(indexHolder, fnameNullPredicate.getNill()));
+                    iterator.remove();
+                }
             } else if (predicate instanceof SnameEqPredicate) {
                 SnameEqPredicate snameEqPredicate = (SnameEqPredicate) predicate;
                 indexScans.add(new SnameEqIndexScan(indexHolder, snameEqPredicate.getSname()));
                 iterator.remove();
             } else if (predicate instanceof SnameNullPredicate) {
                 SnameNullPredicate snameNullPredicate = (SnameNullPredicate) predicate;
-                indexScans.add(new SnameNullIndexScan(indexHolder, snameNullPredicate.getNill()));
-                iterator.remove();
+                if (snameNullPredicate.getNill() == 1) {
+                    indexScans.add(new SnameNullIndexScan(indexHolder, snameNullPredicate.getNill()));
+                    iterator.remove();
+                }
             } else if (predicate instanceof EmailEqPredicate) {
                 EmailEqPredicate emailEqPredicate = (EmailEqPredicate) predicate;
                 indexScans.add(new EmailEqIndexScan(indexHolder, emailEqPredicate.getEmail()));
@@ -962,12 +1021,16 @@ public class AccountService {
                 iterator.remove();
             } else if (predicate instanceof PhoneNullPredicate) {
                 PhoneNullPredicate phoneNullPredicate = (PhoneNullPredicate) predicate;
-                indexScans.add(new PhoneNullIndexScan(indexHolder, phoneNullPredicate.getNill()));
-                iterator.remove();
+                if (phoneNullPredicate.getNill() == 0) {
+                    indexScans.add(new PhoneNullIndexScan(indexHolder, phoneNullPredicate.getNill()));
+                    iterator.remove();
+                }
             } else if (predicate instanceof PremiumNullPredicate) {
                 PremiumNullPredicate premiumNullPredicate = (PremiumNullPredicate) predicate;
-                indexScans.add(new PremiumNullIndexScan(indexHolder, premiumNullPredicate.getNill()));
-                iterator.remove();
+                if (premiumNullPredicate.getNill() == 0) {
+                    indexScans.add(new PremiumNullIndexScan(indexHolder, premiumNullPredicate.getNill()));
+                    iterator.remove();
+                }
             }
         }
 

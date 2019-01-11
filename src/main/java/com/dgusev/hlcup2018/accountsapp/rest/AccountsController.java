@@ -198,6 +198,7 @@ public class AccountsController {
                 }
             } else if (name.startsWith("likes_")) {
                 if (name.equals("likes_contains")) {
+                  //  predicates.add(new LikesContainsPredicateUnsafe(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray(), likeContainsPredicateArray.get()));
                     predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray()));
                 } else {
                     throw BadRequest.INSTANCE;
@@ -229,6 +230,13 @@ public class AccountsController {
             responseBuf.writeBytes(LIST_END);
         }
     }
+
+    private static final ThreadLocal<long[]> likeContainsPredicateArray = new ThreadLocal<long[]>() {
+        @Override
+        protected long[] initialValue() {
+            return new long[127];
+        }
+    };
 
     public void group(Map<String,String> allRequestParams, ByteBuf responseBuf) {
             List<String> keys = new ArrayList<>();
@@ -295,12 +303,13 @@ public class AccountsController {
             if (groups.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_GROUPS_LIST);
             } else {
+                byte[] arr = ObjectPool.acquireFormatterArray();
                 responseBuf.writeBytes(GROUPS_LIST_START);
                 for (int i = 0; i < groups.size(); i++) {
                     if (i != 0) {
                         responseBuf.writeByte(',');
                     }
-                    groupFormatter.format(groups.get(i), keys, responseBuf);
+                    groupFormatter.format(groups.get(i), keys, responseBuf, arr);
                 }
                 responseBuf.writeBytes(LIST_END);
             }
@@ -340,12 +349,13 @@ public class AccountsController {
             if (result.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {
+                byte[] arr = ObjectPool.acquireFormatterArray();
                 responseBuf.writeBytes(ACCOUNTS_LIST_START);
                 for (int i = 0; i < result.size(); i++) {
                     if (i != 0) {
                         responseBuf.writeByte(',');
                     }
-                    accountFormatter.formatRecommend(result.get(i), responseBuf);
+                    accountFormatter.formatRecommend(result.get(i), responseBuf, arr);
                 }
                 responseBuf.writeBytes(LIST_END);
             }
