@@ -1,13 +1,19 @@
 package com.dgusev.hlcup2018.accountsapp.service;
 
+import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import gnu.trove.impl.Constants;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
+
 @Component
 public class AccountConverter {
+
+    @Autowired
+    private NowProvider nowProvider;
 
     @Autowired
     private Dictionary dictionary;
@@ -48,9 +54,11 @@ public class AccountConverter {
                 interests[i] = dictionary.getOrCreateInteres(accountDTO.interests[i]);
             }
             account.interests = interests;
+            Arrays.sort(account.interests);
         }
         account.premiumStart = accountDTO.premiumStart;
         account.premiumFinish = accountDTO.premiumFinish;
+        account.premium = account.premiumStart != 0 && account.premiumStart <= nowProvider.getNow() && (account.premiumFinish == 0 || account.premiumFinish > nowProvider.getNow());
         account.likes = accountDTO.likes;
        /* if (account.likes != null && account.likes.length != 0) {
             if (account.likes.length > 127) {

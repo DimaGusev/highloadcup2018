@@ -141,7 +141,7 @@ public class IndexHolder {
                     } else  {
                         tmpEmailDomainIndex.put(domain,  tmpEmailDomainIndex.get(domain) + 1);
                     }
-                    if (account.premiumStart != 0 && account.premiumStart <= now && (account.premiumFinish == 0 || account.premiumFinish > now)) {
+                    if (account.premium) {
                         premiumCounter++;
                     }
                     if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
@@ -217,7 +217,11 @@ public class IndexHolder {
                     tmpStatusIndex.put(account.status, tmpStatusIndex.get(account.status) + 1);
                     if (account.interests != null) {
                         for (byte interes : account.interests) {
-                            interestsIndex.get(interes)[tmpInterestsIndex.get(interes)] = account.id;
+                            int value = account.id;
+                            if (account.sex) {
+                                value |= 1 << 31;
+                            }
+                            interestsIndex.get(interes)[tmpInterestsIndex.get(interes)] = value;
                             tmpInterestsIndex.put(interes, tmpInterestsIndex.get(interes) + 1);
                         }
                     }
@@ -237,7 +241,7 @@ public class IndexHolder {
                     } else {
                         nullFname[nullFnameCounter++] = account.id;
                     }
-                    if (account.premiumStart != 0 && account.premiumStart <= now && (account.premiumFinish == 0 || account.premiumFinish > now)) {
+                    if (account.premium) {
                         premiumIndex[premiumCounter++] = account.id;
                     }
                 }

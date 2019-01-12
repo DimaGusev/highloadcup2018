@@ -32,6 +32,9 @@ public class InterestsAnyPredicate implements Predicate<Account> {
             if (arrray[i] == element) {
                 return true;
             }
+            if (arrray[i] > element) {
+                return false;
+            }
         }
         return false;
     }

@@ -38,8 +38,9 @@ public class InterestsAnyIndexScan extends AbstractIndexScan {
                 minIds[i] =  -1;
                 if (indexes[i] < indexList[i].length) {
                     for (int j = indexes[i]; j < indexList[i].length; j++) {
-                        if (indexList[i][j] < prev) {
-                            minIds[i] = indexList[i][j];
+                        int id = indexList[i][j] & 0x00ffffff;
+                        if (id < prev) {
+                            minIds[i] = id;
                             break;
                         }
                     }
@@ -54,7 +55,7 @@ public class InterestsAnyIndexScan extends AbstractIndexScan {
             for (int i = 0; i< indexList.length; i++) {
                 if (indexes[i] < indexList[i].length) {
                     for (int j = indexes[i]; j < indexList[i].length; j++) {
-                        if (indexList[i][j] >= max) {
+                        if ((indexList[i][j] & 0x00ffffff) >= max) {
                             indexes[i]++;
                         } else {
                             break;

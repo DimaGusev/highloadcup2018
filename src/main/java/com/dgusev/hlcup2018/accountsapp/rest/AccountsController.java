@@ -205,7 +205,7 @@ public class AccountsController {
                 }
             } else if (name.startsWith("premium_")) {
                 if (name.equals("premium_now")) {
-                    predicates.add(new PremiumNowPredicate(nowProvider.getNow()));
+                    predicates.add(new PremiumNowPredicate());
                 } else if (name.equals("premium_null")) {
                     predicates.add(new PremiumNullPredicate(Integer.parseInt(parameter.getValue())));
                 } else {
@@ -320,7 +320,8 @@ public class AccountsController {
                 throw new NotFoundRequest();
             }
             int limit = 0;
-            List<Predicate<Account>> predicates = new ArrayList<>();
+            byte country = -1;
+            int city = -1;
             for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
                 String name = parameter.getKey();
                 if (name.equals("query_id")) {
@@ -334,18 +335,18 @@ public class AccountsController {
                     if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
                         throw new BadRequest();
                     }
-                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue())));
+                    country = dictionary.getCountry(parameter.getValue());
                 } else if (name.equals("city")) {
                     if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
                         throw new BadRequest();
                     }
-                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
+                    city = dictionary.getCity(parameter.getValue());
                 } else {
                     throw new BadRequest();
                 }
             }
 
-            List<Account> result = accountService.recommend(id, predicates, limit);
+            List<Account> result = accountService.recommend(id, country, city, limit);
             if (result.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
             } else {

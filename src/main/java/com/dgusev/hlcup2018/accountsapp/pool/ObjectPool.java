@@ -45,6 +45,17 @@ public class ObjectPool {
         }
     };
 
+    private static ThreadLocal<AccountService.Score[]> scorePool = new ThreadLocal<AccountService.Score[]>() {
+        @Override
+        protected AccountService.Score[] initialValue() {
+            AccountService.Score[] array =   new AccountService.Score[20000];
+            for (int i = 0; i < 20000; i++) {
+                array[i] =new AccountService.Score();
+            }
+            return array;
+        }
+    };
+
     private static ArrayDeque<LikeRequest> likeRequestPool = new ArrayDeque<LikeRequest>();
     private static ArrayDeque<TLongArrayList> likeListPool = new ArrayDeque<TLongArrayList>();
     static {
@@ -101,9 +112,9 @@ public class ObjectPool {
         }
     };
 
-    private static ThreadLocal<List<Account>> recommendListPool = new ThreadLocal<List<Account>>() {
+    private static ThreadLocal<List<AccountService.Score>> recommendListPool = new ThreadLocal<List<AccountService.Score>>() {
         @Override
-        protected List<Account> initialValue() {
+        protected List<AccountService.Score> initialValue() {
             return new ArrayList<>(100);
         }
     };
@@ -203,6 +214,9 @@ public class ObjectPool {
         similarityPool.get().addLast(similarity);
     }
 
+    public static AccountService.Score[] acquireScore() {
+        return scorePool.get();
+    }
     public static LikeRequest acquireLikeRequest() {
         LikeRequest likeRequest = likeRequestPool.pollFirst();
         if (likeRequest != null) {
@@ -253,8 +267,8 @@ public class ObjectPool {
         return list;
     }
 
-    public static List<Account> acquireRecommendListResult() {
-        List<Account> list =  recommendListPool.get();
+    public static List<AccountService.Score> acquireRecommendListResult() {
+        List<AccountService.Score> list =  recommendListPool.get();
         list.clear();
         return list;
     }

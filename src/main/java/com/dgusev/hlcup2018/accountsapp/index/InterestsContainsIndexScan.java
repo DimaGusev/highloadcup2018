@@ -31,7 +31,7 @@ public class InterestsContainsIndexScan extends AbstractIndexScan {
         state = new int[count];
         for (int i = 0; i < count; i++) {
             if (indexList[i].length != 0) {
-                state[i] = indexList[i][indexes[i]++];
+                state[i] = indexList[i][indexes[i]++] & 0x00ffffff;
             } else {
                 state[i] = -1;
             }
@@ -64,7 +64,7 @@ public class InterestsContainsIndexScan extends AbstractIndexScan {
                     int result = state[0];
                     for (int i = 0; i < indexList.length; i++) {
                         if (indexes[i] < indexList[i].length) {
-                            state[i] = indexList[i][indexes[i]++];
+                            state[i] = indexList[i][indexes[i]++] & 0x00ffffff;
                         } else {
                             state[i] = -1;
                         }
@@ -75,7 +75,7 @@ public class InterestsContainsIndexScan extends AbstractIndexScan {
                 for (int i = 0; i < indexList.length; i++) {
                     if (state[i] != min) {
                         if (indexes[i] < indexList[i].length) {
-                            state[i] = indexList[i][indexes[i]++];
+                            state[i] = indexList[i][indexes[i]++] & 0x00ffffff;
                         } else {
                             state[i] = -1;
                         }

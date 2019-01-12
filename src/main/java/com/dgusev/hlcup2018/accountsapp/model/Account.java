@@ -19,6 +19,7 @@ public class Account {
     public int premiumStart;
     public int premiumFinish;
     public long[] likes;
+    public boolean premium;
    /* public int likesCount;
     public long likeAddress;
 

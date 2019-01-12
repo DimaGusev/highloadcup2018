@@ -70,13 +70,6 @@ public class RequestHandler {
             if ((buf[0] == 'G' && (buf[length - 1] != '\n' || buf[length - 2] != '\r' || buf[length - 3] != '\n' || buf[length - 4] != '\r')) || (buf[0] == 'P' && isFragmentedPost(buf, length))) {
                 ByteBuffer fragment = ObjectPool.acquireBuffer();
                 fragment.put(buf, 0, length);
-                if (buf[0] == 'G') {
-                    if (length > 30) {
-                        System.out.println(new String(buf, 0, 30));
-                    } else {
-                        System.out.println(new String(buf, 0, length));
-                    }
-                }
                 if (selectionKey != null) {
                     selectionKey.attach(fragment);
                 } else {
