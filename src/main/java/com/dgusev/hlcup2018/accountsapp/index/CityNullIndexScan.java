@@ -4,14 +4,9 @@ public class CityNullIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public CityNullIndexScan(IndexHolder indexHolder, int nill) {
+    public CityNullIndexScan(IndexHolder indexHolder) {
         super(indexHolder);
-        if (nill == 1) {
-            this.indexList = indexHolder.nullCity;
-        } else {
-            this.indexList = indexHolder.notNullCity;
-        }
-
+        this.indexList = indexHolder.nullCity;
     }
 
     @Override

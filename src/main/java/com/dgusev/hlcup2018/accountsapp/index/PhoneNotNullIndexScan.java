@@ -1,16 +1,12 @@
 package com.dgusev.hlcup2018.accountsapp.index;
 
-public class PhoneNullIndexScan extends AbstractIndexScan {
+public class PhoneNotNullIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public PhoneNullIndexScan(IndexHolder indexHolder, int nill) {
+    public PhoneNotNullIndexScan(IndexHolder indexHolder) {
         super(indexHolder);
-        if (nill == 1) {
-            this.indexList = indexHolder.nullPhone;
-        } else {
-            this.indexList = indexHolder.notNullPhone;
-        }
+        this.indexList = indexHolder.notNullPhone;
 
     }
 

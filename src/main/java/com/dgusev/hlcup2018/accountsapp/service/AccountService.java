@@ -9,6 +9,7 @@ import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
+import gnu.trove.map.TByteObjectMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
@@ -329,9 +330,6 @@ public class AccountService {
     };
 
     public List<Account> recommend(int id, byte country, int city, int limit) {
-        long t1 = System.nanoTime();
-        boolean[] recommend = recommendSet.get();
-        Arrays.fill(recommend, false);
         if (limit <= 0) {
             throw new BadRequest();
         }
@@ -346,6 +344,8 @@ public class AccountService {
         if (country == 0 || city == 0) {
             return Collections.EMPTY_LIST;
         }
+        boolean[] recommend = recommendSet.get();
+        resetArray(recommend);
         int sex = account.sex ? 1 : 0;
         List<Account> result1 = ObjectPool.acquireRecommendList();
         List<Account> result2 = ObjectPool.acquireRecommendList();
@@ -353,108 +353,10 @@ public class AccountService {
         List<Account> result4 = ObjectPool.acquireRecommendList();
         List<Account> result5 = ObjectPool.acquireRecommendList();
         List<Account> result6 = ObjectPool.acquireRecommendList();
-        final int now = nowProvider.getNow();
-        int counter = 0;
-        int result1Size = 0;
-        for (byte interes : account.interests) {
-            for (int aId : indexHolder.interestsIndex.get(interes)) {
-                counter++;
-
-                if (aId >>> 31 == sex) {
-                    continue;
-                }
-                aId = aId & 0x00ffffff;
-                if (aId != id) {
-                    if (counter != 1 && recommend[aId]) {
-                        continue;
-                    }
-                    Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
-                    }
-                    if (city != -1 && acc.city != city) {
-                        continue;
-                    }
-                        if (acc.premium) {
-                            if (acc.status == 0) {
-                                result1.add(acc);
-                                result1Size++;
-                            } else if (acc.status == 1) {
-                                if (result1Size < limit) {
-                                    result2.add(acc);
-                                }
-                            } else {
-                                if (result1Size < limit) {
-                                    result3.add(acc);
-                                }
-                            }
-                        } else {
-                            if (acc.status == 0) {
-                                if (result1Size < limit) {
-                                    result4.add(acc);
-                                }
-                            } else if (acc.status == 1) {
-                                if (result1Size < limit) {
-                                    result5.add(acc);
-                                }
-                            } else {
-                                if (result1Size < limit) {
-                                    result6.add(acc);
-                                }
-                            }
-                        }
-                        recommend[aId] = true;
-                }
-            }
-        }
-        long t2 = System.nanoTime();
+        fetchRecommendations2(id, sex, account, country, city, limit, recommend, result1, result2, result3, result4, result5, result6);
         try {
             List<Score> result = ObjectPool.acquireRecommendListResult();
             fillList(account, result, limit, result1, result2, result3, result4, result5, result6);
-/*
-
-            for (int i = 0; i < result1.size(); i++) {
-                Score score = ObjectPool.acquireScore();
-                calculateScore(score, 16000, account, result1.get(i));
-                result.add(score);
-            }
-            if (result.size() < limit) {
-                for (int i = 0; i < result2.size(); i++) {
-                    Score score = ObjectPool.acquireScore();
-                    calculateScore(score, 14000, account, result2.get(i));
-                    result.add(score);
-                }
-            }
-            if (result.size() < limit) {
-                for (int i = 0; i < result3.size(); i++) {
-                    Score score = ObjectPool.acquireScore();
-                    calculateScore(score, 12000, account, result3.get(i));
-                    result.add(score);
-                }
-            }
-            if (result.size() < limit) {
-                for (int i = 0; i < result4.size(); i++) {
-                    Score score = ObjectPool.acquireScore();
-                    calculateScore(score, 6000, account, result4.get(i));
-                    result.add(score);
-                }
-            }
-            if (result.size() < limit) {
-                for (int i = 0; i < result5.size(); i++) {
-                    Score score = ObjectPool.acquireScore();
-                    calculateScore(score, 4000, account, result5.get(i));
-                    result.add(score);
-                }
-            }
-            if (result.size() < limit) {
-                for (int i = 0; i < result6.size(); i++) {
-                    Score score = ObjectPool.acquireScore();
-                    calculateScore(score, 2000, account, result6.get(i));
-                    result.add(score);
-                }
-            } */
-            long t3 = System.nanoTime();
-
             AccountService.Score[] sortArray = recommendSortArray.get();
             int lastIndex = 0;
             int resultSize = result.size();
@@ -511,8 +413,6 @@ public class AccountService {
             for (int i = 0; i < lastIndex; i++) {
                 response.add(sortArray[i].account);
             }
-            long t4 = System.nanoTime();
-            //System.out.println("1=" + (t2-t1) + ",2=" + (t3-t2) + ",3=" + (t4-t3));
             return response;
         } finally {
             ObjectPool.releaseRecommendList(result1);
@@ -522,6 +422,225 @@ public class AccountService {
             ObjectPool.releaseRecommendList(result5);
             ObjectPool.releaseRecommendList(result6);
         }
+    }
+
+    private void fetchRecommendations(int id, int sex, Account account, byte country, int city, int limit, boolean[] recommend, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
+        int counter = 0;
+        int result1Size = 0;
+        for (byte interes : account.interests) {
+            for (int aId : indexHolder.interestsIndex.get(interes)) {
+                counter++;
+
+                if (aId >>> 31 == sex) {
+                    continue;
+                }
+                aId = aId & 0x00ffffff;
+                if (aId != id) {
+                    if (counter != 1 && recommend[aId]) {
+                        continue;
+                    }
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    if (acc.premium) {
+                        if (acc.status == 0) {
+                            result1.add(acc);
+                            result1Size++;
+                        } else if (acc.status == 1) {
+                            if (result1Size < limit) {
+                                result2.add(acc);
+                            }
+                        } else {
+                            if (result1Size < limit) {
+                                result3.add(acc);
+                            }
+                        }
+                    } else {
+                        if (acc.status == 0) {
+                            if (result1Size < limit) {
+                                result4.add(acc);
+                            }
+                        } else if (acc.status == 1) {
+                            if (result1Size < limit) {
+                                result5.add(acc);
+                            }
+                        } else {
+                            if (result1Size < limit) {
+                                result6.add(acc);
+                            }
+                        }
+                    }
+                    recommend[aId] = true;
+                }
+            }
+        }
+    }
+
+
+    private void fetchRecommendations2(int id, int sex, Account account, byte country, int city, int limit, boolean[] recommend, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
+
+        TByteObjectMap<int[]> prio1;
+        TByteObjectMap<int[]> prio2;
+        TByteObjectMap<int[]> prio3;
+        TByteObjectMap<int[]> prio4;
+        TByteObjectMap<int[]> prio5;
+        TByteObjectMap<int[]> prio6;
+
+        if (sex == 1) {
+            prio1 = indexHolder.sexFalsePremiumState0Index;
+            prio2 = indexHolder.sexFalsePremiumState1Index;
+            prio3 = indexHolder.sexFalsePremiumState2Index;
+            prio4 = indexHolder.sexFalseNonPremiumState0Index;
+            prio5 = indexHolder.sexFalseNonPremiumState1Index;
+            prio6 = indexHolder.sexFalseNonPremiumState2Index;
+        } else {
+            prio1 = indexHolder.sexTruePremiumState0Index;
+            prio2 = indexHolder.sexTruePremiumState1Index;
+            prio3 = indexHolder.sexTruePremiumState2Index;
+            prio4 = indexHolder.sexTrueNonPremiumState0Index;
+            prio5 = indexHolder.sexTrueNonPremiumState1Index;
+            prio6 = indexHolder.sexTrueNonPremiumState2Index;
+        }
+
+        int totalCount = 0;
+
+        for (byte interes : account.interests) {
+            for (int aId : prio1.get(interes)) {
+                if (aId != id) {
+                    if (recommend[aId]) {
+                        continue;
+                    }
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    result1.add(acc);
+                    totalCount++;
+                    recommend[aId] = true;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            return;
+        }
+        for (byte interes : account.interests) {
+            for (int aId : prio2.get(interes)) {
+                if (aId != id) {
+                    if (recommend[aId]) {
+                        continue;
+                    }
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    result2.add(acc);
+                    totalCount++;
+                    recommend[aId] = true;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            return;
+        }
+        for (byte interes : account.interests) {
+            for (int aId : prio3.get(interes)) {
+                if (aId != id) {
+                    if (recommend[aId]) {
+                        continue;
+                    }
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    result3.add(acc);
+                    totalCount++;
+                    recommend[aId] = true;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            return;
+        }
+        for (byte interes : account.interests) {
+            for (int aId : prio4.get(interes)) {
+                if (aId != id) {
+                    if (recommend[aId]) {
+                        continue;
+                    }
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    result4.add(acc);
+                    totalCount++;
+                    recommend[aId] = true;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            return;
+        }
+        for (byte interes : account.interests) {
+            for (int aId : prio5.get(interes)) {
+                if (aId != id) {
+                    if (recommend[aId]) {
+                        continue;
+                    }
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    result5.add(acc);
+                    totalCount++;
+                    recommend[aId] = true;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            return;
+        }
+        for (byte interes : account.interests) {
+            for (int aId : prio6.get(interes)) {
+                if (aId != id) {
+                    if (recommend[aId]) {
+                        continue;
+                    }
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    result6.add(acc);
+                    totalCount++;
+                    recommend[aId] = true;
+                }
+            }
+        }
+    }
+
+    private void resetArray(boolean[] arr) {
+        Arrays.fill(arr, false);
     }
 
     private static void fillList(Account account, List<Score> result, int limit, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
@@ -1050,7 +1169,7 @@ public class AccountService {
             } else if (predicate instanceof CountryNullPredicate) {
                 CountryNullPredicate countryNullPredicate = (CountryNullPredicate) predicate;
                 if (countryNullPredicate.getNill() == 1) {
-                    indexScans.add(new CountryNullIndexScan(indexHolder, countryNullPredicate.getNill()));
+                    indexScans.add(new CountryNullIndexScan(indexHolder));
                     iterator.remove();
                 }
             } else if (predicate instanceof StatusEqPredicate) {
@@ -1076,7 +1195,7 @@ public class AccountService {
             } */else if (predicate instanceof CityNullPredicate) {
                 CityNullPredicate cityNullPredicate = (CityNullPredicate) predicate;
                 if (cityNullPredicate.getNill() == 1) {
-                    indexScans.add(new CityNullIndexScan(indexHolder, cityNullPredicate.getNill()));
+                    indexScans.add(new CityNullIndexScan(indexHolder));
                     iterator.remove();
                 }
             } else if (predicate instanceof CityEqPredicate) {
@@ -1117,7 +1236,7 @@ public class AccountService {
             } else if (predicate instanceof FnameNullPredicate) {
                 FnameNullPredicate fnameNullPredicate = (FnameNullPredicate) predicate;
                 if (fnameNullPredicate.getNill() == 1) {
-                    indexScans.add(new FnameNullIndexScan(indexHolder, fnameNullPredicate.getNill()));
+                    indexScans.add(new FnameNullIndexScan(indexHolder));
                     iterator.remove();
                 }
             } else if (predicate instanceof SnameEqPredicate) {
@@ -1127,7 +1246,7 @@ public class AccountService {
             } else if (predicate instanceof SnameNullPredicate) {
                 SnameNullPredicate snameNullPredicate = (SnameNullPredicate) predicate;
                 if (snameNullPredicate.getNill() == 1) {
-                    indexScans.add(new SnameNullIndexScan(indexHolder, snameNullPredicate.getNill()));
+                    indexScans.add(new SnameNullIndexScan(indexHolder));
                     iterator.remove();
                 }
             } else if (predicate instanceof EmailEqPredicate) {
@@ -1145,13 +1264,13 @@ public class AccountService {
             } else if (predicate instanceof PhoneNullPredicate) {
                 PhoneNullPredicate phoneNullPredicate = (PhoneNullPredicate) predicate;
                 if (phoneNullPredicate.getNill() == 0) {
-                    indexScans.add(new PhoneNullIndexScan(indexHolder, phoneNullPredicate.getNill()));
+                    indexScans.add(new PhoneNotNullIndexScan(indexHolder));
                     iterator.remove();
                 }
             } else if (predicate instanceof PremiumNullPredicate) {
                 PremiumNullPredicate premiumNullPredicate = (PremiumNullPredicate) predicate;
                 if (premiumNullPredicate.getNill() == 0) {
-                    indexScans.add(new PremiumNullIndexScan(indexHolder, premiumNullPredicate.getNill()));
+                    indexScans.add(new PremiumNotNullIndexScan(indexHolder));
                     iterator.remove();
                 }
             }

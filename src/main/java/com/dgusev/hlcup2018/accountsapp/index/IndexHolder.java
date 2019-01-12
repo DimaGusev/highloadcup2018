@@ -45,20 +45,27 @@ public class IndexHolder {
     public TObjectIntMap<String> phoneIndex;
     public Map<String, int[]> phoneCodeIndex;
 
-    public int[] notNullCountry;
     public int[] nullCountry;
-    public int[] notNullCity;
     public int[] nullCity;
-    public int[] notNullFname;
     public int[] nullFname;
-    public int[] notNullSname;
     public int[] nullSname;
     public int[] notNullPhone;
-    public int[] nullPhone;
     public int[] notNullPremium;
-    public int[] nullPremium;
     public int[] premiumIndex;
     public int[][] likesIndex;
+
+    public TByteObjectMap<int[]> sexFalsePremiumState0Index;
+    public TByteObjectMap<int[]> sexFalsePremiumState1Index;
+    public TByteObjectMap<int[]> sexFalsePremiumState2Index;
+    public TByteObjectMap<int[]> sexFalseNonPremiumState0Index;
+    public TByteObjectMap<int[]> sexFalseNonPremiumState1Index;
+    public TByteObjectMap<int[]> sexFalseNonPremiumState2Index;
+    public TByteObjectMap<int[]> sexTruePremiumState0Index;
+    public TByteObjectMap<int[]> sexTruePremiumState1Index;
+    public TByteObjectMap<int[]> sexTruePremiumState2Index;
+    public TByteObjectMap<int[]> sexTrueNonPremiumState0Index;
+    public TByteObjectMap<int[]> sexTrueNonPremiumState1Index;
+    public TByteObjectMap<int[]> sexTrueNonPremiumState2Index;
 
     @Autowired
     private NowProvider nowProvider;
@@ -74,22 +81,28 @@ public class IndexHolder {
                 countryIndex = null;
                 statusIndex = null;
                 interestsIndex = null;
-                notNullCountry = null;
                 nullCountry = null;
-                notNullCity = null;
                 nullCity = null;
-                notNullFname = null;
                 nullFname = null;
                 fnameIndex = null;
                 premiumIndex = null;
                 emailDomainIndex = null;
+                sexFalsePremiumState0Index = null;
+                sexFalsePremiumState1Index = null;
+                sexFalsePremiumState2Index = null;
+                sexFalseNonPremiumState0Index = null;
+                sexFalseNonPremiumState1Index = null;
+                sexFalseNonPremiumState2Index = null;
+                sexTruePremiumState0Index = null;
+                sexTruePremiumState1Index = null;
+                sexTruePremiumState2Index = null;
+                sexTrueNonPremiumState0Index = null;
+                sexTrueNonPremiumState1Index = null;
+                sexTrueNonPremiumState2Index = null;
                 TByteIntMap tmpCountryIndex = new TByteIntHashMap();
                 TObjectIntMap<String> tmpEmailDomainIndex = new TObjectIntHashMap<>();
-                int notNullCountryCounter = 0;
                 int nullCountryCounter = 0;
-                int notNullCityCounter = 0;
                 int nullCityCounter = 0;
-                int notNullFnameCounter = 0;
                 int nullFnameCounter = 0;
                 int premiumCounter = 0;
                 TByteIntMap tmpStatusIndex = new TByteIntHashMap();
@@ -99,6 +112,18 @@ public class IndexHolder {
                 TByteIntMap tmpInterestsIndex = new TByteIntHashMap();
                 TIntIntMap tmpFnameIndex = new TIntIntHashMap();
                 emailIndex = new TObjectIntHashMap<>();
+                TByteIntMap tmpSexFalsePremiumState0Index = new TByteIntHashMap();
+                TByteIntMap tmpSexFalsePremiumState1Index = new TByteIntHashMap();
+                TByteIntMap tmpSexFalsePremiumState2Index = new TByteIntHashMap();
+                TByteIntMap tmpSexFalseNonPremiumState0Index = new TByteIntHashMap();
+                TByteIntMap tmpSexFalseNonPremiumState1Index = new TByteIntHashMap();
+                TByteIntMap tmpSexFalseNonPremiumState2Index = new TByteIntHashMap();
+                TByteIntMap tmpSexTruePremiumState0Index = new TByteIntHashMap();
+                TByteIntMap tmpSexTruePremiumState1Index = new TByteIntHashMap();
+                TByteIntMap tmpSexTruePremiumState2Index = new TByteIntHashMap();
+                TByteIntMap tmpSexTrueNonPremiumState0Index = new TByteIntHashMap();
+                TByteIntMap tmpSexTrueNonPremiumState1Index = new TByteIntHashMap();
+                TByteIntMap tmpSexTrueNonPremiumState2Index = new TByteIntHashMap();
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
                     if (account.country != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
@@ -108,13 +133,10 @@ public class IndexHolder {
                         } else {
                             tmpCountryIndex.put(account.country, count + 1);
                         }
-                        notNullCountryCounter++;
                     } else {
                         nullCountryCounter++;
                     }
-                    if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                        notNullCityCounter++;
-                    } else {
+                    if (account.city == Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                         nullCityCounter++;
                     }
                     tmpStatusIndex.put(account.status, tmpStatusIndex.get(account.status) + 1);
@@ -126,6 +148,103 @@ public class IndexHolder {
                                 tmpInterestsIndex.put(interes, 1);
                             } else {
                                 tmpInterestsIndex.put(interes, count + 1);
+                            }
+                            if (account.sex) {
+                                if (account.premium) {
+                                    if (account.status == 0) {
+                                        int cnt = tmpSexTruePremiumState0Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexTruePremiumState0Index.put(interes, 1);
+                                        } else {
+                                            tmpSexTruePremiumState0Index.put(interes, cnt + 1);
+                                        }
+                                    } else if (account.status == 1) {
+                                        int cnt = tmpSexTruePremiumState1Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexTruePremiumState1Index.put(interes, 1);
+                                        } else {
+                                            tmpSexTruePremiumState1Index.put(interes, cnt + 1);
+                                        }
+                                    } else {
+                                        int cnt = tmpSexTruePremiumState2Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexTruePremiumState2Index.put(interes, 1);
+                                        } else {
+                                            tmpSexTruePremiumState2Index.put(interes, cnt + 1);
+                                        }
+                                    }
+                                } else  {
+                                    if (account.status == 0) {
+                                        int cnt = tmpSexTrueNonPremiumState0Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexTrueNonPremiumState0Index.put(interes, 1);
+                                        } else {
+                                            tmpSexTrueNonPremiumState0Index.put(interes, cnt + 1);
+                                        }
+                                    } else if (account.status == 1) {
+                                        int cnt = tmpSexTrueNonPremiumState1Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexTrueNonPremiumState1Index.put(interes, 1);
+                                        } else {
+                                            tmpSexTrueNonPremiumState1Index.put(interes, cnt + 1);
+                                        }
+                                    } else {
+                                        int cnt = tmpSexTrueNonPremiumState2Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexTrueNonPremiumState2Index.put(interes, 1);
+                                        } else {
+                                            tmpSexTrueNonPremiumState2Index.put(interes, cnt + 1);
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (account.premium) {
+                                    if (account.status == 0) {
+                                        int cnt = tmpSexFalsePremiumState0Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexFalsePremiumState0Index.put(interes, 1);
+                                        } else {
+                                            tmpSexFalsePremiumState0Index.put(interes, cnt + 1);
+                                        }
+                                    } else if (account.status == 1) {
+                                        int cnt = tmpSexFalsePremiumState1Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexFalsePremiumState1Index.put(interes, 1);
+                                        } else {
+                                            tmpSexFalsePremiumState1Index.put(interes, cnt + 1);
+                                        }
+                                    } else {
+                                        int cnt = tmpSexFalsePremiumState2Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexFalsePremiumState2Index.put(interes, 1);
+                                        } else {
+                                            tmpSexFalsePremiumState2Index.put(interes, cnt + 1);
+                                        }
+                                    }
+                                } else  {
+                                    if (account.status == 0) {
+                                        int cnt = tmpSexFalseNonPremiumState0Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexFalseNonPremiumState0Index.put(interes, 1);
+                                        } else {
+                                            tmpSexFalseNonPremiumState0Index.put(interes, cnt + 1);
+                                        }
+                                    } else if (account.status == 1) {
+                                        int cnt = tmpSexFalseNonPremiumState1Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexFalseNonPremiumState1Index.put(interes, 1);
+                                        } else {
+                                            tmpSexFalseNonPremiumState1Index.put(interes, cnt + 1);
+                                        }
+                                    } else {
+                                        int cnt = tmpSexFalseNonPremiumState2Index.get(interes);
+                                        if (cnt == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                                            tmpSexFalseNonPremiumState2Index.put(interes, 1);
+                                        } else {
+                                            tmpSexFalseNonPremiumState2Index.put(interes, cnt + 1);
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -145,7 +264,6 @@ public class IndexHolder {
                         premiumCounter++;
                     }
                     if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                        notNullFnameCounter++;
                         int count = tmpFnameIndex.get(account.fname);
                         if (count == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
                             tmpFnameIndex.put(account.fname, 1);
@@ -160,18 +278,12 @@ public class IndexHolder {
                     }
                 }
 
-                notNullCountry = new int[notNullCountryCounter];
                 nullCountry = new int[nullCountryCounter];
-                notNullCity = new int[notNullCityCounter];
                 nullCity = new int[nullCityCounter];
-                notNullFname = new int[notNullFnameCounter];
                 nullFname = new int[nullFnameCounter];
                 premiumIndex = new int[premiumCounter];
-                notNullCountryCounter = 0;
                 nullCountryCounter = 0;
-                notNullCityCounter = 0;
                 nullCityCounter = 0;
-                notNullFnameCounter = 0;
                 nullFnameCounter = 0;
                 premiumCounter = 0;
                 countryIndex = new TByteObjectHashMap<>();
@@ -189,6 +301,66 @@ public class IndexHolder {
                     interestsIndex.put(entry, new int[tmpInterestsIndex.get(entry)]);
                     tmpInterestsIndex.put(entry, 0);
                 }
+                sexFalsePremiumState0Index = new TByteObjectHashMap<>();
+                sexFalsePremiumState1Index = new TByteObjectHashMap<>();
+                sexFalsePremiumState2Index = new TByteObjectHashMap<>();
+                sexFalseNonPremiumState0Index = new TByteObjectHashMap<>();
+                sexFalseNonPremiumState1Index = new TByteObjectHashMap<>();
+                sexFalseNonPremiumState2Index = new TByteObjectHashMap<>();
+                sexTruePremiumState0Index = new TByteObjectHashMap<>();
+                sexTruePremiumState1Index = new TByteObjectHashMap<>();
+                sexTruePremiumState2Index = new TByteObjectHashMap<>();
+                sexTrueNonPremiumState0Index = new TByteObjectHashMap<>();
+                sexTrueNonPremiumState1Index = new TByteObjectHashMap<>();
+                sexTrueNonPremiumState2Index = new TByteObjectHashMap<>();
+                for (byte entry : tmpSexFalsePremiumState0Index.keys()) {
+                    sexFalsePremiumState0Index.put(entry, new int[tmpSexFalsePremiumState0Index.get(entry)]);
+                    tmpSexFalsePremiumState0Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexFalsePremiumState1Index.keys()) {
+                    sexFalsePremiumState1Index.put(entry, new int[tmpSexFalsePremiumState1Index.get(entry)]);
+                    tmpSexFalsePremiumState1Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexFalsePremiumState2Index.keys()) {
+                    sexFalsePremiumState2Index.put(entry, new int[tmpSexFalsePremiumState2Index.get(entry)]);
+                    tmpSexFalsePremiumState2Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexFalseNonPremiumState0Index.keys()) {
+                    sexFalseNonPremiumState0Index.put(entry, new int[tmpSexFalseNonPremiumState0Index.get(entry)]);
+                    tmpSexFalseNonPremiumState0Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexFalseNonPremiumState1Index.keys()) {
+                    sexFalseNonPremiumState1Index.put(entry, new int[tmpSexFalseNonPremiumState1Index.get(entry)]);
+                    tmpSexFalseNonPremiumState1Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexFalseNonPremiumState2Index.keys()) {
+                    sexFalseNonPremiumState2Index.put(entry, new int[tmpSexFalseNonPremiumState2Index.get(entry)]);
+                    tmpSexFalseNonPremiumState2Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexTruePremiumState0Index.keys()) {
+                    sexTruePremiumState0Index.put(entry, new int[tmpSexTruePremiumState0Index.get(entry)]);
+                    tmpSexTruePremiumState0Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexTruePremiumState1Index.keys()) {
+                    sexTruePremiumState1Index.put(entry, new int[tmpSexTruePremiumState1Index.get(entry)]);
+                    tmpSexTruePremiumState1Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexTruePremiumState2Index.keys()) {
+                    sexTruePremiumState2Index.put(entry, new int[tmpSexTruePremiumState2Index.get(entry)]);
+                    tmpSexTruePremiumState2Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexTrueNonPremiumState0Index.keys()) {
+                    sexTrueNonPremiumState0Index.put(entry, new int[tmpSexTrueNonPremiumState0Index.get(entry)]);
+                    tmpSexTrueNonPremiumState0Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexTrueNonPremiumState1Index.keys()) {
+                    sexTrueNonPremiumState1Index.put(entry, new int[tmpSexTrueNonPremiumState1Index.get(entry)]);
+                    tmpSexTrueNonPremiumState1Index.put(entry, 0);
+                }
+                for (byte entry : tmpSexTrueNonPremiumState2Index.keys()) {
+                    sexTrueNonPremiumState2Index.put(entry, new int[tmpSexTrueNonPremiumState2Index.get(entry)]);
+                    tmpSexTrueNonPremiumState2Index.put(entry, 0);
+                }
                 fnameIndex = new TIntObjectHashMap<>();
                 for (int entry : tmpFnameIndex.keys()) {
                     fnameIndex.put(entry, new int[tmpFnameIndex.get(entry)]);
@@ -199,18 +371,16 @@ public class IndexHolder {
                     emailDomainIndex.put((String)entry, new int[tmpEmailDomainIndex.get(entry)]);
                     tmpEmailDomainIndex.put((String) entry, 0);
                 }
+
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
                     if (account.country != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
                         countryIndex.get(account.country)[tmpCountryIndex.get(account.country)] = account.id;
                         tmpCountryIndex.put(account.country, tmpCountryIndex.get(account.country) + 1);
-                        notNullCountry[notNullCountryCounter++] = account.id;
                     } else {
                         nullCountry[nullCountryCounter++] = account.id;
                     }
-                    if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                        notNullCity[notNullCityCounter++] = account.id;
-                    } else {
+                    if (account.city == Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                         nullCity[nullCityCounter++] = account.id;
                     }
                     statusIndex.get(account.status)[tmpStatusIndex.get(account.status)] = account.id;
@@ -223,6 +393,55 @@ public class IndexHolder {
                             }
                             interestsIndex.get(interes)[tmpInterestsIndex.get(interes)] = value;
                             tmpInterestsIndex.put(interes, tmpInterestsIndex.get(interes) + 1);
+                            if (account.sex) {
+                                if (account.premium) {
+                                    if (account.status == 0) {
+                                        sexTruePremiumState0Index.get(interes)[tmpSexTruePremiumState0Index.get(interes)] = account.id;
+                                        tmpSexTruePremiumState0Index.put(interes, tmpSexTruePremiumState0Index.get(interes) + 1);
+                                    } else if (account.status == 1) {
+                                        sexTruePremiumState1Index.get(interes)[tmpSexTruePremiumState1Index.get(interes)] = account.id;
+                                        tmpSexTruePremiumState1Index.put(interes, tmpSexTruePremiumState1Index.get(interes) + 1);
+                                    } else {
+                                        sexTruePremiumState2Index.get(interes)[tmpSexTruePremiumState2Index.get(interes)] = account.id;
+                                        tmpSexTruePremiumState2Index.put(interes, tmpSexTruePremiumState2Index.get(interes) + 1);
+                                    }
+                                } else  {
+                                    if (account.status == 0) {
+                                        sexTrueNonPremiumState0Index.get(interes)[tmpSexTrueNonPremiumState0Index.get(interes)] = account.id;
+                                        tmpSexTrueNonPremiumState0Index.put(interes, tmpSexTrueNonPremiumState0Index.get(interes) + 1);
+                                    } else if (account.status == 1) {
+                                        sexTrueNonPremiumState1Index.get(interes)[tmpSexTrueNonPremiumState1Index.get(interes)] = account.id;
+                                        tmpSexTrueNonPremiumState1Index.put(interes, tmpSexTrueNonPremiumState1Index.get(interes) + 1);
+                                    } else {
+                                        sexTrueNonPremiumState2Index.get(interes)[tmpSexTrueNonPremiumState2Index.get(interes)] = account.id;
+                                        tmpSexTrueNonPremiumState2Index.put(interes, tmpSexTrueNonPremiumState2Index.get(interes) + 1);
+                                    }
+                                }
+                            } else {
+                                if (account.premium) {
+                                    if (account.status == 0) {
+                                        sexFalsePremiumState0Index.get(interes)[tmpSexFalsePremiumState0Index.get(interes)] = account.id;
+                                        tmpSexFalsePremiumState0Index.put(interes, tmpSexFalsePremiumState0Index.get(interes) + 1);
+                                    } else if (account.status == 1) {
+                                        sexFalsePremiumState1Index.get(interes)[tmpSexFalsePremiumState1Index.get(interes)] = account.id;
+                                        tmpSexFalsePremiumState1Index.put(interes, tmpSexFalsePremiumState1Index.get(interes) + 1);
+                                    } else {
+                                        sexFalsePremiumState2Index.get(interes)[tmpSexFalsePremiumState2Index.get(interes)] = account.id;
+                                        tmpSexFalsePremiumState2Index.put(interes, tmpSexFalsePremiumState2Index.get(interes) + 1);
+                                    }
+                                } else  {
+                                    if (account.status == 0) {
+                                        sexFalseNonPremiumState0Index.get(interes)[tmpSexFalseNonPremiumState0Index.get(interes)] = account.id;
+                                        tmpSexFalseNonPremiumState0Index.put(interes, tmpSexFalseNonPremiumState0Index.get(interes) + 1);
+                                    } else if (account.status == 1) {
+                                        sexFalseNonPremiumState1Index.get(interes)[tmpSexFalseNonPremiumState1Index.get(interes)] = account.id;
+                                        tmpSexFalseNonPremiumState1Index.put(interes, tmpSexFalseNonPremiumState1Index.get(interes) + 1);
+                                    } else {
+                                        sexFalseNonPremiumState2Index.get(interes)[tmpSexFalseNonPremiumState2Index.get(interes)] = account.id;
+                                        tmpSexFalseNonPremiumState2Index.put(interes, tmpSexFalseNonPremiumState2Index.get(interes) + 1);
+                                    }
+                                }
+                            }
                         }
                     }
                     int at = account.email.lastIndexOf('@');
@@ -235,7 +454,6 @@ public class IndexHolder {
                     emailDomainIndex.get(domain)[tmpEmailDomainIndex.get(domain)] = account.id;
                     tmpEmailDomainIndex.put(domain, tmpEmailDomainIndex.get(domain) + 1);
                     if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                        notNullFname[notNullFnameCounter++] = account.id;
                         fnameIndex.get(account.fname)[tmpFnameIndex.get(account.fname)] = account.id;
                         tmpFnameIndex.put(account.fname, tmpFnameIndex.get(account.fname) + 1);
                     } else {
@@ -254,12 +472,9 @@ public class IndexHolder {
             public Boolean call() {
                 phoneIndex = null;
                 sexIndex = null;
-                notNullSname = null;
                 nullSname = null;
                 notNullPhone = null;
-                nullPhone = null;
                 notNullPremium = null;
-                nullPremium = null;
                 cityIndex = null;
                 snameIndex = null;
                 birthYearIndex = null;
@@ -267,12 +482,9 @@ public class IndexHolder {
                 joinedIndex = null;
                 TByteIntMap tmpSexIndex = new TByteIntHashMap();
                 TObjectIntMap<String> tmpPhoneCodeIndex = new TObjectIntHashMap<>();
-                int notNullSnameCounter = 0;
                 int nullSnameCounter = 0;
                 int notNullPhoneCounter = 0;
-                int nullPhoneCounter = 0;
                 int notNullPremiumCounter = 0;
-                int nullPremiumCounter = 0;
                 TIntIntMap tmpBirthYearIndex = new TIntIntHashMap();
                 tmpSexIndex.put((byte)1, 0);
                 tmpSexIndex.put((byte)0, 0);
@@ -309,7 +521,6 @@ public class IndexHolder {
                         }
                     }
                     if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                        notNullSnameCounter++;
                         count = tmpSnameIndex.get(account.sname);
                         if (count == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
                             tmpSnameIndex.put(account.sname, 1);
@@ -339,13 +550,9 @@ public class IndexHolder {
                                 }
                             }
                         }
-                    } else {
-                        nullPhoneCounter++;
                     }
                     if (account.premiumStart != 0) {
                         notNullPremiumCounter++;
-                    } else {
-                        nullPremiumCounter++;
                     }
                 }
                 sexIndex = new TByteObjectHashMap<>();
@@ -353,18 +560,12 @@ public class IndexHolder {
                     sexIndex.put(entry, new int[tmpSexIndex.get(entry)]);
                     tmpSexIndex.put(entry, 0);
                 }
-                notNullSname = new int[notNullSnameCounter];
                 nullSname = new int[nullSnameCounter];
                 notNullPhone = new int[notNullPhoneCounter];
-                nullPhone = new int[nullPhoneCounter];
                 notNullPremium = new int[notNullPremiumCounter];
-                nullPremium = new int[nullPremiumCounter];
-                notNullSnameCounter = 0;
                 nullSnameCounter = 0;
                 notNullPhoneCounter = 0;
-                nullPhoneCounter = 0;
                 notNullPremiumCounter = 0;
-                nullPremiumCounter = 0;
                 cityIndex = new TIntObjectHashMap<>();
                 for (int entry : tmpCityIndex.keys()) {
                     cityIndex.put(entry, new int[tmpCityIndex.get(entry)]);
@@ -399,7 +600,6 @@ public class IndexHolder {
                     sexIndex.get(account.sex ? (byte)1 : 0)[tmpSexIndex.get(account.sex ? (byte)1 : 0)] = account.id;
                     tmpSexIndex.put(account.sex ? (byte)1 : 0, tmpSexIndex.get(account.sex ? (byte)1 : 0) + 1);
                     if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                        notNullSname[notNullSnameCounter++] = account.id;
                         snameIndex.get(account.sname)[tmpSnameIndex.get(account.sname)] = account.id;
                         tmpSnameIndex.put(account.sname, tmpSnameIndex.get(account.sname) + 1);
                     } else {
@@ -424,13 +624,9 @@ public class IndexHolder {
                                 tmpPhoneCodeIndex.put(code, tmpPhoneCodeIndex.get(code) + 1);
                             }
                         }
-                    } else {
-                        nullPhone[nullPhoneCounter++] = account.id;
                     }
                     if (account.premiumStart != 0) {
                         notNullPremium[notNullPremiumCounter++] = account.id;
-                    } else {
-                        nullPremium[nullPremiumCounter++] = account.id;
                     }
                     if (account.joined != Integer.MIN_VALUE) {
                         int jyear = JoinedYearPredicate.calculateYear(account.joined);

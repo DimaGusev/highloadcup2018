@@ -1,17 +1,12 @@
 package com.dgusev.hlcup2018.accountsapp.index;
 
-public class PremiumNullIndexScan extends AbstractIndexScan {
+public class PremiumNotNullIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public PremiumNullIndexScan(IndexHolder indexHolder, int nill) {
+    public PremiumNotNullIndexScan(IndexHolder indexHolder) {
         super(indexHolder);
-        if (nill == 1) {
-            this.indexList = indexHolder.nullPremium;
-        } else {
-            this.indexList = indexHolder.notNullPremium;
-        }
-
+        this.indexList = indexHolder.notNullPremium;
     }
 
     @Override

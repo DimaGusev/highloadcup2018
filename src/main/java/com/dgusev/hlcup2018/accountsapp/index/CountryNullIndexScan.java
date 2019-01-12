@@ -6,14 +6,9 @@ public class CountryNullIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public CountryNullIndexScan(IndexHolder indexHolder, int nill) {
+    public CountryNullIndexScan(IndexHolder indexHolder) {
         super(indexHolder);
-        if (nill == 1) {
-            this.indexList = indexHolder.nullCountry;
-        } else {
-            this.indexList = indexHolder.notNullCountry;
-        }
-
+        this.indexList = indexHolder.nullCountry;
     }
 
     @Override

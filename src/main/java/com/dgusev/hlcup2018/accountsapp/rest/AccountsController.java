@@ -269,14 +269,18 @@ public class AccountsController {
                 } else if (name.equals("sex")) {
                     predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
                 } else if (name.equals("email")) {
+                    System.out.println("Email in group");
                     predicates.add(new EmailEqPredicate(parameter.getValue()));
                 } else if (name.equals("status")) {
                     predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
                 } else if (name.equals("fname")) {
+                    System.out.println("Fname in group");
                     predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue())));
                 } else if (name.equals("sname")) {
+                    System.out.println("Sname in group");
                     predicates.add(new SnameEqPredicate(dictionary.getSname(parameter.getValue())));
                 } else if (name.equals("phone")) {
+                    System.out.println("Phone in group");
                     predicates.add(new PhoneEqPredicate(parameter.getValue()));
                 } else if (name.equals("country")) {
                     predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue())));

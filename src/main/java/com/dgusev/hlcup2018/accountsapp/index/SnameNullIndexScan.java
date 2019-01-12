@@ -4,13 +4,9 @@ public class SnameNullIndexScan extends AbstractIndexScan {
 
     private int[] indexList;
 
-    public SnameNullIndexScan(IndexHolder indexHolder, int nill) {
+    public SnameNullIndexScan(IndexHolder indexHolder) {
         super(indexHolder);
-        if (nill == 1) {
-            this.indexList = indexHolder.nullSname;
-        } else {
-            this.indexList = indexHolder.notNullSname;
-        }
+        this.indexList = indexHolder.nullSname;
 
     }
 
