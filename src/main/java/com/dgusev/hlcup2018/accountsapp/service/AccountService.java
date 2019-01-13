@@ -404,23 +404,23 @@ public class AccountService {
     private List<Group> iterateFullScan(byte keysMask, int limit, int order) {
         long[] groups = null;
         if (keysMask == 0b00000100) {
-            groups = indexHolder.group1;
+            groups = indexHolder.groups[0];
         } else if (keysMask == 0b00001001) {
-            groups = indexHolder.group2;
+            groups = indexHolder.groups[1];
         } else if (keysMask == 0b00001000) {
-            groups = indexHolder.group3;
+            groups = indexHolder.groups[2];
         } else if (keysMask == 0b00000010) {
-            groups = indexHolder.group4;
+            groups = indexHolder.groups[3];
         } else if (keysMask == 0b00010001) {
-            groups = indexHolder.group5;
+            groups = indexHolder.groups[4];
         } else if (keysMask == 0b00000001) {
-            groups = indexHolder.group6;
+            groups = indexHolder.groups[5];
         } else if (keysMask == 0b00010000) {
-            groups = indexHolder.group7;
+            groups = indexHolder.groups[6];
         } else if (keysMask == 0b00001010) {
-            groups = indexHolder.group8;
+            groups = indexHolder.groups[7];
         } else if (keysMask == 0b00010010) {
-            groups = indexHolder.group9;
+            groups = indexHolder.groups[8];
         }
         List<Group> result = new ArrayList<>();
         Group[] groupsArray = groupsPool.get();

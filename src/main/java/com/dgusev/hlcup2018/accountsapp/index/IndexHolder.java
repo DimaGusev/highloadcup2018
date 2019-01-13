@@ -776,15 +776,7 @@ public class IndexHolder {
     }
 
 
-    public long[] group1;
-    public long[] group2;
-    public long[] group3;
-    public long[] group4;
-    public long[] group5;
-    public long[] group6;
-    public long[] group7;
-    public long[] group8;
-    public long[] group9;
+    public long[][] groups;
 
     public class GroupsUpdater implements Callable<Boolean> {
 
@@ -799,215 +791,74 @@ public class IndexHolder {
         @Override
         public Boolean call() throws Exception {
 
-            System.out.println("Start groups update" + new Date());
-            group1 = null;
-            group2 = null;
-            group3 = null;
-            group4 = null;
-            group5 = null;
-            group6 = null;
-            group7 = null;
-            group8 = null;
-            group9 = null;
-            long t1 = System.currentTimeMillis();
-            byte mask1 = 0b00000100;
-            byte mask2 = 0b00001001;
-            byte mask3 = 0b00001000;
-            byte mask4 = 0b00000010;
-            byte mask5 = 0b00010001;
-            byte mask6 = 0b00000001;
-            byte mask7 = 0b00010000;
-            byte mask8 = 0b00001010;
-            byte mask9 = 0b00010010;
-            List<String> keys1 = Arrays.asList("interests");
-            List<String> keys2 = Arrays.asList("country", "sex");
-            List<String> keys3 = Arrays.asList("country");
-            List<String> keys4 = Arrays.asList("status");
-            List<String> keys5 = Arrays.asList("city", "sex");
-            List<String> keys6 = Arrays.asList("sex");
-            List<String> keys7 = Arrays.asList("city");
-            List<String> keys8 = Arrays.asList("country", "status");
-            List<String> keys9 = Arrays.asList("city", "status");
+            try {
+                System.out.println("Start groups update" + new Date());
+                groups = null;
+                long t1 = System.currentTimeMillis();
+                byte[] masks = new byte[9];
+                masks[0] = 0b00000100;
+                masks[1] = 0b00001001;
+                masks[2] = 0b00001000;
+                masks[3] = 0b00000010;
+                masks[4] = 0b00010001;
+                masks[5] = 0b00000001;
+                masks[6] = 0b00010000;
+                masks[7] = 0b00001010;
+                masks[8] = 0b00010010;
+                List[] keys = new List[9];
+                keys[0] = Arrays.asList("interests");
+                keys[1] = Arrays.asList("country", "sex");
+                keys[2] = Arrays.asList("country");
+                keys[3] = Arrays.asList("status");
+                keys[4] = Arrays.asList("city", "sex");
+                keys[5] = Arrays.asList("sex");
+                keys[6] = Arrays.asList("city");
+                keys[7] = Arrays.asList("country", "status");
+                keys[8] = Arrays.asList("city", "status");
 
-            TIntIntHashMap groupsCount1 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount2 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount3 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount4 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount5 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount6 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount7 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount8 = new TIntIntHashMap();
-            TIntIntHashMap groupsCount9 = new TIntIntHashMap();
+                TIntIntHashMap[] groupCounts = new TIntIntHashMap[9];
+                for (int i = 0; i < 9; i++) {
+                    groupCounts[i] = new TIntIntHashMap();
+                }
 
-            for (int i = 0; i < size; i++) {
-                Account account = accounts[i];
-                processRecord3(account, groupsCount1, mask1);
-                processRecord3(account, groupsCount2, mask2);
-                processRecord3(account, groupsCount3, mask3);
-                processRecord3(account, groupsCount4, mask4);
-                processRecord3(account, groupsCount5, mask5);
-                processRecord3(account, groupsCount6, mask6);
-                processRecord3(account, groupsCount7, mask7);
-                processRecord3(account, groupsCount8, mask8);
-                processRecord3(account, groupsCount9, mask9);
-            }
-            Group[] group1Array = new Group[groupsCount1.size()];
-            Group[] group2Array = new Group[groupsCount2.size()];
-            Group[] group3Array = new Group[groupsCount3.size()];
-            Group[] group4Array = new Group[groupsCount4.size()];
-            Group[] group5Array = new Group[groupsCount5.size()];
-            Group[] group6Array = new Group[groupsCount6.size()];
-            Group[] group7Array = new Group[groupsCount7.size()];
-            Group[] group8Array = new Group[groupsCount8.size()];
-            Group[] group9Array = new Group[groupsCount9.size()];
-            Comparator<Group> comparator1 = new GroupsComparator(keys1);
-            Comparator<Group> comparator2 = new GroupsComparator(keys2);
-            Comparator<Group> comparator3 = new GroupsComparator(keys3);
-            Comparator<Group> comparator4 = new GroupsComparator(keys4);
-            Comparator<Group> comparator5 = new GroupsComparator(keys5);
-            Comparator<Group> comparator6 = new GroupsComparator(keys6);
-            Comparator<Group> comparator7 = new GroupsComparator(keys7);
-            Comparator<Group> comparator8 = new GroupsComparator(keys8);
-            Comparator<Group> comparator9 = new GroupsComparator(keys9);
-            int counter = 0;
-            for (int group: groupsCount1.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount1.get(group);
-                tmp.values = group;
-                group1Array[counter++] = tmp;
-            }
-            Arrays.sort(group1Array, comparator1);
-            group1 = new long[group1Array.length];
-            for (int i = 0; i < group1Array.length; i++) {
-                Group grp = group1Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group1[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount2.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount2.get(group);
-                tmp.values = group;
-                group2Array[counter++] = tmp;
-            }
-            Arrays.sort(group2Array, comparator2);
-            group2 = new long[group2Array.length];
-            for (int i = 0; i < group2Array.length; i++) {
-                Group grp = group2Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group2[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount3.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount3.get(group);
-                tmp.values = group;
-                group3Array[counter++] = tmp;
-            }
-            Arrays.sort(group3Array, comparator3);
-            group3 = new long[group3Array.length];
-            for (int i = 0; i < group3Array.length; i++) {
-                Group grp = group3Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group3[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount4.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount4.get(group);
-                tmp.values = group;
-                group4Array[counter++] = tmp;
-            }
-            Arrays.sort(group4Array, comparator4);
-            group4 = new long[group4Array.length];
-            for (int i = 0; i < group4Array.length; i++) {
-                Group grp = group4Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group4[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount5.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount5.get(group);
-                tmp.values = group;
-                group5Array[counter++] = tmp;
-            }
-            Arrays.sort(group5Array, comparator5);
-            group5 = new long[group5Array.length];
-            for (int i = 0; i < group5Array.length; i++) {
-                Group grp = group5Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group5[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount6.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount6.get(group);
-                tmp.values = group;
-                group6Array[counter++] = tmp;
-            }
-            Arrays.sort(group6Array, comparator6);
-            group6 = new long[group6Array.length];
-            for (int i = 0; i < group6Array.length; i++) {
-                Group grp = group6Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group6[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount7.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount7.get(group);
-                tmp.values = group;
-                group7Array[counter++] = tmp;
-            }
-            Arrays.sort(group7Array, comparator7);
-            group7 = new long[group7Array.length];
-            for (int i = 0; i < group7Array.length; i++) {
-                Group grp = group7Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group7[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount8.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount8.get(group);
-                tmp.values = group;
-                group8Array[counter++] = tmp;
-            }
-            Arrays.sort(group8Array, comparator8);
-            group8 = new long[group8Array.length];
-            for (int i = 0; i < group8Array.length; i++) {
-                Group grp = group8Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group8[i] = value;
-            }
-            counter = 0;
-            for (int group: groupsCount9.keys()) {
-                Group tmp = new Group();
-                tmp.count = groupsCount9.get(group);
-                tmp.values = group;
-                group9Array[counter++] = tmp;
-            }
-            Arrays.sort(group9Array, comparator9);
-            group9 = new long[group9Array.length];
-            for (int i = 0; i < group9Array.length; i++) {
-                Group grp = group9Array[i];
-                long value = grp.count;
-                value|= ((long)grp.values << 32);
-                group9[i] = value;
-            }
+                for (int i = 0; i < size; i++) {
+                    Account account = accounts[i];
+                    for (int j = 0; j < 9; j++) {
+                        processRecord3(account, groupCounts[j], masks[j]);
+                    }
+                }
+                Group[][] groupArrays = new Group[9][];
+                Comparator[] comparators = new Comparator[9];
+                for (int i = 0; i < 9; i++) {
+                    groupArrays[i] = new Group[groupCounts[i].size()];
+                    comparators[i] = new GroupsComparator(keys[i]);
+                }
+                groups = new long[9][];
+                for (int i = 0; i < 9; i++) {
+                    int counter = 0;
+                    for (int group : groupCounts[i].keys()) {
+                        Group tmp = new Group();
+                        tmp.count = groupCounts[i].get(group);
+                        tmp.values = group;
+                        groupArrays[i][counter++] = tmp;
+                    }
+                    Arrays.sort(groupArrays[i], comparators[i]);
+                    groups[i] = new long[groupArrays[i].length];
+                    for (int j = 0; j < groupArrays[i].length; j++) {
+                        Group grp = groupArrays[i][j];
+                        long value = grp.count;
+                        value |= ((long) grp.values << 32);
+                        groups[i][j] = value;
+                    }
+                }
 
-            long t2 = System.currentTimeMillis();
-            System.out.println("Finish groups update" + new Date() + " took=" + (t2-t1));
+                long t2 = System.currentTimeMillis();
+                System.out.println("Finish groups update" + new Date() + " took=" + (t2 - t1));
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
             return true;
+
         }
 
         private class GroupsComparator implements Comparator<Group>{
