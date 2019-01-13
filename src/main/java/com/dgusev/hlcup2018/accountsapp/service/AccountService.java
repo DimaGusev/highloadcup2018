@@ -196,6 +196,30 @@ public class AccountService {
         else if (predicatesMask == (byte)160) {
             iterateInteresJoined(interes, joinedYear, groupsCountMap, keysMask);
         }
+        //CountryEqPredicate
+        else if (predicatesMask == 4) {
+            iterateCountry(country, groupsCountMap, keysMask);
+        }
+        //BirthYearPredicate,CountryEqPredicate
+        else if (predicatesMask == 20) {
+            iterateCountryBirth(country, birthYear, groupsCountMap, keysMask);
+        }
+        //CountryEqPredicate,JoinedYearPredicate
+        else if (predicatesMask == (byte)132) {
+            iterateCountryJoined(country, joinedYear, groupsCountMap, keysMask);
+        }
+        //BirthYearPredicate
+        else if (predicatesMask == 16) {
+            iterateBirth(birthYear, groupsCountMap, keysMask);
+        }
+        //BirthYearPredicate,SexEqPredicate
+        else if (predicatesMask == 17) {
+            iterateBirthSex(birthYear, sex, groupsCountMap, keysMask);
+        }
+        //BirthYearPredicate,StatusEqPredicate
+        else if (predicatesMask == 18) {
+            iterateBirthStatus(birthYear, status, groupsCountMap, keysMask);
+        }
         else {
             return Collections.EMPTY_LIST;
         }
@@ -289,9 +313,11 @@ public class AccountService {
 
     private void iterateInteresBirth(byte interes,int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
         int[] accounts = indexHolder.interestsIndex.get(interes);
+        byte year = (byte)(birthYear - 1900);
+        byte[] birthYearIndex = indexHolder.birthYear;
         for (int id : accounts) {
             Account account = accountIdMap[id & 0x00ffffff];
-            if (BirthYearPredicate.calculateYear(account.birth) == birthYear) {
+            if (birthYearIndex[account.id] == year) {
                 processRecord2(account, groupsCountMap, keysMask);
             }
         }
@@ -299,14 +325,82 @@ public class AccountService {
 
     private void iterateInteresJoined(byte interes,int joinedYear, TIntIntMap groupsCountMap, byte keysMask) {
         int[] accounts = indexHolder.interestsIndex.get(interes);
+        byte year = (byte)(joinedYear - 2000);
+        byte[] joinedYearIndex = indexHolder.joinedYear;
         for (int id : accounts) {
             Account account = accountIdMap[id & 0x00ffffff];
-            if (JoinedYearPredicate.calculateYear(account.joined) == joinedYear) {
+            if (joinedYearIndex[account.id] == year) {
                 processRecord2(account, groupsCountMap, keysMask);
             }
         }
     }
 
+    private void iterateCountry(byte country, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.countryIndex.get(country);
+        for (int id : accounts) {
+            Account account = accountIdMap[id];
+            processRecord2(account, groupsCountMap, keysMask);
+        }
+    }
+
+    private void iterateCountryBirth(byte country,int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.countryIndex.get(country);
+        byte year = (byte)(birthYear - 1900);
+        byte[] birthYearIndex = indexHolder.birthYear;
+        for (int id : accounts) {
+            Account account = accountIdMap[id];
+            if (birthYearIndex[account.id] == year) {
+                processRecord2(account, groupsCountMap, keysMask);
+            }
+        }
+    }
+
+    private void iterateCountryJoined(byte country,int joinedYear, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.countryIndex.get(country);
+        byte year = (byte)(joinedYear - 2000);
+        byte[] joinedYearIndex = indexHolder.joinedYear;
+        for (int id : accounts) {
+            Account account = accountIdMap[id];
+            if (joinedYearIndex[account.id] == year) {
+                processRecord2(account, groupsCountMap, keysMask);
+            }
+        }
+    }
+
+
+    private void iterateBirth(int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.birthYearIndex.get(birthYear);
+        if (accounts != null) {
+            for (int id : accounts) {
+                Account account = accountIdMap[id];
+                processRecord2(account, groupsCountMap, keysMask);
+            }
+        }
+    }
+
+    private void iterateBirthSex(int birthYear, boolean sex, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.birthYearIndex.get(birthYear);
+        if (accounts != null) {
+            for (int id : accounts) {
+                Account account = accountIdMap[id];
+                if (account.sex == sex) {
+                    processRecord2(account, groupsCountMap, keysMask);
+                }
+            }
+        }
+    }
+
+    private void iterateBirthStatus(int birthYear,byte status, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.birthYearIndex.get(birthYear);
+        if (accounts != null) {
+            for (int id : accounts) {
+                Account account = accountIdMap[id];
+                if (account.status == status) {
+                    processRecord2(account, groupsCountMap, keysMask);
+                }
+            }
+        }
+    }
 
 
     private int compare(int count1, int group1, int count2, int group2, List<String> keys, int order) {
