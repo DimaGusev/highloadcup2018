@@ -10,8 +10,10 @@ import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TByteObjectMap;
+import gnu.trove.map.TIntIntMap;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.TLongObjectMap;
+import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 import gnu.trove.set.TIntSet;
@@ -20,35 +22,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 
 @Service
 public class AccountService {
     public  static final int MAX_ID = 1520000;
     private static final Set<String> ALLOWED_SEX = new HashSet<>(Arrays.asList("m", "f"));
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("[0-9a-zA-z]+@[0-9a-zA-z]+\\\\.[0-9a-zA-z]+");
-    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger(0);
     private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>(180000, 1);
     private static final TIntObjectMap<TIntList> additionalLikes = new TIntObjectHashMap<>();
-
-    private static final Comparator<Similarity> SIMILARITY_COMPARATOR = Comparator.comparingDouble((Similarity s) -> s.similarity).reversed();
-
-    private AtomicInteger r1 = new AtomicInteger(0);
-    private AtomicInteger r2 = new AtomicInteger(0);
-    private AtomicInteger r3 = new AtomicInteger(0);
-    private AtomicInteger r4 = new AtomicInteger(0);
-    private AtomicInteger r5 = new AtomicInteger(0);
-    private AtomicInteger r6 = new AtomicInteger(0);
-    private AtomicInteger s1 = new AtomicInteger(0);
-    private AtomicInteger s2 = new AtomicInteger(0);
-    private AtomicInteger s3 = new AtomicInteger(0);
-    private AtomicInteger s4 = new AtomicInteger(0);
-    private AtomicInteger s5 = new AtomicInteger(0);
-    private AtomicInteger s6 = new AtomicInteger(0);
-
 
     @Autowired
     private NowProvider nowProvider;
@@ -126,58 +108,118 @@ public class AccountService {
         return result;
     }
 
-    public List<Group> group(List<String> keys, List<Predicate<Account>> predicates, int order, int limit) {
-        if (limit <= 0) {
-            throw new BadRequest();
+    private static final ThreadLocal<TIntIntMap> groupsCountMapPool = new ThreadLocal<TIntIntMap>() {
+        @Override
+        protected TIntIntMap initialValue() {
+            return new TIntIntHashMap();
         }
-        if (true) {
+    };
+
+    private static final ThreadLocal<Group[]> groupsPool = new ThreadLocal<Group[]>() {
+        @Override
+        protected Group[] initialValue() {
+            Group[] groups =  new Group[10000];
+            for (int i =0; i < 10000; i++) {
+                groups[i] = new Group();
+            }
+            return groups;
+        }
+    };
+
+    private static final ThreadLocal<Group[]> groupsSortArrayPool = new ThreadLocal<Group[]>() {
+        @Override
+        protected Group[] initialValue() {
+            return new Group[50];
+        }
+    };
+
+    public List<Group> group(List<String> keys, boolean sex, byte status, byte country, int city, int birthYear, byte interes, int like, int joinedYear, int order, int limit, byte keysMask, byte predicatesMask) {
+        if (limit <= 0) {
+            throw BadRequest.INSTANCE;
+        }
+        TIntIntMap groupsCountMap = groupsCountMapPool.get();
+        groupsCountMap.clear();
+        //LikesContainsPredicate
+        if (predicatesMask == 64) {
+            int[] likers = indexHolder.likesIndex[like];
+            if (likers != null) {
+                for (int id : likers) {
+                    processRecord2(accountIdMap[id], groupsCountMap, keysMask);
+                }
+            }
+        }
+        //JoinedYearPredicate,LikesContainsPredicate
+        else if (predicatesMask == (byte)192) {
+            int[] likers = indexHolder.likesIndex[like];
+            if (likers != null) {
+                for (int id : likers) {
+                    Account account = accountIdMap[id];
+                    if (JoinedYearPredicate.calculateYear(account.joined) == joinedYear) {
+                        processRecord2(account, groupsCountMap, keysMask);
+                    }
+                }
+            }
+        }
+        //BirthYearPredicate,LikesContainsPredicate
+        else if (predicatesMask == 80) {
+            int[] likers = indexHolder.likesIndex[like];
+            if (likers != null) {
+                for (int id : likers) {
+                    Account account = accountIdMap[id];
+                    if (BirthYearPredicate.calculateYear(account.birth) == birthYear) {
+                        processRecord2(account, groupsCountMap, keysMask);
+                    }
+                }
+            }
+        }
+        //CityEqPredicate
+        else if (predicatesMask == 8) {
+            iterateCity(city, groupsCountMap, keysMask);
+        }
+        //BirthYearPredicate,CityEqPredicate
+        else if (predicatesMask == 24) {
+            iterateCityBirth(city, birthYear, groupsCountMap, keysMask);
+        }
+        //CityEqPredicate,JoinedYearPredicate
+        else if (predicatesMask == (byte)136) {
+            iterateCityJoined(city, joinedYear, groupsCountMap, keysMask);
+        }
+        //InterestsContainsPredicate
+        else if (predicatesMask == 32) {
+            iterateInteres(interes, groupsCountMap, keysMask);
+        }
+        //BirthYearPredicate,InterestsContainsPredicate
+        else if (predicatesMask == 48) {
+            iterateInteresBirth(interes, birthYear, groupsCountMap, keysMask);
+        }
+        //CityEqPredicate,JoinedYearPredicate
+        else if (predicatesMask == (byte)160) {
+            iterateInteresJoined(interes, joinedYear, groupsCountMap, keysMask);
+        }
+        else {
             return Collections.EMPTY_LIST;
         }
-        List<IndexScan> indexScans = getAvailableIndexScan(predicates);
-        TLongObjectMap<IntegerHolder> groupHashMap = new TLongObjectHashMap<>();
-        TLongObjectMap<List<String>> groupNameMap = new TLongObjectHashMap<>();
-        List<String> tmpGroupList = new ArrayList<>();
-        if (!indexScans.isEmpty()) {
-            Predicate<Account> accountPredicate = andPredicates(predicates);
-            IndexScan indexScan = new CompositeIndexScan(indexScans);
-            while (true) {
-                int next = indexScan.getNext();
-                if (next == -1) {
-                    break;
-                }
-                Account account = accountIdMap[next];
-                if (accountPredicate.test(account)) {
-                    processRecord(account, groupHashMap, groupNameMap , keys, tmpGroupList);
-                }
-            }
-        } else {
-            Predicate<Account> accountPredicate = andPredicates(predicates);
-            for (int i = 0; i < size; i++) {
-                Account account = accountList[i];
-                if (accountPredicate.test(account)) {
-                    processRecord(account, groupHashMap, groupNameMap, keys, tmpGroupList);
-                }
-            }
-        }
-        Group[] groups = new Group[limit];
+        Group[] groups = groupsSortArrayPool.get();
+        Arrays.fill(groups, null);
+        Group[] pool = groupsPool.get();
+        int counter = 0;
         Group lastGroup = null;
-        for (long hash : groupHashMap.keys()) {
-            int count = groupHashMap.get(hash).count;
+        for (int groupDefinition : groupsCountMap.keys()) {
+            int count = groupsCountMap.get(groupDefinition);
             int insertPosition = -1;
             if (lastGroup != null) {
-                int cmp = compare(count, groupNameMap.get(hash), lastGroup.count, lastGroup.values, order);
+                int cmp = compare(count, groupDefinition, lastGroup.count, lastGroup.values, keys, order);
                 if (cmp > 0) {
-                    ObjectPool.releaseGroup(groupNameMap.get(hash));
                     continue;
                 }
             }
-            for (int i = 0; i < groups.length; i++) {
+            for (int i = 0; i < limit; i++) {
                 Group group = groups[i];
                 if (group == null) {
                     insertPosition = i;
                     break;
                 } else {
-                    int cmp = compare(count, groupNameMap.get(hash), group.count, group.values, order);
+                    int cmp = compare(count, groupDefinition, group.count, group.values, keys, order);
                     if (cmp > 0) {
                         continue;
                     } else if (cmp < 0) {
@@ -187,19 +229,18 @@ public class AccountService {
                 }
             }
             if (insertPosition != -1) {
-                Group group = new Group();
-                group.count = groupHashMap.get(hash).count;
-                group.values = new ArrayList<>(groupNameMap.get(hash));
+                Group group = pool[counter++];
+                group.count = count;
+                group.values = groupDefinition;
                 System.arraycopy(groups, insertPosition, groups, insertPosition + 1, limit - insertPosition - 1);
                 groups[insertPosition] = group;
-                if (groups[groups.length - 1] != null) {
-                    lastGroup = groups[groups.length - 1];
+                if (groups[limit - 1] != null) {
+                    lastGroup = groups[limit - 1];
                 }
             }
-            ObjectPool.releaseGroup(groupNameMap.get(hash));
         }
         List<Group> result = new ArrayList<>();
-        for (int i = 0; i < groups.length; i++) {
+        for (int i = 0; i < limit; i++) {
             Group group = groups[i];
             if (group != null) {
                 result.add(group);
@@ -210,103 +251,172 @@ public class AccountService {
         return result;
     }
 
-    private int compare(int count1, List<String> group1, int count2, List<String> group2, int order) {
+    private void iterateCity(int city, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.cityIndex.get(city);
+        for (int id : accounts) {
+            Account account = accountIdMap[id];
+            processRecord2(account, groupsCountMap, keysMask);
+        }
+    }
+
+    private void iterateCityBirth(int city,int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.cityIndex.get(city);
+        for (int id : accounts) {
+            Account account = accountIdMap[id];
+            if (BirthYearPredicate.calculateYear(account.birth) == birthYear) {
+                processRecord2(account, groupsCountMap, keysMask);
+            }
+        }
+    }
+
+    private void iterateCityJoined(int city,int joinedYear, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.cityIndex.get(city);
+        for (int id : accounts) {
+            Account account = accountIdMap[id];
+            if (JoinedYearPredicate.calculateYear(account.joined) == joinedYear) {
+                processRecord2(account, groupsCountMap, keysMask);
+            }
+        }
+    }
+
+    private void iterateInteres(byte interes, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.interestsIndex.get(interes);
+        for (int id : accounts) {
+            Account account = accountIdMap[id & 0x00ffffff];
+            processRecord2(account, groupsCountMap, keysMask);
+        }
+    }
+
+    private void iterateInteresBirth(byte interes,int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.interestsIndex.get(interes);
+        for (int id : accounts) {
+            Account account = accountIdMap[id & 0x00ffffff];
+            if (BirthYearPredicate.calculateYear(account.birth) == birthYear) {
+                processRecord2(account, groupsCountMap, keysMask);
+            }
+        }
+    }
+
+    private void iterateInteresJoined(byte interes,int joinedYear, TIntIntMap groupsCountMap, byte keysMask) {
+        int[] accounts = indexHolder.interestsIndex.get(interes);
+        for (int id : accounts) {
+            Account account = accountIdMap[id & 0x00ffffff];
+            if (JoinedYearPredicate.calculateYear(account.joined) == joinedYear) {
+                processRecord2(account, groupsCountMap, keysMask);
+            }
+        }
+    }
+
+
+
+    private int compare(int count1, int group1, int count2, int group2, List<String> keys, int order) {
         if (order == 1) {
             int cc = Integer.compare(count1, count2);
             if (cc == 0) {
-                return compareGroups(group1, group2);
+                return compareGroups(group1, group2, keys);
             } else {
                 return cc;
             }
         } else {
             int cc = Integer.compare(count2, count1);
             if (cc == 0) {
-                return compareGroups(group2, group1);
+                return compareGroups(group2, group1, keys);
             } else {
                 return cc;
             }
         }
     }
 
-    private void processRecord(Account account, TLongObjectMap<IntegerHolder> groupHashMap, TLongObjectMap<List<String>> groupNameMap, List<String> keys, List<String> group) {
-        group.clear();
-        long hashcode =  0;
-        int ksize = keys.size();
-        for (int i = 0; i < ksize; i++) {
-            String key = keys.get(i);
-            if (key.equals("sex")) {
-                group.add(ConvertorUtills.convertSex(account.sex));
-                hashcode = 31* hashcode + (Boolean.valueOf(account.sex).hashCode());
-            } else if (key.equals("status")) {
-                String status = ConvertorUtills.convertStatusNumber(account.status);
-                group.add(status);
-                hashcode = 31* hashcode + (status.hashCode());
-            } else if (key.equals("interests")) {
-
-            } else if (key.equals("country")) {
-                String country = dictionary.getCountry(account.country);
-                group.add(country);
-                hashcode = 31* hashcode + (country == null ? 0 : country.hashCode());
-            } else if (key.equals("city")) {
-                String city = dictionary.getCity(account.city);
-                group.add(city);
-                hashcode = 31* hashcode + (city == null ? 0 : city.hashCode());
-            } else {
-                throw new BadRequest();
+    private void processRecord2(Account account, TIntIntMap groupsCountMap, byte keysMask) {
+        int group = 0;
+        if ((keysMask & 0b00000001) != 0) {
+            if (account.sex) {
+                group|=1;
             }
         }
-        if (keys.contains("interests")) {
+        if ((keysMask & 0b00000010) != 0) {
+            group|=account.status << 1;
+        }
+        if ((keysMask & 0b00001000) != 0) {
+            group|=account.country << 3;
+        }
+        if ((keysMask & 0b00010000) != 0) {
+            group|=account.city << 10;
+        }
+        if ((keysMask & 0b00000100) != 0) {
             if (account.interests != null && account.interests.length != 0) {
-                for (byte inter : account.interests) {
-                    String interes = dictionary.getInteres(inter);
-                    long newHashcode = hashcode;
-                    newHashcode = 31 * newHashcode + interes.hashCode();
-                    List<String> newGroup = ObjectPool.acquireGroup();
-                    int size = group.size();
-                    for (int i = 0; i < size; i++) {
-                        newGroup.add(group.get(i));
-                    }
-                    newGroup.add(interes);
-                    incrementGroup(groupHashMap, groupNameMap, newGroup, newHashcode);
-                    ObjectPool.releaseGroup(newGroup);
+                for (byte interes: account.interests) {
+                    int newgroup = group;
+                    newgroup|=interes << 20;
+                    groupsCountMap.adjustOrPutValue(newgroup, 1, 1);
                 }
             }
         } else {
-            incrementGroup(groupHashMap, groupNameMap, group, hashcode);
+            groupsCountMap.adjustOrPutValue(group, 1, 1);
         }
     }
 
-    private void incrementGroup(TLongObjectMap<IntegerHolder> groupHashMap, TLongObjectMap<List<String>> groupNameMap, List<String> group, long hash) {
-        if (!groupNameMap.containsKey(hash)) {
-            List<String> grp = ObjectPool.acquireGroup();
-            for (int i = 0; i < group.size(); i++) {
-                grp.add(group.get(i));
-            }
-            groupNameMap.put(hash, grp);
-        }
-        IntegerHolder integerHolder = groupHashMap.get(hash);
-        if (integerHolder == null) {
-            integerHolder = new IntegerHolder();
-            groupHashMap.put(hash, integerHolder);
-        }
-        integerHolder.count++;
-    }
-
-    private int compareGroups(List<String> g1, List<String> g2) {
-        for (int i = 0; i < g1.size(); i++) {
-            if (g1.get(i) == null && g2.get(i) != null) {
-                return -1;
-            } else if (g2.get(i) == null && g1.get(i) != null) {
-                return 1;
-            } else if (g2.get(i) != null && g1.get(i) != null) {
-                int cc = g1.get(i).compareTo(g2.get(i));
+    private int compareGroups(int group1, int group2, List<String> keys) {
+        for (int i = 0; i < keys.size(); i++) {
+            String key = keys.get(i);
+            if (key.equals("sex")) {
+                String g1 = ConvertorUtills.convertSex((group1 & 0b00000001) == 1);
+                String g2 = ConvertorUtills.convertSex((group2 & 0b00000001) == 1);
+                int cc = g1.compareTo(g2);
                 if (cc != 0) {
                     return cc;
+                }
+            } else if (key.equals("status")) {
+                String g1 = ConvertorUtills.convertStatusNumber((byte)((group1 >> 1) & 0b00000011));
+                String g2 = ConvertorUtills.convertStatusNumber((byte)((group2 >> 1) & 0b00000011));
+                int cc = g1.compareTo(g2);
+                if (cc != 0) {
+                    return cc;
+                }
+            } else if (key.equals("interests")) {
+                String g1 = dictionary.getInteres((byte)((group1 >> 20) & 0b01111111));
+                String g2 = dictionary.getInteres((byte)((group2 >> 20) & 0b01111111));
+                if (g1 != null && g2 != null) {
+                    int cc = g1.compareTo(g2);
+                    if (cc != 0) {
+                        return cc;
+                    }
+                } else if (g1 == null && g2 != null) {
+                    return -1;
+                } else if (g2 == null && g1 != null) {
+                    return 1;
+                }
+            } else if (key.equals("country")) {
+                String g1 = dictionary.getCountry((byte)((group1 >> 3) & 0b01111111));
+                String g2 = dictionary.getCountry((byte)((group2 >> 3) & 0b01111111));
+                if (g1 != null && g2 != null) {
+                    int cc = g1.compareTo(g2);
+                    if (cc != 0) {
+                        return cc;
+                    }
+                } else if (g1 == null && g2 != null) {
+                    return -1;
+                } else if (g2 == null && g1 != null) {
+                    return 1;
+                }
+            } else if (key.equals("city")) {
+                String g1 = dictionary.getCity((int)((group1 >> 10) & 0b0000001111111111));
+                String g2 = dictionary.getCity((int)((group2 >> 10) & 0b0000001111111111));
+                if (g1 != null && g2 != null) {
+                    int cc = g1.compareTo(g2);
+                    if (cc != 0) {
+                        return cc;
+                    }
+                } else if (g1 == null && g2 != null) {
+                    return -1;
+                } else if (g2 == null && g1 != null) {
+                    return 1;
                 }
             }
         }
         return 0;
     }
+
 
     private static final ThreadLocal<boolean[]> recommendSet = new ThreadLocal<boolean[]>() {
         @Override
@@ -423,63 +533,6 @@ public class AccountService {
             ObjectPool.releaseRecommendList(result6);
         }
     }
-
-    private void fetchRecommendations(int id, int sex, Account account, byte country, int city, int limit, boolean[] recommend, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
-        int counter = 0;
-        int result1Size = 0;
-        for (byte interes : account.interests) {
-            for (int aId : indexHolder.interestsIndex.get(interes)) {
-                counter++;
-
-                if (aId >>> 31 == sex) {
-                    continue;
-                }
-                aId = aId & 0x00ffffff;
-                if (aId != id) {
-                    if (counter != 1 && recommend[aId]) {
-                        continue;
-                    }
-                    Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
-                    }
-                    if (city != -1 && acc.city != city) {
-                        continue;
-                    }
-                    if (acc.premium) {
-                        if (acc.status == 0) {
-                            result1.add(acc);
-                            result1Size++;
-                        } else if (acc.status == 1) {
-                            if (result1Size < limit) {
-                                result2.add(acc);
-                            }
-                        } else {
-                            if (result1Size < limit) {
-                                result3.add(acc);
-                            }
-                        }
-                    } else {
-                        if (acc.status == 0) {
-                            if (result1Size < limit) {
-                                result4.add(acc);
-                            }
-                        } else if (acc.status == 1) {
-                            if (result1Size < limit) {
-                                result5.add(acc);
-                            }
-                        } else {
-                            if (result1Size < limit) {
-                                result6.add(acc);
-                            }
-                        }
-                    }
-                    recommend[aId] = true;
-                }
-            }
-        }
-    }
-
 
     private void fetchRecommendations2(int id, int sex, Account account, byte country, int city, int limit, boolean[] recommend, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
 
@@ -715,16 +768,6 @@ public class AccountService {
         }
         return count;
     }
-
-    private static boolean contains(byte[] arrray, byte element) {
-        for (int i = 0; i < arrray.length; i++) {
-            if (arrray[i] == element) {
-                return true;
-            }
-        }
-        return false;
-    }
-
 
     public List<Account> suggest(int id, List<Predicate<Account>> predicates, int limit) {
         Account account = accountIdMap[id];
@@ -1377,11 +1420,6 @@ public class AccountService {
     public static class Similarity {
         public Account account;
         public double similarity;
-    }
-
-    private static class Like  {
-        public int ts;
-        public int id;
     }
 
     public static class Score {

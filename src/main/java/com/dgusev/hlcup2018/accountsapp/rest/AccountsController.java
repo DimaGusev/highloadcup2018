@@ -11,12 +11,16 @@ import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
 import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
+import gnu.trove.map.TObjectIntMap;
+import gnu.trove.map.hash.TObjectIntHashMap;
 import io.netty.buffer.ByteBuf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 @Component
 public class AccountsController {
@@ -63,6 +67,10 @@ public class AccountsController {
             return new ArrayList<>(10);
         }
     };
+
+    private static final TObjectIntMap<String> predicateMap = new TObjectIntHashMap<>();
+    private static final TObjectIntMap<String> keysMap = new TObjectIntHashMap<>();
+    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger();
 
 
     public void accountsFilter(Map<String, String> allRequestParams, ByteBuf responseBuf) throws Exception {
@@ -243,6 +251,16 @@ public class AccountsController {
             int order = 1;
             int limit = 0;
             List<Predicate<Account>> predicates = new ArrayList<>();
+            byte keysMask = 0;
+            byte predicatesMask = 0;
+            boolean sex = false;
+            byte status = -1;
+            byte country = -1;
+            int city = -1;
+            int birthYear = -1;
+            byte interes = -1;
+            int like = -1;
+            int joinedYear = -1;
             for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
                 String name = parameter.getKey();
                 if (name.equals("query_id")) {
@@ -257,53 +275,67 @@ public class AccountsController {
                         keys.add("interests");
                     }
                     for (String key: keys) {
-                        if (!ALLOWED_KEYS.contains(key)) {
+                        if (key.equals("sex")) {
+                            keysMask|=1;
+                        } else if (key.equals("status")) {
+                            keysMask|=1<<1;
+                        } else if (key.equals("interests")) {
+                            keysMask|=1<<2;
+                        } else if (key.equals("country")) {
+                            keysMask|=1<<3;
+                        } else if (key.equals("city")) {
+                            keysMask|=1<<4;
+                        } else {
                             throw new BadRequest();
                         }
                     }
+                   // String key = String.join(",", keys);
+                    //keysMap.adjustOrPutValue(key, 1, 1);
 
                 } else if (name.equals("order")) {
                     order = Integer.parseInt(parameter.getValue());
                 } else if (name.equals("limit")) {
                     limit = Integer.parseInt(parameter.getValue());
                 } else if (name.equals("sex")) {
-                    predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
-                } else if (name.equals("email")) {
-                    System.out.println("Email in group");
-                    predicates.add(new EmailEqPredicate(parameter.getValue()));
+                    predicatesMask|=1;
+                    sex = ConvertorUtills.convertSex(parameter.getValue());
                 } else if (name.equals("status")) {
-                    predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
-                } else if (name.equals("fname")) {
-                    System.out.println("Fname in group");
-                    predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue())));
-                } else if (name.equals("sname")) {
-                    System.out.println("Sname in group");
-                    predicates.add(new SnameEqPredicate(dictionary.getSname(parameter.getValue())));
-                } else if (name.equals("phone")) {
-                    System.out.println("Phone in group");
-                    predicates.add(new PhoneEqPredicate(parameter.getValue()));
+                    predicatesMask|=1 << 1;
+                    status = ConvertorUtills.convertStatusNumber(parameter.getValue());
                 } else if (name.equals("country")) {
-                    predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue())));
+                    predicatesMask|=1 << 2;
+                    country = dictionary.getCountry(parameter.getValue());
                 } else if (name.equals("city")) {
-                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
+                    predicatesMask|=1 << 3;
+                    city = dictionary.getCity(parameter.getValue());
                 } else if (name.equals("birth")) {
-                    predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue())));
+                    predicatesMask|=1 << 4;
+                    birthYear = Integer.parseInt(parameter.getValue());
                 } else if (name.equals("interests")) {
-                    byte[] value = new byte[1];
-                    value[0] = dictionary.getInteres(parameter.getValue());
-                    predicates.add(new InterestsContainsPredicate(value));
+                    predicatesMask|=1 << 5;
+                    interes = dictionary.getInteres(parameter.getValue());
                 } else if (name.equals("likes")) {
-                    int[] array = new int[1];
-                    array[0] = Integer.parseInt(parameter.getValue());
-                    predicates.add(new LikesContainsPredicate(array));
+                    predicatesMask|=1 << 6;
+                    like = Integer.parseInt(parameter.getValue());
                 } else if (name.equals("joined")) {
-                    predicates.add(new JoinedYearPredicate(Integer.parseInt(parameter.getValue())));
+                    predicatesMask|=1 << 7;
+                    joinedYear = Integer.parseInt(parameter.getValue());
                 } else {
                     throw new BadRequest();
                 }
             }
 
-            List<Group> groups = accountService.group(keys, predicates, order, limit);
+          //  long t1 = System.currentTimeMillis();
+            //predicates.sort(Comparator.comparing(p -> p.getClass().getSimpleName()));
+            //String predicate = String.join(",", predicates.stream().map(p ->p.getClass().getSimpleName()).collect(Collectors.toList()));
+            //predicateMap.adjustOrPutValue(predicate, 1, 1);
+           // int cnt = ATOMIC_INTEGER.incrementAndGet();
+           // if (cnt % 1000 == 0) {
+          //      System.out.println("Cnt=" + cnt + ",pred=" + predicateMap + ",keys=" + keysMap);
+          //  }
+            List<Group> groups = accountService.group(keys, sex, status, country, city, birthYear, interes, like, joinedYear, order, limit, keysMask, predicatesMask);
+           // long t2 = System.currentTimeMillis();
+            //System.out.println("time=" + (t2-t1) + ",query=" + allRequestParams);
             if (groups.isEmpty()) {
                 responseBuf.writeBytes(EMPTY_GROUPS_LIST);
             } else {

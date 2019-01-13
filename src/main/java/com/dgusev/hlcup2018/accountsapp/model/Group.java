@@ -5,5 +5,5 @@ import java.util.Objects;
 
 public class Group {
     public int count;
-    public List<String> values;
+    public int values;
 }

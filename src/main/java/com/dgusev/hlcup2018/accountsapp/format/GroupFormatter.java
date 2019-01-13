@@ -1,9 +1,13 @@
 package com.dgusev.hlcup2018.accountsapp.format;
 
 import com.dgusev.hlcup2018.accountsapp.model.Group;
+import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
+import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
 import io.netty.buffer.ByteBuf;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -12,19 +16,63 @@ public class GroupFormatter {
     private static final byte[] COUNT = "{\"count\":".getBytes();
     private static final byte[] NULL = "null".getBytes();
 
+    @Autowired
+    private Dictionary dictionary;
+
     public void format(Group group, List<String> keys, ByteBuf responseBuf, byte[] arr) {
         int index = 0;
         System.arraycopy(COUNT, 0, arr, 0, COUNT.length);
         index+=COUNT.length;
         index = encodeLong(arr, index, group.count, responseBuf);
-        for (int i = 0; i < group.values.size() && i < keys.size(); i++) {
-                    if (group.values.get(i) != null) {
-                        index = writeField(arr, index, false, keys.get(i));
-                        index = writeStringValue(arr, index, group.values.get(i));
-                    }
+        for (int i = 0; i < keys.size(); i++) {
+            String key = keys.get(i);
+            if (key.equals("sex")) {
+                index = writeField(arr, index, false, keys.get(i));
+                index = writeStringValue(arr, index, ConvertorUtills.convertSex((group.values & 0b00000001) == 1));
+            } else if (key.equals("status")) {
+                index = writeField(arr, index, false, keys.get(i));
+                index = writeStringValue(arr, index, ConvertorUtills.convertStatusNumber((byte)((group.values >> 1) & 0b00000011)));
+            } else if (key.equals("interests")) {
+                String interes = dictionary.getInteres((byte)((group.values >> 20) & 0b01111111));
+                if (interes != null) {
+                    index = writeField(arr, index, false, keys.get(i));
+                    index = writeStringValue(arr, index, interes);
+                }
+            } else if (key.equals("country")) {
+                String country = dictionary.getCountry((byte)((group.values >> 3) & 0b01111111));
+                if (country != null) {
+                    index = writeField(arr, index, false, keys.get(i));
+                    index = writeStringValue(arr, index, country);
+                }
+            } else if (key.equals("city")) {
+                String city = dictionary.getCity((int)((group.values >> 10) & 0b0000001111111111));
+                if (city != null) {
+                    index = writeField(arr, index, false, keys.get(i));
+                    index = writeStringValue(arr, index, city);
+                }
+            }
         }
         arr[index++] = '}';
         responseBuf.writeBytes(arr, 0, index);
+    }
+
+    private List<String> getGroupValues(int groupDefinition, List<String> keys) {
+        List<String> result = new ArrayList<>();
+        for (int i = 0; i < keys.size(); i++) {
+            String key = keys.get(i);
+            if (key.equals("sex")) {
+                result.add(ConvertorUtills.convertSex((groupDefinition & 0b00000001) == 1));
+            } else if (key.equals("status")) {
+                result.add(ConvertorUtills.convertStatusNumber((byte)((groupDefinition >> 1) & 0b00000011)));
+            } else if (key.equals("interests")) {
+                result.add(dictionary.getInteres((byte)((groupDefinition >> 20) & 0b01111111)));
+            } else if (key.equals("country")) {
+                result.add(dictionary.getCountry((byte)((groupDefinition >> 3) & 0b01111111)));
+            } else if (key.equals("city")) {
+                result.add(dictionary.getCity((int)((groupDefinition >> 10) & 0b0000001111111111)));
+            }
+        }
+        return result;
     }
 
     private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
