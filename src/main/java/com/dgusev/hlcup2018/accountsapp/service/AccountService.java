@@ -80,9 +80,6 @@ public class AccountService {
             }
             return result;
         } else {
-          // if (true) {
-           //     return Collections.EMPTY_LIST;
-          // }
             Predicate<Account> accountPredicate = andPredicates(predicates);
             return filterSeqScan(accountPredicate, limit);
         }
@@ -220,7 +217,9 @@ public class AccountService {
         else if (predicatesMask == 18) {
             iterateBirthStatus(birthYear, status, groupsCountMap, keysMask);
         }
-        else {
+        else if (predicatesMask == 0)  {
+            return iterateFullScan(keysMask, limit, order);
+        } else {
             return Collections.EMPTY_LIST;
         }
         Group[] groups = groupsSortArrayPool.get();
@@ -402,6 +401,50 @@ public class AccountService {
         }
     }
 
+    private List<Group> iterateFullScan(byte keysMask, int limit, int order) {
+        long[] groups = null;
+        if (keysMask == 0b00000100) {
+            groups = indexHolder.group1;
+        } else if (keysMask == 0b00001001) {
+            groups = indexHolder.group2;
+        } else if (keysMask == 0b00001000) {
+            groups = indexHolder.group3;
+        } else if (keysMask == 0b00000010) {
+            groups = indexHolder.group4;
+        } else if (keysMask == 0b00010001) {
+            groups = indexHolder.group5;
+        } else if (keysMask == 0b00000001) {
+            groups = indexHolder.group6;
+        } else if (keysMask == 0b00010000) {
+            groups = indexHolder.group7;
+        } else if (keysMask == 0b00001010) {
+            groups = indexHolder.group8;
+        } else if (keysMask == 0b00010010) {
+            groups = indexHolder.group9;
+        }
+        List<Group> result = new ArrayList<>();
+        Group[] groupsArray = groupsPool.get();
+        int counter = 0;
+        if (order ==  1) {
+            for (int i = 0; i < groups.length && i < limit; i++) {
+                long grp = groups[i];
+                Group group = groupsArray[counter++];
+                group.count = (int)grp;
+                group.values = (int)(grp >> 32);
+                result.add(group);
+            }
+        } else {
+            for (int i = groups.length - 1; i >= 0 && counter < limit; i--) {
+                long grp = groups[i];
+                Group group = groupsArray[counter++];
+                group.count = (int)grp;
+                group.values = (int)(grp >> 32);
+                result.add(group);
+            }
+        }
+        return result;
+    }
+
 
     private int compare(int count1, int group1, int count2, int group2, List<String> keys, int order) {
         if (order == 1) {
@@ -449,6 +492,7 @@ public class AccountService {
             groupsCountMap.adjustOrPutValue(group, 1, 1);
         }
     }
+
 
     private int compareGroups(int group1, int group2, List<String> keys) {
         for (int i = 0; i < keys.size(); i++) {
