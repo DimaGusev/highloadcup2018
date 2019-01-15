@@ -185,7 +185,7 @@ public class RequestHandler {
             writeResponse(socketChannel, fd, byteBuffer, NOT_FOUND);
         } catch (Exception ex) {
             //System.out.println(request.content().toString(StandardCharsets.UTF_8));
-            ex.printStackTrace();
+            //ex.printStackTrace();
             writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
         } finally {
             if (tmpByteBuffer != null) {
@@ -327,10 +327,10 @@ public class RequestHandler {
             pointer++;
         }
         pointer++;
-        if (length - pointer - 2 > contentLength ) {
+        if (length - pointer - 0 > contentLength ) {
             System.out.println("Error, more data than needed, actual=" + (length - pointer) + " ,header=" + contentLength + ": " + new String(buf, 0, length));
         }
-        if (length - pointer - 2  < contentLength ) {
+        if (length - pointer - 0  < contentLength ) {
             return true;
         }
         return false;

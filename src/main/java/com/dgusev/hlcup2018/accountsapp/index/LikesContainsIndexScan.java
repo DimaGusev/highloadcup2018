@@ -1,8 +1,13 @@
 package com.dgusev.hlcup2018.accountsapp.index;
 
+import sun.misc.Unsafe;
+
 public class LikesContainsIndexScan extends AbstractIndexScan {
 
-    private int[][] indexList;
+    private static final Unsafe UNSAFE = com.dgusev.hlcup2018.accountsapp.service.Unsafe.UNSAFE;
+
+    private long[] indexList;
+    private long[] lengthList;
     private int[] indexes;
     private int[] state;
     private boolean alwaysFalse;
@@ -11,15 +16,18 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
         super(indexHolder);
         int count = 0;
         for (int like: likes) {
-            if (indexHolder.likesIndex[like] != null) {
+            if (indexHolder.likesIndex[like] != 0) {
                 count++;
             }
         }
-        indexList = new int[count][];
+        indexList = new long[count];
+        lengthList = new long[count];
         index = 0;
         for (int like: likes) {
-            if (indexHolder.likesIndex[like] != null) {
-                indexList[index++] = indexHolder.likesIndex[like];
+            if (indexHolder.likesIndex[like] != 0) {
+                indexList[index] = indexHolder.likesIndex[like] + 1;
+                lengthList[index] = UNSAFE.getByte(indexHolder.likesIndex[like]);
+                index++;
             } else {
                 alwaysFalse = true;
             }
@@ -27,8 +35,10 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
         indexes = new int[count];
         state = new int[count];
         for (int i = 0; i < count; i++) {
-            if (indexList[i].length != 0) {
-                state[i] = indexList[i][indexes[i]++];
+            if (lengthList[i] != 0) {
+                indexes[i]++;
+                state[i] = UNSAFE.getInt(indexList[i]);
+                indexList[i]+=4;
             } else {
                 state[i] = -1;
             }
@@ -60,8 +70,10 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
                 if (equals) {
                     int result = state[0];
                     for (int i = 0; i < indexList.length; i++) {
-                        if (indexes[i] < indexList[i].length) {
-                            state[i] = indexList[i][indexes[i]++];
+                        if (indexes[i] < lengthList[i]) {
+                            indexes[i]++;
+                            state[i] = UNSAFE.getInt(indexList[i]);
+                            indexList[i]+=4;
                         } else {
                             state[i] = -1;
                         }
@@ -71,8 +83,10 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
 
                 for (int i = 0; i < indexList.length; i++) {
                     if (state[i] != min) {
-                        if (indexes[i] < indexList[i].length) {
-                            state[i] = indexList[i][indexes[i]++];
+                        if (indexes[i] < lengthList[i]) {
+                            indexes[i]++;
+                            state[i] = UNSAFE.getInt(indexList[i]);
+                            indexList[i]+=4;
                         } else {
                             state[i] = -1;
                         }

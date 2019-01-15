@@ -20,17 +20,20 @@ import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import sun.misc.Unsafe;
 
 import java.util.*;
 import java.util.function.Predicate;
 
 @Service
 public class AccountService {
+
+    private static final Unsafe UNSAFE = com.dgusev.hlcup2018.accountsapp.service.Unsafe.UNSAFE;
+
     public  static final int MAX_ID = 1520000;
     private static final Set<String> ALLOWED_SEX = new HashSet<>(Arrays.asList("m", "f"));
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
     private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>(180000, 1);
-    private static final TIntObjectMap<TIntList> additionalLikes = new TIntObjectHashMap<>();
 
     @Autowired
     private NowProvider nowProvider;
@@ -138,18 +141,26 @@ public class AccountService {
         groupsCountMap.clear();
         //LikesContainsPredicate
         if (predicatesMask == 64) {
-            int[] likers = indexHolder.likesIndex[like];
-            if (likers != null) {
-                for (int id : likers) {
+            long address = indexHolder.likesIndex[like];
+            if (address != 0) {
+                byte size = UNSAFE.getByte(address);
+                address++;
+                for (int i = 0; i < size; i++) {
+                    int id = UNSAFE.getInt(address);
+                    address+=4;
                     processRecord2(accountIdMap[id], groupsCountMap, keysMask);
                 }
             }
         }
         //JoinedYearPredicate,LikesContainsPredicate
         else if (predicatesMask == (byte)192) {
-            int[] likers = indexHolder.likesIndex[like];
-            if (likers != null) {
-                for (int id : likers) {
+            long address = indexHolder.likesIndex[like];
+            if (address != 0) {
+                byte size = UNSAFE.getByte(address);
+                address++;
+                for (int i = 0; i < size; i++) {
+                    int id = UNSAFE.getInt(address);
+                    address+=4;
                     Account account = accountIdMap[id];
                     if (JoinedYearPredicate.calculateYear(account.joined) == joinedYear) {
                         processRecord2(account, groupsCountMap, keysMask);
@@ -159,9 +170,13 @@ public class AccountService {
         }
         //BirthYearPredicate,LikesContainsPredicate
         else if (predicatesMask == 80) {
-            int[] likers = indexHolder.likesIndex[like];
-            if (likers != null) {
-                for (int id : likers) {
+            long address = indexHolder.likesIndex[like];
+            if (address != 0) {
+                byte size = UNSAFE.getByte(address);
+                address++;
+                for (int i = 0; i < size; i++) {
+                    int id = UNSAFE.getInt(address);
+                    address+=4;
                     Account account = accountIdMap[id];
                     if (BirthYearPredicate.calculateYear(account.birth) == birthYear) {
                         processRecord2(account, groupsCountMap, keysMask);
@@ -217,9 +232,31 @@ public class AccountService {
         else if (predicatesMask == 18) {
             iterateBirthStatus(birthYear, status, groupsCountMap, keysMask);
         }
+        //Full scan
         else if (predicatesMask == 0)  {
             return iterateFullScan(keysMask, limit, order);
-        } else {
+        }
+        //SexEqPredicate
+        else if (predicatesMask == 1) {
+            return iterateSex(sex, keysMask, limit, order);
+        }
+        //StatusEqPredicate
+        else if (predicatesMask == 2) {
+            return iterateStatus(status, keysMask, limit, order);
+        }
+        //JoinedYearPredicate
+        else if (predicatesMask == (byte)128) {
+            return iterateJoinedYear(joinedYear, keysMask, limit, order);
+        }
+        //JoinedYearPredicate,StatusEqPredicate
+        else if (predicatesMask == (byte)130) {
+            iterateJoinedStatus(joinedYear, status, groupsCountMap, keysMask);
+        }
+        //JoinedYearPredicate,SexEqPredicate
+        else if (predicatesMask == (byte)129) {
+            iterateJoinedSex(joinedYear, sex, groupsCountMap, keysMask);
+        }
+        else {
             return Collections.EMPTY_LIST;
         }
         Group[] groups = groupsSortArrayPool.get();
@@ -401,26 +438,81 @@ public class AccountService {
         }
     }
 
+    private void iterateJoinedStatus(int joinedYear, byte status, TIntIntMap groupsCountMap, byte keysMask) {
+        if (indexHolder.joinedIndex.get(joinedYear) != null) {
+            int[] index = indexHolder.joinedIndex.get(joinedYear);
+            for (int id : index) {
+                Account account = accountIdMap[id];
+                if (account.status == status) {
+                    processRecord2(account, groupsCountMap, keysMask);
+                }
+            }
+        }
+    }
+
+    private void iterateJoinedSex(int joinedYear, boolean sex, TIntIntMap groupsCountMap, byte keysMask) {
+        if (indexHolder.joinedIndex.get(joinedYear) != null) {
+            int[] index = indexHolder.joinedIndex.get(joinedYear);
+            for (int id : index) {
+                Account account = accountIdMap[id];
+                if (account.sex == sex) {
+                    processRecord2(account, groupsCountMap, keysMask);
+                }
+            }
+        }
+    }
+
     private List<Group> iterateFullScan(byte keysMask, int limit, int order) {
+        return iterateIndex(keysMask, limit, order, indexHolder.groups);
+    }
+
+
+    private List<Group> iterateSex(boolean sex, byte keysMask, int limit, int order) {
+        long[][] index = sex ? indexHolder.sexGroups[1] : indexHolder.sexGroups[0];
+        return iterateIndex(keysMask, limit, order, index);
+    }
+
+
+    private List<Group> iterateStatus(byte status, byte keysMask, int limit, int order) {
+        long[][] index = null;
+        if (status == 0) {
+            index = indexHolder.statusGroups[0];
+        } else if (status == 1) {
+            index = indexHolder.statusGroups[1];
+        } else {
+            index = indexHolder.statusGroups[2];
+        }
+        return iterateIndex(keysMask, limit, order, index);
+    }
+
+    private List<Group> iterateJoinedYear(int joinedYear, byte keysMask, int limit, int order) {
+        if (joinedYear < 2011 || joinedYear > 2017) {
+            return Collections.EMPTY_LIST;
+        }
+        long[][] index = indexHolder.joinedGroups[joinedYear - 2011];
+        return iterateIndex(keysMask, limit, order, index);
+    }
+
+    private List<Group> iterateIndex(byte keysMask, int limit, int order, long[][] index) {
         long[] groups = null;
         if (keysMask == 0b00000100) {
-            groups = indexHolder.groups[0];
+            groups = index[0];
         } else if (keysMask == 0b00001001) {
-            groups = indexHolder.groups[1];
+            groups = index[1];
         } else if (keysMask == 0b00001000) {
-            groups = indexHolder.groups[2];
+            groups = index[2];
         } else if (keysMask == 0b00000010) {
-            groups = indexHolder.groups[3];
+            groups = index[3];
         } else if (keysMask == 0b00010001) {
-            groups = indexHolder.groups[4];
+            groups = index[4];
         } else if (keysMask == 0b00000001) {
-            groups = indexHolder.groups[5];
+            groups = index[5];
         } else if (keysMask == 0b00010000) {
-            groups = indexHolder.groups[6];
+            groups = index[6];
         } else if (keysMask == 0b00001010) {
-            groups = indexHolder.groups[7];
+            groups = index[7];
         } else if (keysMask == 0b00010010) {
-            groups = indexHolder.groups[8];
+            groups = index[8];
         }
         List<Group> result = new ArrayList<>();
         Group[] groupsArray = groupsPool.get();
@@ -926,9 +1018,13 @@ public class AccountService {
             int lid = (int)(like >> 32);
             boolean newLike = myLikes.add(lid);
             if (newLike) {
-                int[] likers = indexHolder.likesIndex[lid];
-                if (likers != null) {
-                    for (int l : likers) {
+                long address = indexHolder.likesIndex[lid];
+                if (address != 0) {
+                    int size = UNSAFE.getByte(address);
+                    address++;
+                    for (int i = 0; i < size; i++) {
+                        int l = UNSAFE.getInt(address);
+                        address+=4;
                         suggests.add(l);
                     }
                 }
@@ -1160,14 +1256,7 @@ public class AccountService {
             for (int j = 0; j < account.likes.length; j++) {
                 int id = (int)(account.likes[j] >> 32);
                 if (prev != id) {
-                    TIntList tIntList = additionalLikes.get(id);
-                    if (tIntList == null) {
-                        tIntList = new TIntArrayList();
-                        additionalLikes.put(id, tIntList);
-                    }
-                    if (!tIntList.contains(account.id)) {
-                        tIntList.add(account.id);
-                    }
+                    addUserToLikeIndex(account.id, id);
                 }
                 prev = id;
             }
@@ -1265,10 +1354,6 @@ public class AccountService {
             oldAcc.premium = oldAcc.premiumStart != 0 && oldAcc.premiumStart <= nowProvider.getNow() && (oldAcc.premiumFinish == 0 || oldAcc.premiumFinish > nowProvider.getNow());
 
         }
-        if (accountDTO.likes != null) {
-            System.out.println("Update likes!");
-            //oldAcc.likes = accountDTO.likes;
-        }
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
                 if (LAST_UPDATE_TIMESTAMP == 0) {
@@ -1301,17 +1386,7 @@ public class AccountService {
                     phase2.put(likeRequest.liker, ObjectPool.acquireLikeList());
                 }
                 phase2.get(likeRequest.liker).add(like);
-                /*long[] oldArray = account.likes;
-                if (oldArray == null) {
-                    account.likes = new long[1];
-                    account.likes[0] = like;
-                } else {
-                    account.likes = new long[oldArray.length + 1];
-                    System.arraycopy(oldArray, 0, account.likes, 0, oldArray.length);
-                    account.likes[oldArray.length] = like;
-                }
-                Arrays.sort(account.likes);
-                reverse(account.likes);*/
+                addUserToLikeIndex(likeRequest.liker, likeRequest.likee);
             }
             if (LAST_UPDATE_TIMESTAMP == 0) {
                 synchronized (this) {
@@ -1324,13 +1399,56 @@ public class AccountService {
             LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
     }
 
+    private void addUserToLikeIndex(int liker, int likee) {
+        long address = indexHolder.likesIndex[likee];
+        if (address == 0) {
+            address = UNSAFE.allocateMemory(5);
+            UNSAFE.putByte(address, (byte)1);
+            UNSAFE.putInt(address + 1, liker);
+            indexHolder.likesIndex[likee] = address;
+        } else {
+            int size = UNSAFE.getByte(address);
+            int insertId = size;
+            boolean dontInsert = false;
+            long pointer = address + 1;
+            for (int i = 0; i < size; i++) {
+                int id = UNSAFE.getInt(pointer);
+                pointer+=4;
+                if (id < liker) {
+                    insertId = i;
+                    break;
+                } else if (id == liker) {
+                    dontInsert = true;
+                    break;
+                }
+            }
+            if (!dontInsert) {
+                long newAddress = UNSAFE.allocateMemory(1 + (size+1)*4);
+                UNSAFE.putByte(newAddress, (byte)(size + 1));
+                if (insertId == 0) {
+                    UNSAFE.copyMemory(address + 1, newAddress + 1 + 4, size * 4);
+                    UNSAFE.putInt(newAddress + 1, liker);
+                } else if (insertId == size) {
+                    UNSAFE.copyMemory(address + 1, newAddress + 1, size * 4);
+                    UNSAFE.putInt(newAddress + 1 + 4*size, liker);
+                } else {
+                    UNSAFE.copyMemory(address + 1, newAddress + 1, insertId * 4);
+                    UNSAFE.copyMemory(address + 1 + insertId * 4, newAddress + 1 + (insertId+1) * 4, (size - insertId) * 4);
+                    UNSAFE.putInt(newAddress + 1 + 4*insertId, liker);
+                }
+                indexHolder.likesIndex[likee] = newAddress;
+                UNSAFE.freeMemory(address);
+            }
+        }
+    }
+
     public Account findById(int id) {
         return accountIdMap[id];
     }
 
     public void finishLoad() {
         try {
-            indexHolder.init(this.accountList, size, null);
+            indexHolder.init(this.accountList, size, true);
             indexHolder.resetTempListArray();
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -1486,26 +1604,13 @@ public class AccountService {
             }
 
             try {
-                System.out.println("Start update indexes " + new Date());
+                System.out.println(LAST_UPDATE_TIMESTAMP);
+                new Thread(() -> {
+                        System.out.println("Start update indexes " + new Date());
                 System.out.println("Start update likes" + new Date());
                 long t1 = System.currentTimeMillis();
-                int[] likeCount = new int[1];
                 phase2.forEachEntry((i, tLongList) -> {
                     Account account = accountIdMap[i];
-                    for (int j = 0; j < tLongList.size(); j++) {
-                        int id = (int)(tLongList.get(j) >> 32);
-                        if (!containsLike(account, id)) {
-                            TIntList tIntList = additionalLikes.get(id);
-                            if (tIntList == null) {
-                                tIntList = new TIntArrayList();
-                                additionalLikes.put(id, tIntList);
-                            }
-                            if (!tIntList.contains(i)) {
-                                likeCount[0]++;
-                                tIntList.add(i);
-                            }
-                        }
-                    }
                     if (account.likes == null || account.likes.length == 0) {
                         account.likes = new long[tLongList.size()];
                         tLongList.toArray(account.likes);
@@ -1524,10 +1629,10 @@ public class AccountService {
                     return true;
                 });
                 long t2 = System.currentTimeMillis();
-                System.out.println("Finish update likes" + new Date() + " took " + (t2-t1));
-                System.out.println("Like count=" + likeCount[0] + ", accounts=" + additionalLikes.size());
-                indexHolder.init(accountList, size, additionalLikes);
-                System.gc();
+                System.out.println("Finish update likes" + new Date() + " took " + (t2 - t1));
+                }).start();
+                indexHolder.init(accountList, size, false);
+                //System.gc();
                 System.out.println("End update indexes " + new Date());
             } catch (Exception ex) {
                 ex.printStackTrace();

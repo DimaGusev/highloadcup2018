@@ -18,6 +18,7 @@ import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import sun.misc.Unsafe;
 
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -27,6 +28,8 @@ import java.util.concurrent.Executors;
 
 @Component
 public class IndexHolder {
+
+    private static final Unsafe UNSAFE = com.dgusev.hlcup2018.accountsapp.service.Unsafe.UNSAFE;
 
     private static TLongObjectMap<String> domainsMap = new TLongObjectHashMap<>();
     private static TLongObjectMap<String> phoneCodeMap = new TLongObjectHashMap<>();
@@ -55,7 +58,9 @@ public class IndexHolder {
     public int[] notNullPhone;
     public int[] notNullPremium;
     public int[] premiumIndex;
-    public int[][] likesIndex;
+
+
+    public long[] likesIndex;
 
     public TByteObjectMap<int[]> sexFalsePremiumState0Index;
     public TByteObjectMap<int[]> sexFalsePremiumState1Index;
@@ -79,11 +84,20 @@ public class IndexHolder {
     @Autowired
     private Dictionary dictionary;
 
-    public synchronized void init(Account[] accountDTOList, int size, TIntObjectMap<TIntList> tIntListTIntObjectMap) throws ExecutionException, InterruptedException {
+    public synchronized void init(Account[] accountDTOList, int size, boolean initLikes) throws ExecutionException, InterruptedException {
         System.out.println("Start init IndexHolder " + new Date());
         ExecutorService executorService = Executors.newFixedThreadPool(3);
         int now = nowProvider.getNow();
         Callable<Boolean> task1 = new Callable<Boolean>() {
+
+            private long calculateHash(String values, int from, int to) {
+                long hash = 0;
+                for (int i = from; i < to; i++) {
+                    hash = 31 * hash + values.charAt(i);
+                }
+                return hash;
+            }
+
             @Override
             public Boolean call() {
                 emailIndex = null;
@@ -285,8 +299,6 @@ public class IndexHolder {
                     if (account.email != null) {
                         emailIndex.put(account.email, account.id);
                     }
-                    birthYear[account.id] = (byte)(BirthYearPredicate.calculateYear(account.birth) - 1900);
-                    joinedYear[account.id] = (byte)(JoinedYearPredicate.calculateYear(account.joined) - 2000);
                 }
 
                 nullCountry = new int[nullCountryCounter];
@@ -479,6 +491,15 @@ public class IndexHolder {
             }
         };
         Callable<Boolean> task2 = new Callable<Boolean>() {
+
+            private long calculateHash(String values, int from, int to) {
+                long hash = 0;
+                for (int i = from; i < to; i++) {
+                    hash = 31 * hash + values.charAt(i);
+                }
+                return hash;
+            }
+
             @Override
             public Boolean call() {
                 phoneIndex = null;
@@ -654,100 +675,73 @@ public class IndexHolder {
             @Override
             public Boolean call() {
                 long t1 = System.currentTimeMillis();
-                if (tIntListTIntObjectMap == null) {
-                    System.out.println("Phase1");
-                    likesIndex = null;
-                    for (int i = 0; i < size; i++) {
-                        Account account = accountDTOList[i];
-                        if (account.likes != null && account.likes.length != 0) {
-                            int prev = -1;
-                            for (long like : account.likes) {
-                                int id = (int) (like >> 32);
-                                if (prev == id) {
-                                    continue;
-                                }
-                                LIKE_TMP_ARRAY[id]++;
-                                prev = id;
+                System.out.println("Phase1");
+                long p1start = System.nanoTime();
+                likesIndex = null;
+                for (int i = 0; i < size; i++) {
+                    Account account = accountDTOList[i];
+                    if (account.likes != null && account.likes.length != 0) {
+                        int prev = -1;
+                        for (long like : account.likes) {
+                            int id = (int) (like >> 32);
+                            if (prev == id) {
+                                continue;
                             }
+                            LIKE_TMP_ARRAY[id]++;
+                            prev = id;
                         }
                     }
-                    System.out.println("Phase2");
-
-                    long t2 = System.currentTimeMillis();
-
-                    likesIndex = new int[AccountService.MAX_ID][];
-                    for (int i = 0; i < AccountService.MAX_ID; i++) {
-                        int count = LIKE_TMP_ARRAY[i];
-                        if (count != 0) {
-                            likesIndex[i] = new int[count];
-                            LIKE_TMP_ARRAY[i] = 0;
-                        }
-                    }
-
-                    long t3 = System.currentTimeMillis();
-                    System.out.println("Phase3");
-                    for (int i = 0; i < size; i++) {
-                        Account account = accountDTOList[i];
-                        if (account.likes != null && account.likes.length != 0) {
-                            int prev = -1;
-                            for (long like : account.likes) {
-                                int id = (int) (like >> 32);
-                                if (prev == id) {
-                                    continue;
-                                }
-                                likesIndex[id][LIKE_TMP_ARRAY[id]] = account.id;
-                                LIKE_TMP_ARRAY[id]++;
-                                prev = id;
-                            }
-                        }
-                    }
-                    long t4 = System.currentTimeMillis();
-                    System.out.println(t2 - t1);
-                    System.out.println(t3 - t2);
-                    System.out.println(t4 - t3);
-                } else {
-                    System.out.println("Size=" + tIntListTIntObjectMap.size());
-                    int cnt = 0;
-                    long t11 = System.currentTimeMillis();
-                    for (int id:  tIntListTIntObjectMap.keys()) {
-                        TIntList tIntList = tIntListTIntObjectMap.get(id);
-                        if (likesIndex[id] == null) {
-                            int[] array = tIntList.toArray();
-                            Arrays.sort(array);
-                            reverse(array, 0, array.length);
-                            likesIndex[id] = array;
-                            cnt+=array.length;
-                        } else {
-                            int[] oldArray = likesIndex[id];
-                            int oldCount = oldArray.length;
-                            int newSize = oldCount + tIntList.size();
-                            int[] newArray = new int[newSize];
-                            System.arraycopy(oldArray, 0, newArray, 0, oldCount);
-                            for (int j = oldCount; j < newSize; j++) {
-                                newArray[j] = tIntList.get(j - oldCount);
-                            }
-                            Arrays.sort(newArray);
-                            reverse(newArray, 0, newArray.length);
-                            likesIndex[id] = newArray;
-                            cnt+=tIntList.size();
-                        }
-                    }
-                    long t22 = System.currentTimeMillis();
-                    System.out.println("Cnt=" + cnt);
-                    System.out.println("Like index update took " + (t22-t11));
                 }
+                long p1finish = System.nanoTime();
+                System.out.println("Phase1 took=" + (p1finish - p1start));
+                System.out.println("Phase2");
+                long p2start = System.nanoTime();
+                likesIndex = new long[AccountService.MAX_ID];
+                for (int i = 0; i < AccountService.MAX_ID; i++) {
+                    int count = LIKE_TMP_ARRAY[i];
+                    if (count != 0) {
+                        likesIndex[i] = UNSAFE.allocateMemory(1 + 4 * count);
+                        UNSAFE.putByte(likesIndex[i], (byte) count);
+                        LIKE_TMP_ARRAY[i] = 0;
+                    }
+                }
+                long p2finish = System.nanoTime();
+                System.out.println("Phase2 took=" + (p2finish - p2start));
+                System.out.println("Phase3");
+                long p3start = System.nanoTime();
+                for (int i = 0; i < size; i++) {
+                    Account account = accountDTOList[i];
+                    if (account.likes != null && account.likes.length != 0) {
+                        int prev = -1;
+                        for (long like : account.likes) {
+                            int id = (int) (like >> 32);
+                            if (prev == id) {
+                                continue;
+                            }
+                            long address = likesIndex[id] + 1 + LIKE_TMP_ARRAY[id] * 4;
+                            UNSAFE.putInt(address, account.id);
+                            LIKE_TMP_ARRAY[id]++;
+                            prev = id;
+                        }
+                    }
+                }
+                long p3finish = System.nanoTime();
+                System.out.println("Phase3 took=" + (p3finish - p3start));
+                long t2 = System.currentTimeMillis();
+                System.out.println("Like index update took " + (t2 - t1));
                 return true;
             }
         };
         Callable<Boolean> task4 = new GroupsUpdater(accountDTOList, size);
         System.out.println("Start tasks " + new Date());
         long t1 = System.currentTimeMillis();
-        //executorService.submit(task1).get();
-        //executorService.submit(task2).get();
-        //executorService.submit(task3).get();
-        executorService.invokeAll(Arrays.asList(task1, task2, task3, task4));
+        if (initLikes) {
+            executorService.invokeAll(Arrays.asList(task1, task2, task3, task4));
+        } else {
+            executorService.invokeAll(Arrays.asList(task1, task2, task4));
+        }
         long t2 = System.currentTimeMillis();
-        System.out.println("Finish tasks " + new Date() + " took " + (t2-t1));
+        System.out.println("Finish tasks " + new Date() + " took " + (t2 - t1));
     }
 
 
@@ -757,13 +751,6 @@ public class IndexHolder {
         }
     }
 
-    private long calculateHash(String values, int from, int to) {
-        long hash = 0;
-        for (int i = from; i < to; i++) {
-            hash = 31* hash + values.charAt(i);
-        }
-        return hash;
-    }
 
     private void reverse(int[] array, int from, int to) {
         int size = (to - from);
@@ -777,6 +764,9 @@ public class IndexHolder {
 
 
     public long[][] groups;
+    public long[][][] sexGroups;
+    public long[][][] statusGroups;
+    public long[][][] joinedGroups;
 
     public class GroupsUpdater implements Callable<Boolean> {
 
@@ -792,66 +782,55 @@ public class IndexHolder {
         public Boolean call() throws Exception {
 
             try {
-                System.out.println("Start groups update" + new Date());
-                groups = null;
                 long t1 = System.currentTimeMillis();
-                byte[] masks = new byte[9];
-                masks[0] = 0b00000100;
-                masks[1] = 0b00001001;
-                masks[2] = 0b00001000;
-                masks[3] = 0b00000010;
-                masks[4] = 0b00010001;
-                masks[5] = 0b00000001;
-                masks[6] = 0b00010000;
-                masks[7] = 0b00001010;
-                masks[8] = 0b00010010;
-                List[] keys = new List[9];
-                keys[0] = Arrays.asList("interests");
-                keys[1] = Arrays.asList("country", "sex");
-                keys[2] = Arrays.asList("country");
-                keys[3] = Arrays.asList("status");
-                keys[4] = Arrays.asList("city", "sex");
-                keys[5] = Arrays.asList("sex");
-                keys[6] = Arrays.asList("city");
-                keys[7] = Arrays.asList("country", "status");
-                keys[8] = Arrays.asList("city", "status");
-
-                TIntIntHashMap[] groupCounts = new TIntIntHashMap[9];
-                for (int i = 0; i < 9; i++) {
-                    groupCounts[i] = new TIntIntHashMap();
+                System.out.println("Start groups update" + new Date());
+                groups = new long[9][];
+                GroupCalculator groupTotalCalculator = new GroupCalculator(groups);
+                sexGroups = new long[2][][];
+                sexGroups[0] = new long[9][];
+                sexGroups[1] = new long[9][];
+                GroupCalculator sexFalseGroupCalculator = new GroupCalculator(sexGroups[0]);
+                GroupCalculator sexTrueGroupCalculator = new GroupCalculator(sexGroups[1]);
+                statusGroups = new long[3][][];
+                statusGroups[0] = new long[9][];
+                statusGroups[1] = new long[9][];
+                statusGroups[2] = new long[9][];
+                GroupCalculator status0GroupCalculator = new GroupCalculator(statusGroups[0]);
+                GroupCalculator status1GroupCalculator = new GroupCalculator(statusGroups[1]);
+                GroupCalculator status2GroupCalculator = new GroupCalculator(statusGroups[2]);
+                joinedGroups = new long[7][][];
+                GroupCalculator[] joinedCalculators = new GroupCalculator[78];
+                for (int i = 0; i< 7; i++) {
+                    joinedGroups[i] = new long[9][];
+                    joinedCalculators[i] = new GroupCalculator(joinedGroups[i]);
                 }
-
                 for (int i = 0; i < size; i++) {
                     Account account = accounts[i];
-                    for (int j = 0; j < 9; j++) {
-                        processRecord3(account, groupCounts[j], masks[j]);
+                    groupTotalCalculator.apply(account);
+                    if (account.sex) {
+                        sexTrueGroupCalculator.apply(account);
+                    } else {
+                        sexFalseGroupCalculator.apply(account);
                     }
-                }
-                Group[][] groupArrays = new Group[9][];
-                Comparator[] comparators = new Comparator[9];
-                for (int i = 0; i < 9; i++) {
-                    groupArrays[i] = new Group[groupCounts[i].size()];
-                    comparators[i] = new GroupsComparator(keys[i]);
-                }
-                groups = new long[9][];
-                for (int i = 0; i < 9; i++) {
-                    int counter = 0;
-                    for (int group : groupCounts[i].keys()) {
-                        Group tmp = new Group();
-                        tmp.count = groupCounts[i].get(group);
-                        tmp.values = group;
-                        groupArrays[i][counter++] = tmp;
+                    if (account.status == 0) {
+                        status0GroupCalculator.apply(account);
+                    } else if (account.status == 1) {
+                        status1GroupCalculator.apply(account);
+                    } else {
+                        status2GroupCalculator.apply(account);
                     }
-                    Arrays.sort(groupArrays[i], comparators[i]);
-                    groups[i] = new long[groupArrays[i].length];
-                    for (int j = 0; j < groupArrays[i].length; j++) {
-                        Group grp = groupArrays[i][j];
-                        long value = grp.count;
-                        value |= ((long) grp.values << 32);
-                        groups[i][j] = value;
-                    }
+                    int joinedIndex = joinedYear[account.id] - 11;
+                    joinedCalculators[joinedIndex].apply(account);
                 }
-
+                groupTotalCalculator.complete();
+                sexTrueGroupCalculator.complete();
+                sexFalseGroupCalculator.complete();
+                status0GroupCalculator.complete();
+                status1GroupCalculator.complete();
+                status2GroupCalculator.complete();
+                for (int i = 0; i< 7; i++) {
+                    joinedCalculators[i].complete();
+                }
                 long t2 = System.currentTimeMillis();
                 System.out.println("Finish groups update" + new Date() + " took=" + (t2 - t1));
             } catch (Exception ex) {
@@ -860,18 +839,76 @@ public class IndexHolder {
             return true;
 
         }
+    }
 
-        private class GroupsComparator implements Comparator<Group>{
 
-            List<String> keys;
+    private class GroupCalculator {
 
-            GroupsComparator(List<String> keys) {
-                this.keys = keys;
+        final byte[] masks;
+        final List[] keys;
+        final TIntIntHashMap[] groupCounts;
+        final long[][] index;
+
+        public GroupCalculator(long[][] index) {
+            masks = new byte[9];
+            masks[0] = 0b00000100;
+            masks[1] = 0b00001001;
+            masks[2] = 0b00001000;
+            masks[3] = 0b00000010;
+            masks[4] = 0b00010001;
+            masks[5] = 0b00000001;
+            masks[6] = 0b00010000;
+            masks[7] = 0b00001010;
+            masks[8] = 0b00010010;
+            keys = new List[9];
+            keys[0] = Arrays.asList("interests");
+            keys[1] = Arrays.asList("country", "sex");
+            keys[2] = Arrays.asList("country");
+            keys[3] = Arrays.asList("status");
+            keys[4] = Arrays.asList("city", "sex");
+            keys[5] = Arrays.asList("sex");
+            keys[6] = Arrays.asList("city");
+            keys[7] = Arrays.asList("country", "status");
+            keys[8] = Arrays.asList("city", "status");
+
+            groupCounts = new TIntIntHashMap[9];
+            for (int i = 0; i < 9; i++) {
+                groupCounts[i] = new TIntIntHashMap();
             }
+            this.index = index;
+        }
+        public void apply(Account account) {
+            birthYear[account.id] = (byte)(BirthYearPredicate.calculateYear(account.birth) - 1900);
+            joinedYear[account.id] = (byte)(JoinedYearPredicate.calculateYear(account.joined) - 2000);
+            for (int j = 0; j < 9; j++) {
+                processRecord3(account, groupCounts[j], masks[j]);
+            }
+        }
 
-            @Override
-            public int compare(Group o1, Group o2) {
-                return GroupsUpdater.this.compare(o1.count, o1.values, o2.count, o2.values, keys,1);
+        public void complete() {
+            Group[][] groupArrays = new Group[9][];
+            Comparator[] comparators = new Comparator[9];
+            for (int i = 0; i < 9; i++) {
+                groupArrays[i] = new Group[groupCounts[i].size()];
+                comparators[i] = new GroupsComparator(keys[i]);
+            }
+            long[][] index = this.index;
+            for (int i = 0; i < 9; i++) {
+                int counter = 0;
+                for (int group : groupCounts[i].keys()) {
+                    Group tmp = new Group();
+                    tmp.count = groupCounts[i].get(group);
+                    tmp.values = group;
+                    groupArrays[i][counter++] = tmp;
+                }
+                Arrays.sort(groupArrays[i], comparators[i]);
+                index[i] = new long[groupArrays[i].length];
+                for (int j = 0; j < groupArrays[i].length; j++) {
+                    Group grp = groupArrays[i][j];
+                    long value = grp.count;
+                    value |= ((long) grp.values << 32);
+                    index[i][j] = value;
+                }
             }
         }
 
@@ -982,7 +1019,25 @@ public class IndexHolder {
             }
             return 0;
         }
+
+        private class GroupsComparator implements Comparator<Group>{
+
+            List<String> keys;
+
+            GroupsComparator(List<String> keys) {
+                this.keys = keys;
+            }
+
+            @Override
+            public int compare(Group o1, Group o2) {
+                return GroupCalculator.this.compare(o1.count, o1.values, o2.count, o2.values, keys,1);
+            }
+        }
+
+
+
     }
+
 
 
 
