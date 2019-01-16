@@ -1458,121 +1458,26 @@ public class AccountService {
 
     private List<IndexScan> getAvailableIndexScan(List<Predicate<Account>> predicates) {
         List<IndexScan> indexScans = ObjectPool.acquireIndexScanList();
-        Iterator<Predicate<Account>> iterator = predicates.iterator();
-        while (iterator.hasNext()) {
-            Predicate<Account> predicate = iterator.next();
-            if (predicate instanceof CountryEqPredicate) {
-                CountryEqPredicate countryEqPredicate = (CountryEqPredicate) predicate;
-                indexScans.add(new CountryEqIndexScan(indexHolder, countryEqPredicate.getCounty()));
-                iterator.remove();
-            } else if (predicate instanceof CountryNullPredicate) {
-                CountryNullPredicate countryNullPredicate = (CountryNullPredicate) predicate;
-                if (countryNullPredicate.getNill() == 1) {
-                    indexScans.add(new CountryNullIndexScan(indexHolder));
-                    iterator.remove();
-                }
-            }/* else if (predicate instanceof StatusEqPredicate) {
-                StatusEqPredicate statusEqPredicate = (StatusEqPredicate) predicate;
-                indexScans.add(new StatusEqIndexScan(indexHolder, statusEqPredicate.getStatus()));
-                iterator.remove();
-            } */else if (predicate instanceof InterestsContainsPredicate) {
-                InterestsContainsPredicate interestsContainsPredicate = (InterestsContainsPredicate) predicate;
-                indexScans.add(new InterestsContainsIndexScan(indexHolder, interestsContainsPredicate.getInterests()));
-                iterator.remove();
-            } else if (predicate instanceof InterestsAnyPredicate) {
-                InterestsAnyPredicate interestsAnyPredicate = (InterestsAnyPredicate) predicate;
-                indexScans.add(new InterestsAnyIndexScan(indexHolder, interestsAnyPredicate.getInterests()));
-                iterator.remove();
-            } /*else if (predicate instanceof SexEqPredicate) {
-                SexEqPredicate sexEqPredicate = (SexEqPredicate) predicate;
-                indexScans.add(new SexEqIndexScan(indexHolder, sexEqPredicate.getSex()));
-                iterator.remove();
-            } else if (predicate instanceof StatusNEqPredicate) {
-                StatusNEqPredicate statusNEqPredicate = (StatusNEqPredicate) predicate;
-                indexScans.add(new StatusNotEqIndexScan(indexHolder, statusNEqPredicate.getStatus()));
-                iterator.remove();
-            } */else if (predicate instanceof CityNullPredicate) {
-                CityNullPredicate cityNullPredicate = (CityNullPredicate) predicate;
-                if (cityNullPredicate.getNill() == 1) {
-                    indexScans.add(new CityNullIndexScan(indexHolder));
-                    iterator.remove();
-                }
-            } else if (predicate instanceof CityEqPredicate) {
-                CityEqPredicate cityEqPredicate = (CityEqPredicate) predicate;
-                indexScans.add(new CityEqIndexScan(indexHolder, cityEqPredicate.getCity()));
-                iterator.remove();
-            } else if (predicate instanceof CityAnyPredicate) {
-                CityAnyPredicate cityAnyPredicate = (CityAnyPredicate) predicate;
-                indexScans.add(new CityAnyIndexScan(indexHolder, cityAnyPredicate.getCities()));
-                iterator.remove();
-            } else if (predicate instanceof BirthYearPredicate) {
-                BirthYearPredicate birthYearPredicate = (BirthYearPredicate) predicate;
-                indexScans.add(new BirthYearIndexScan(indexHolder, birthYearPredicate.getYear()));
-                iterator.remove();
-            } else if (predicate instanceof PremiumNowPredicate) {
-                indexScans.add(new PremiumIndexScan(indexHolder));
-                iterator.remove();
-            } else if (predicate instanceof EmailDomainPredicate) {
-                EmailDomainPredicate emailDomainPredicate = (EmailDomainPredicate) predicate;
-                indexScans.add(new EmailDomainIndexScan(indexHolder, emailDomainPredicate.getDomain()));
-                iterator.remove();
-            } else if (predicate instanceof JoinedYearPredicate) {
-                JoinedYearPredicate joinedYearPredicate = (JoinedYearPredicate) predicate;
-                indexScans.add(new JoinedYearIndexScan(indexHolder, joinedYearPredicate.getYear()));
-                iterator.remove();
-            } else if (predicate instanceof LikesContainsPredicate) {
-                LikesContainsPredicate likesContainsPredicate = (LikesContainsPredicate) predicate;
-                indexScans.add(new LikesContainsIndexScan(indexHolder, likesContainsPredicate.getLikes()));
-                iterator.remove();
-            } else if (predicate instanceof FnameEqPredicate) {
-                FnameEqPredicate fnameEqPredicate = (FnameEqPredicate) predicate;
-                indexScans.add(new FnameEqIndexScan(indexHolder, fnameEqPredicate.getFname()));
-                iterator.remove();
-            } else if (predicate instanceof FnameAnyPredicate) {
-                FnameAnyPredicate fnameAnyPredicate = (FnameAnyPredicate) predicate;
-                indexScans.add(new FnameAnyIndexScan(indexHolder, fnameAnyPredicate.getFnames()));
-                iterator.remove();
-            } else if (predicate instanceof FnameNullPredicate) {
-                FnameNullPredicate fnameNullPredicate = (FnameNullPredicate) predicate;
-                if (fnameNullPredicate.getNill() == 1) {
-                    indexScans.add(new FnameNullIndexScan(indexHolder));
-                    iterator.remove();
-                }
-            } else if (predicate instanceof SnameEqPredicate) {
-                SnameEqPredicate snameEqPredicate = (SnameEqPredicate) predicate;
-                indexScans.add(new SnameEqIndexScan(indexHolder, snameEqPredicate.getSname()));
-                iterator.remove();
-            } else if (predicate instanceof SnameNullPredicate) {
-                SnameNullPredicate snameNullPredicate = (SnameNullPredicate) predicate;
-                if (snameNullPredicate.getNill() == 1) {
-                    indexScans.add(new SnameNullIndexScan(indexHolder));
-                    iterator.remove();
-                }
-            } else if (predicate instanceof EmailEqPredicate) {
-                EmailEqPredicate emailEqPredicate = (EmailEqPredicate) predicate;
-                indexScans.add(new EmailEqIndexScan(indexHolder, emailEqPredicate.getEmail()));
-                iterator.remove();
-            } else if (predicate instanceof PhoneCodePredicate) {
-                PhoneCodePredicate phoneCodePredicate = (PhoneCodePredicate) predicate;
-                indexScans.add(new PhoneCodeIndexScan(indexHolder, phoneCodePredicate.getCode()));
-                iterator.remove();
-            } else if (predicate instanceof PhoneEqPredicate) {
-                PhoneEqPredicate phoneEqPredicate = (PhoneEqPredicate) predicate;
-                indexScans.add(new PhoneEqIndexScan(indexHolder, phoneEqPredicate.getPhone()));
-                iterator.remove();
-            } else if (predicate instanceof PhoneNullPredicate) {
-                PhoneNullPredicate phoneNullPredicate = (PhoneNullPredicate) predicate;
-                if (phoneNullPredicate.getNill() == 0) {
-                    indexScans.add(new PhoneNotNullIndexScan(indexHolder));
-                    iterator.remove();
-                }
-            } else if (predicate instanceof PremiumNullPredicate) {
-                PremiumNullPredicate premiumNullPredicate = (PremiumNullPredicate) predicate;
-                if (premiumNullPredicate.getNill() == 0) {
-                    indexScans.add(new PremiumNotNullIndexScan(indexHolder));
-                    iterator.remove();
+        Iterator<Predicate<Account>> predicateIterator = predicates.iterator();
+        AbstractPredicate usefulIndex = null;
+        for (int i = 0; i < predicates.size(); i++) {
+            Predicate<Account> predicate =  predicates.get(i);
+            if (predicate instanceof AbstractPredicate) {
+                AbstractPredicate abstractPredicate = (AbstractPredicate) predicate;
+                if (abstractPredicate.getIndexCordiality() != Integer.MAX_VALUE) {
+                    if (usefulIndex == null) {
+                        usefulIndex = abstractPredicate;
+                    } else {
+                        if (abstractPredicate.getIndexCordiality() < usefulIndex.getIndexCordiality()) {
+                            usefulIndex = abstractPredicate;
+                        }
+                    }
                 }
             }
+        }
+        if (usefulIndex != null) {
+            indexScans.add(usefulIndex.createIndexScan(indexHolder));
+            predicates.remove(usefulIndex);
         }
 
         return indexScans;

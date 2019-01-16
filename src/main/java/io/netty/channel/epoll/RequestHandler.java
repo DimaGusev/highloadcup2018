@@ -83,6 +83,7 @@ public class RequestHandler {
                 int queryFinish = indexOf(buf, queryStart, length, ' ');
                 int endPathIndex = findPathEndIndex(buf, queryStart, queryFinish);
                 int startParameters = endPathIndex + 1;
+                long t1 = System.nanoTime();
                 if (equals(buf, queryStart, endPathIndex, "/accounts/filter/")) {
                     Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
                     tmpByteBuffer = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(10000);
@@ -131,6 +132,10 @@ public class RequestHandler {
                     writeResponse(socketChannel, fd, byteBuffer);
                 } else  {
                     throw NotFoundRequest.INSTANCE;
+                }
+                long t2 = System.nanoTime();
+                if (t2-t1 > 10000000) {
+                    System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
                 }
 
             } else if (buf[0] == 'P') {

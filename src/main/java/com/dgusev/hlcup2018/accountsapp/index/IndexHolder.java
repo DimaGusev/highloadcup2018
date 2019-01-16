@@ -75,8 +75,8 @@ public class IndexHolder {
     public TByteObjectMap<int[]> sexTrueNonPremiumState1Index;
     public TByteObjectMap<int[]> sexTrueNonPremiumState2Index;
 
-    public final byte[] birthYear = new byte[AccountService.MAX_ID];
-    public final byte[] joinedYear = new byte[AccountService.MAX_ID];
+    public static final byte[] birthYear = new byte[AccountService.MAX_ID];
+    public static final byte[] joinedYear = new byte[AccountService.MAX_ID];
 
     @Autowired
     private NowProvider nowProvider;

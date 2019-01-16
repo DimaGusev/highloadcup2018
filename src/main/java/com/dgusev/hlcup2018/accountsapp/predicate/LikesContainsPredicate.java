@@ -1,11 +1,14 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
+import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
+import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
+import com.dgusev.hlcup2018.accountsapp.index.LikesContainsIndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.List;
 import java.util.function.Predicate;
 
-public class LikesContainsPredicate implements Predicate<Account> {
+public class LikesContainsPredicate extends AbstractPredicate {
 
     private int[] likes;
 
@@ -44,5 +47,15 @@ public class LikesContainsPredicate implements Predicate<Account> {
 
     public int[] getLikes() {
         return likes;
+    }
+
+    @Override
+    public int getIndexCordiality() {
+        return 50 * likes.length;
+    }
+
+    @Override
+    public IndexScan createIndexScan(IndexHolder indexHolder) {
+        return new LikesContainsIndexScan(indexHolder, likes);
     }
 }

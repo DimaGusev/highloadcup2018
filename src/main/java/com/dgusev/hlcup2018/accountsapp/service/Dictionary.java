@@ -18,19 +18,23 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Dictionary {
 
     private TByteObjectMap<String> countryDictionary = new TByteObjectHashMap<>();
+    private TByteObjectMap<byte[]> countryDictionaryBytes = new TByteObjectHashMap<>();
     private TObjectByteMap<String> countryReverseDictionary = new TObjectByteHashMap<>();
     private AtomicInteger countrySequence = new AtomicInteger();
 
     private TIntObjectMap<String> cityDictionary = new TIntObjectHashMap<>();
+    private TIntObjectMap<byte[]> cityDictionaryBytes = new TIntObjectHashMap<>();
     private TObjectIntMap<String> cityReverseDictionary = new TObjectIntHashMap<>();
     private AtomicInteger citySequence = new AtomicInteger();
 
     private TIntObjectMap<String> fnameDictionary = new TIntObjectHashMap<>();
+    private TIntObjectMap<byte[]> fnameDictionaryBytes = new TIntObjectHashMap<>();
     private TObjectIntMap<String> fnameReverseDictionary = new TObjectIntHashMap<>();
     private AtomicInteger fnameSequence = new AtomicInteger();
 
 
     private TIntObjectMap<String> snameDictionary = new TIntObjectHashMap<>();
+    private TIntObjectMap<byte[]> snameDictionaryBytes = new TIntObjectHashMap<>();
     private TObjectIntMap<String> snameReverseDictionary = new TObjectIntHashMap<>();
     private AtomicInteger snameSequence = new AtomicInteger();
 
@@ -44,6 +48,10 @@ public class Dictionary {
         return countryDictionary.get(country);
     }
 
+    public byte[] getCountryBytes(byte country) {
+        return countryDictionaryBytes.get(country);
+    }
+
     public byte getCountry(String country) {
         return countryReverseDictionary.get(country);
     }
@@ -52,6 +60,7 @@ public class Dictionary {
         if (!countryReverseDictionary.containsKey(country)) {
             int id = countrySequence.incrementAndGet();
             countryDictionary.put((byte)id, country);
+            countryDictionaryBytes.put((byte)id, country.getBytes());
             countryReverseDictionary.put(country, (byte)id);
             return (byte) id;
         } else {
@@ -63,6 +72,10 @@ public class Dictionary {
         return cityDictionary.get(city);
     }
 
+    public byte[] getCityBytes(int city) {
+        return cityDictionaryBytes.get(city);
+    }
+
     public int getCity(String city) {
         return cityReverseDictionary.get(city);
     }
@@ -71,6 +84,7 @@ public class Dictionary {
         if (!cityReverseDictionary.containsKey(city)) {
             int id = citySequence.incrementAndGet();
             cityDictionary.put(id, city);
+            cityDictionaryBytes.put(id, city.getBytes());
             cityReverseDictionary.put(city, id);
             return id;
         } else {
@@ -82,6 +96,10 @@ public class Dictionary {
         return fnameDictionary.get(fname);
     }
 
+    public byte[] getFnameBytes(int fname) {
+        return fnameDictionaryBytes.get(fname);
+    }
+
     public int getFname(String fname) {
         return fnameReverseDictionary.get(fname);
     }
@@ -90,6 +108,7 @@ public class Dictionary {
         if (!fnameReverseDictionary.containsKey(fname)) {
             int id = fnameSequence.incrementAndGet();
             fnameDictionary.put(id, fname);
+            fnameDictionaryBytes.put(id, fname.getBytes());
             fnameReverseDictionary.put(fname, id);
             return id;
         } else {
@@ -101,6 +120,10 @@ public class Dictionary {
         return snameDictionary.get(sname);
     }
 
+    public byte[] getSnameBytes(int sname) {
+        return snameDictionaryBytes.get(sname);
+    }
+
     public int getSname(String sname) {
         return snameReverseDictionary.get(sname);
     }
@@ -109,6 +132,7 @@ public class Dictionary {
         if (!snameReverseDictionary.containsKey(sname)) {
             int id = snameSequence.incrementAndGet();
             snameDictionary.put(id, sname);
+            snameDictionaryBytes.put(id, sname.getBytes());
             snameReverseDictionary.put(sname, id);
             return id;
         } else {

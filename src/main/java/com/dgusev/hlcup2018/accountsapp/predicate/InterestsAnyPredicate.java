@@ -1,11 +1,14 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
+import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
+import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
+import com.dgusev.hlcup2018.accountsapp.index.InterestsAnyIndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.List;
 import java.util.function.Predicate;
 
-public class InterestsAnyPredicate implements Predicate<Account> {
+public class InterestsAnyPredicate extends AbstractPredicate {
 
     private byte[] interests;
 
@@ -41,5 +44,15 @@ public class InterestsAnyPredicate implements Predicate<Account> {
 
     public byte[] getInterests() {
         return interests;
+    }
+
+    @Override
+    public int getIndexCordiality() {
+        return 40000* interests.length;
+    }
+
+    @Override
+    public IndexScan createIndexScan(IndexHolder indexHolder) {
+        return new InterestsAnyIndexScan(indexHolder, interests);
     }
 }

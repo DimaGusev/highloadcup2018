@@ -1,11 +1,13 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
+import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
+import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
+import com.dgusev.hlcup2018.accountsapp.index.SnameEqIndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import gnu.trove.impl.Constants;
 
-import java.util.function.Predicate;
 
-public class SnameEqPredicate implements Predicate<Account> {
+public class SnameEqPredicate extends AbstractPredicate {
 
     private int sname;
 
@@ -20,5 +22,15 @@ public class SnameEqPredicate implements Predicate<Account> {
 
     public int getSname() {
         return sname;
+    }
+
+    @Override
+    public int getIndexCordiality() {
+        return 800;
+    }
+
+    @Override
+    public IndexScan createIndexScan(IndexHolder indexHolder) {
+        return new SnameEqIndexScan(indexHolder, sname);
     }
 }

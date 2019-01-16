@@ -228,14 +228,18 @@ public class AccountsController {
             responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
         } else {
             byte[] arr = ObjectPool.acquireFormatterArray();
-            responseBuf.writeBytes(ACCOUNTS_LIST_START);
+            int index = 0;
+            System.arraycopy(ACCOUNTS_LIST_START, 0, arr, 0, ACCOUNTS_LIST_START.length);
+            index+=ACCOUNTS_LIST_START.length;
             for (int i = 0; i < result.size(); i++) {
                 if (i != 0) {
-                    responseBuf.writeByte(',');
+                    arr[index++] = ',';
                 }
-                accountFormatter.format(result.get(i), fields, responseBuf, arr);
+                index = accountFormatter.format(result.get(i), fields, arr, index);
             }
-            responseBuf.writeBytes(LIST_END);
+            System.arraycopy(LIST_END, 0, arr, index, LIST_END.length);
+            index+=LIST_END.length;
+            responseBuf.writeBytes(arr, 0, index);
         }
     }
 

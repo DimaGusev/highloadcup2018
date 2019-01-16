@@ -1,11 +1,14 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
+import com.dgusev.hlcup2018.accountsapp.index.FnameNullIndexScan;
+import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
+import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import gnu.trove.impl.Constants;
 
 import java.util.function.Predicate;
 
-public class FnameNullPredicate implements Predicate<Account> {
+public class FnameNullPredicate extends AbstractPredicate {
 
     private int nill;
 
@@ -24,5 +27,23 @@ public class FnameNullPredicate implements Predicate<Account> {
 
     public int getNill() {
         return nill;
+    }
+
+    @Override
+    public int getIndexCordiality() {
+        if (nill == 1) {
+            return 120000;
+        } else  {
+            return Integer.MAX_VALUE;
+        }
+    }
+
+    @Override
+    public IndexScan createIndexScan(IndexHolder indexHolder) {
+        if (nill == 1) {
+            return new FnameNullIndexScan(indexHolder);
+        } else {
+            return null;
+        }
     }
 }

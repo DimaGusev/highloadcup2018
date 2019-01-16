@@ -1,5 +1,8 @@
 package com.dgusev.hlcup2018.accountsapp.predicate;
 
+import com.dgusev.hlcup2018.accountsapp.index.BirthYearIndexScan;
+import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
+import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.Arrays;
@@ -7,7 +10,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.function.Predicate;
 
-public class BirthYearPredicate implements Predicate<Account> {
+public class BirthYearPredicate extends AbstractPredicate {
 
     private static final int[] YEARS_ARRAY = new int[55];
     static {
@@ -32,8 +35,8 @@ public class BirthYearPredicate implements Predicate<Account> {
     }
 
     @Override
-    public boolean test(Account Account) {
-        return calculateYear(Account.birth) == year;
+    public boolean test(Account account) {
+        return IndexHolder.birthYear[account.id] == year - 1900;
     }
 
     public static int calculateYear(int timestamp) {
@@ -47,5 +50,15 @@ public class BirthYearPredicate implements Predicate<Account> {
 
     public int getYear() {
         return year;
+    }
+
+    @Override
+    public int getIndexCordiality() {
+        return 24000;
+    }
+
+    @Override
+    public IndexScan createIndexScan(IndexHolder indexHolder) {
+        return new BirthYearIndexScan(indexHolder, year);
     }
 }
