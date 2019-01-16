@@ -1471,11 +1471,11 @@ public class AccountService {
                     indexScans.add(new CountryNullIndexScan(indexHolder));
                     iterator.remove();
                 }
-            } else if (predicate instanceof StatusEqPredicate) {
+            }/* else if (predicate instanceof StatusEqPredicate) {
                 StatusEqPredicate statusEqPredicate = (StatusEqPredicate) predicate;
                 indexScans.add(new StatusEqIndexScan(indexHolder, statusEqPredicate.getStatus()));
                 iterator.remove();
-            } else if (predicate instanceof InterestsContainsPredicate) {
+            } */else if (predicate instanceof InterestsContainsPredicate) {
                 InterestsContainsPredicate interestsContainsPredicate = (InterestsContainsPredicate) predicate;
                 indexScans.add(new InterestsContainsIndexScan(indexHolder, interestsContainsPredicate.getInterests()));
                 iterator.remove();

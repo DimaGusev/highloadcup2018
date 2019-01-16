@@ -327,10 +327,10 @@ public class RequestHandler {
             pointer++;
         }
         pointer++;
-        if (length - pointer - 0 > contentLength ) {
+        if (length - pointer - 2 > contentLength ) {
             System.out.println("Error, more data than needed, actual=" + (length - pointer) + " ,header=" + contentLength + ": " + new String(buf, 0, length));
         }
-        if (length - pointer - 0  < contentLength ) {
+        if (length - pointer - 2  < contentLength ) {
             return true;
         }
         return false;
