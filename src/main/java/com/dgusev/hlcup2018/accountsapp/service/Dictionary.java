@@ -1,13 +1,9 @@
 package com.dgusev.hlcup2018.accountsapp.service;
 
-import gnu.trove.map.TByteObjectMap;
-import gnu.trove.map.TIntObjectMap;
-import gnu.trove.map.TObjectByteMap;
-import gnu.trove.map.TObjectIntMap;
-import gnu.trove.map.hash.TByteObjectHashMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
-import gnu.trove.map.hash.TObjectByteHashMap;
-import gnu.trove.map.hash.TObjectIntHashMap;
+import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
+import gnu.trove.impl.Constants;
+import gnu.trove.map.*;
+import gnu.trove.map.hash.*;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -31,6 +27,7 @@ public class Dictionary {
     private TIntObjectMap<byte[]> fnameDictionaryBytes = new TIntObjectHashMap<>();
     private TObjectIntMap<String> fnameReverseDictionary = new TObjectIntHashMap<>();
     private AtomicInteger fnameSequence = new AtomicInteger();
+    private TIntByteMap fnameSexDictionary = new TIntByteHashMap();
 
 
     private TIntObjectMap<String> snameDictionary = new TIntObjectHashMap<>();
@@ -115,6 +112,23 @@ public class Dictionary {
             return fnameReverseDictionary.get(fname);
         }
     }
+
+    public void updateFnameSexDictionary(int fname, boolean sex) {
+        byte value = fnameSexDictionary.get(fname);
+        if (value == Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+            fnameSexDictionary.put(fname, sex ? (byte)2: 1);
+        } else {
+            byte current = sex ? (byte)2: 1;
+            if (value != current) {
+                fnameSexDictionary.put(fname, (byte)3);
+            }
+        }
+    }
+
+    public byte getFnameSex(int fname) {
+        return fnameSexDictionary.get(fname);
+    }
+
 
     public String getSname(int sname) {
         return snameDictionary.get(sname);

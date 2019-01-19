@@ -81,6 +81,7 @@ public class AccountsController {
         fields.clear();
         fields.add("id");
         fields.add("email");
+        int predicateMask = 0;
         for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
             String name = parameter.getKey();
             if (name.equals("query_id")) {
@@ -97,6 +98,7 @@ public class AccountsController {
             if (name.startsWith("sex_")) {
                 if (name.equals("sex_eq")) {
                     predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
+                    predicateMask |=2;
                 } else {
                     throw BadRequest.INSTANCE;
                 }
@@ -129,6 +131,7 @@ public class AccountsController {
                         values[i] = dictionary.getFname(fnames[i]);
                     }
                     predicates.add(new FnameAnyPredicate(values));
+                    predicateMask |=1;
                 } else if (name.equals("fname_null")) {
                     predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue())));
                 } else {
@@ -223,7 +226,7 @@ public class AccountsController {
                 throw BadRequest.INSTANCE;
             }
         }
-        List<Account> result = accountService.filter(predicates, limit);
+        List<Account> result = accountService.filter(predicates, limit, predicateMask);
         if (result.isEmpty()) {
             responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
         } else {

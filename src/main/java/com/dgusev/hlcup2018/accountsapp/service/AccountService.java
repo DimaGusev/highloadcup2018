@@ -56,9 +56,39 @@ public class AccountService {
 
     public static volatile long LAST_UPDATE_TIMESTAMP;
 
-    public List<Account> filter(List<Predicate<Account>> predicates, int limit) {
+    public List<Account> filter(List<Predicate<Account>> predicates, int limit, int predicateMask) {
         if (limit <= 0) {
             throw new BadRequest();
+        }
+        if (predicateMask == 3) {
+            FnameAnyPredicate fnameAnyPredicate = null;
+            SexEqPredicate sexEqPredicate = null;
+            for (int i = 0; i < predicates.size(); i++) {
+                Predicate<Account> predicate = predicates.get(i);
+                if (predicate instanceof FnameAnyPredicate) {
+                    fnameAnyPredicate = (FnameAnyPredicate) predicate;
+                } else if (predicate instanceof SexEqPredicate) {
+                    sexEqPredicate = (SexEqPredicate) predicate;
+                }
+            }
+            boolean allNull = true;
+            for (int i = 0; i < fnameAnyPredicate.getFnames().length; i++) {
+                int fname = fnameAnyPredicate.getFnames()[i];
+                byte s = dictionary.getFnameSex(fname);
+                if (s == 3) {
+                    allNull = false;
+                } else {
+                    byte targetSex = sexEqPredicate.getSex() ? (byte)2: 1;
+                    if (targetSex != s) {
+                        fnameAnyPredicate.getFnames()[i] = 0;
+                    } else {
+                        allNull = false;
+                    }
+                }
+            }
+            if (allNull) {
+                return Collections.EMPTY_LIST;
+            }
         }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         if (!indexScans.isEmpty()) {
@@ -204,7 +234,7 @@ public class AccountService {
         else if (predicatesMask == 48) {
             iterateInteresBirth(interes, birthYear, groupsCountMap, keysMask);
         }
-        //CityEqPredicate,JoinedYearPredicate
+        //InterestsContainsPredicate,JoinedYearPredicate
         else if (predicatesMask == (byte)160) {
             iterateInteresJoined(interes, joinedYear, groupsCountMap, keysMask);
         }
@@ -226,7 +256,7 @@ public class AccountService {
         }
         //BirthYearPredicate,SexEqPredicate
         else if (predicatesMask == 17) {
-            iterateBirthSex(birthYear, sex, groupsCountMap, keysMask);
+            return iterateBirthSex(birthYear, sex, keysMask, limit, order);
         }
         //BirthYearPredicate,StatusEqPredicate
         else if (predicatesMask == 18) {
@@ -250,7 +280,7 @@ public class AccountService {
         }
         //JoinedYearPredicate,StatusEqPredicate
         else if (predicatesMask == (byte)130) {
-            iterateJoinedStatus(joinedYear, status, groupsCountMap, keysMask);
+            return iterateJoinedStatus(joinedYear, status, keysMask, limit, order);
         }
         //JoinedYearPredicate,SexEqPredicate
         else if (predicatesMask == (byte)129) {
@@ -440,16 +470,16 @@ public class AccountService {
         return iterateIndex(keysMask, limit, order, index);
     }
 
-    private void iterateBirthSex(int birthYear, boolean sex, TIntIntMap groupsCountMap, byte keysMask) {
-        int[] accounts = indexHolder.birthYearIndex.get(birthYear);
-        if (accounts != null) {
-            for (int id : accounts) {
-                Account account = accountIdMap[id];
-                if (account.sex == sex) {
-                    processRecord2(account, groupsCountMap, keysMask);
-                }
-            }
+    private List<Group> iterateBirthSex(int birthYear, boolean sex, byte keysMask, int limit, int order) {
+        if (birthYear < 1950 || birthYear >= 2005) {
+            return Collections.EMPTY_LIST;
         }
+        int number = birthYear - 1950;
+        if (sex) {
+            number+=55;
+        }
+        long[] index = indexHolder.birthSexGroupsIndex[number];
+        return iterateIndex(keysMask, limit, order, index);
     }
 
     private void iterateBirthStatus(int birthYear,byte status, TIntIntMap groupsCountMap, byte keysMask) {
@@ -464,16 +494,15 @@ public class AccountService {
         }
     }
 
-    private void iterateJoinedStatus(int joinedYear, byte status, TIntIntMap groupsCountMap, byte keysMask) {
-        if (indexHolder.joinedIndex.get(joinedYear) != null) {
-            int[] index = indexHolder.joinedIndex.get(joinedYear);
-            for (int id : index) {
-                Account account = accountIdMap[id];
-                if (account.status == status) {
-                    processRecord2(account, groupsCountMap, keysMask);
-                }
-            }
+    private List<Group> iterateJoinedStatus(int joinedYear, byte status, byte keysMask, int limit, int order) {
+        if (joinedYear < 2011 || joinedYear > 2017) {
+            return Collections.EMPTY_LIST;
         }
+        int number = joinedYear - 2011;
+        number+=status*7;
+
+        long[] index = indexHolder.joinedStatusGroupsIndex[number];
+        return iterateIndex(keysMask, limit, order, index);
     }
 
     private List<Group> iterateJoinedSex(int joinedYear, boolean sex, byte keysMask, int limit, int order) {
@@ -1356,12 +1385,16 @@ public class AccountService {
 
     private void addAccountToGroups(Account account) {
         addToJoinedSexIndex(account);
+        addToJoinedStatusIndex(account);
         addToBirthIndex(account);
+        addToBirthSexIndex(account);
     }
 
     private void removeAccountFromGroups(Account account) {
         removeFromJoinedSexIndex(account);
+        removeFromJoinedStatusIndex(account);
         removeFromBirthIndex(account);
+        removeFromBirthSexIndex(account);
     }
 
 
@@ -1375,9 +1408,25 @@ public class AccountService {
         addAccountToGroups(account, index);
     }
 
+    private void addToJoinedStatusIndex(Account account) {
+        int indexNumber = JoinedYearPredicate.calculateYear(account.joined) - 2011;
+        indexNumber+=account.status*7;
+        long[] index = indexHolder.joinedStatusGroupsIndex[indexNumber];
+        addAccountToGroups(account, index);
+    }
+
     private void addToBirthIndex(Account account) {
         int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
         long[] index = indexHolder.birthGroupsIndex[indexNumber];
+        addAccountToGroups(account, index);
+    }
+
+    private void addToBirthSexIndex(Account account) {
+        int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
+        if (account.sex) {
+            indexNumber+=55;
+        }
+        long[] index = indexHolder.birthSexGroupsIndex[indexNumber];
         addAccountToGroups(account, index);
     }
 
@@ -1390,9 +1439,25 @@ public class AccountService {
         removeAccountFromGroups(account, index);
     }
 
+    private void removeFromJoinedStatusIndex(Account account) {
+        int indexNumber = JoinedYearPredicate.calculateYear(account.joined) - 2011;
+        indexNumber+=account.status*7;
+        long[] index = indexHolder.joinedStatusGroupsIndex[indexNumber];
+        removeAccountFromGroups(account, index);
+    }
+
     private void removeFromBirthIndex(Account account) {
         int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
         long[] index = indexHolder.birthGroupsIndex[indexNumber];
+        removeAccountFromGroups(account, index);
+    }
+
+    private void removeFromBirthSexIndex(Account account) {
+        int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
+        if (account.sex) {
+            indexNumber+=55;
+        }
+        long[] index = indexHolder.birthSexGroupsIndex[indexNumber];
         removeAccountFromGroups(account, index);
     }
 
@@ -1423,8 +1488,6 @@ public class AccountService {
             }
         }
     }
-
-
 
     private int getGroup(Account account, byte keyMask) {
         int group = 0;
@@ -1608,8 +1671,12 @@ public class AccountService {
         if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0 || accountDTO.birth != 0) {
             removeAccountFromGroups(oldAcc);
         }
+        if (accountDTO.sex != null) {
+            oldAcc.sex = ConvertorUtills.convertSex(accountDTO.sex);
+        }
         if (accountDTO.fname != null) {
             oldAcc.fname = dictionary.getOrCreateFname(accountDTO.fname);
+            dictionary.updateFnameSexDictionary(oldAcc.fname, oldAcc.sex);
         }
         if (accountDTO.sname != null) {
             oldAcc.sname = dictionary.getOrCreateSname(accountDTO.sname);
@@ -1621,9 +1688,6 @@ public class AccountService {
         } else if (oldAcc.phone == null && accountDTO.phone != null) {
             phones.add(accountDTO.phone);
             oldAcc.phone = accountDTO.phone;
-        }
-        if (accountDTO.sex != null) {
-            oldAcc.sex = ConvertorUtills.convertSex(accountDTO.sex);
         }
         if (accountDTO.birth != Integer.MIN_VALUE) {
             oldAcc.birth = accountDTO.birth;

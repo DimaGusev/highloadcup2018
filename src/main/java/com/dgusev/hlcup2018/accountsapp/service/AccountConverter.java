@@ -22,8 +22,10 @@ public class AccountConverter {
         Account account = new Account();
         account.id = accountDTO.id;
         account.email = accountDTO.email;
+        account.sex = ConvertorUtills.convertSex(accountDTO.sex);
         if (accountDTO.fname != null) {
             account.fname = dictionary.getOrCreateFname(accountDTO.fname);
+            dictionary.updateFnameSexDictionary(account.fname, account.sex);
         } else {
             account.fname = Constants.DEFAULT_INT_NO_ENTRY_VALUE;
         }
@@ -34,7 +36,7 @@ public class AccountConverter {
         }
         account.phone = accountDTO.phone;
 
-        account.sex = ConvertorUtills.convertSex(accountDTO.sex);
+
         account.birth = accountDTO.birth;
         if (accountDTO.country != null) {
             account.country = dictionary.getOrCreateCountry(accountDTO.country);

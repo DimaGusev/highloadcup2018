@@ -869,7 +869,9 @@ public class IndexHolder {
     }
 
     public long[][] joinedSexGroupsIndex = new long[14][];
+    public long[][] joinedStatusGroupsIndex = new long[21][];
     public long[][] birthGroupsIndex = new long[55][];
+    public long[][] birthSexGroupsIndex = new long[110][];
 
     public class AuxiliaryGroupsCalculatorTask implements Callable<Boolean> {
 
@@ -892,6 +894,13 @@ public class IndexHolder {
                     joinedSexCalculators[i] = new GroupCalculator(joinedSexGroups[i]);
                     joinedSexGroupsIndex[i] = new long[9];
                 }
+                long[][][] joinedStatusGroups = new long[21][][];
+                GroupCalculator[] joinedStatusCalculators = new GroupCalculator[21];
+                for (int i = 0; i< 21; i++) {
+                    joinedStatusGroups[i] = new long[9][];
+                    joinedStatusCalculators[i] = new GroupCalculator(joinedStatusGroups[i]);
+                    joinedStatusGroupsIndex[i] = new long[9];
+                }
                 long[][][] birthGroups = new long[55][][];
                 GroupCalculator[] birthCalculators = new GroupCalculator[55];
                 for (int i = 0; i< 55; i++) {
@@ -899,21 +908,42 @@ public class IndexHolder {
                     birthCalculators[i] = new GroupCalculator(birthGroups[i]);
                     birthGroupsIndex[i] = new long[9];
                 }
+                long[][][] birthSexGroups = new long[110][][];
+                GroupCalculator[] birthSexCalculators = new GroupCalculator[110];
+                for (int i = 0; i< 110; i++) {
+                    birthSexGroups[i] = new long[9][];
+                    birthSexCalculators[i] = new GroupCalculator(birthSexGroups[i]);
+                    birthSexGroupsIndex[i] = new long[9];
+                }
                 for (int i = 0; i < size; i++) {
                     Account account = accounts[i];
                     int joinedIndex = joinedYear[account.id] - 11;
+                    int joinedStatusIndex = joinedIndex;
                     if (account.sex) {
                         joinedIndex+=7;
                     }
+                    joinedStatusIndex+=7*account.status;
                     int birthIndex = birthYear[account.id] - 50;
+                    int birthSexIndex = birthIndex;
+                    if (account.sex) {
+                        birthSexIndex+=55;
+                    }
                     birthCalculators[birthIndex].apply(account);
+                    birthSexCalculators[birthSexIndex].apply(account);
                     joinedSexCalculators[joinedIndex].apply(account);
+                    joinedStatusCalculators[joinedStatusIndex].apply(account);
                 }
                 for (int i = 0; i< 14; i++) {
                     joinedSexCalculators[i].complete();
                 }
+                for (int i = 0; i< 21; i++) {
+                    joinedStatusCalculators[i].complete();
+                }
                 for (int i = 0; i< 55; i++) {
                     birthCalculators[i].complete();
+                }
+                for (int i = 0; i< 110; i++) {
+                    birthSexCalculators[i].complete();
                 }
 
                 long size = 0;
@@ -932,6 +962,21 @@ public class IndexHolder {
                        }
                    }
                 }
+                for (int i = 0; i < 21; i++) {
+                    for (int j = 0; j < 9; j++) {
+                        if (joinedStatusGroups[i][j].length != 0) {
+                            long address = UNSAFE.allocateMemory(2 + 8*joinedStatusGroups[i][j].length);
+                            size+=2 + 8*joinedStatusGroups[i][j].length;
+                            joinedStatusGroupsIndex[i][j] = address;
+                            UNSAFE.putShort(address, (short) joinedStatusGroups[i][j].length);
+                            address+=2;
+                            for (int k = 0; k < joinedStatusGroups[i][j].length; k++) {
+                                UNSAFE.putLong(address, joinedStatusGroups[i][j][k]);
+                                address+=8;
+                            }
+                        }
+                    }
+                }
                 for (int i = 0; i < 55; i++) {
                     for (int j = 0; j < 9; j++) {
                         if (birthGroups[i][j].length != 0) {
@@ -942,6 +987,22 @@ public class IndexHolder {
                             address+=2;
                             for (int k = 0; k < birthGroups[i][j].length; k++) {
                                 UNSAFE.putLong(address, birthGroups[i][j][k]);
+                                address+=8;
+                            }
+                        }
+                    }
+                }
+
+                for (int i = 0; i < 110; i++) {
+                    for (int j = 0; j < 9; j++) {
+                        if (birthSexGroups[i][j].length != 0) {
+                            long address = UNSAFE.allocateMemory(2 + 8*birthSexGroups[i][j].length);
+                            size+=2 + 8*birthSexGroups[i][j].length;
+                            birthSexGroupsIndex[i][j] = address;
+                            UNSAFE.putShort(address, (short) birthSexGroups[i][j].length);
+                            address+=2;
+                            for (int k = 0; k < birthSexGroups[i][j].length; k++) {
+                                UNSAFE.putLong(address, birthSexGroups[i][j][k]);
                                 address+=8;
                             }
                         }
