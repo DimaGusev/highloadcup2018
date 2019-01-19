@@ -189,8 +189,7 @@ public class RequestHandler {
         } catch (NotFoundRequest notFoundRequest) {
             writeResponse(socketChannel, fd, byteBuffer, NOT_FOUND);
         } catch (Exception ex) {
-            //System.out.println(request.content().toString(StandardCharsets.UTF_8));
-            //ex.printStackTrace();
+           // ex.printStackTrace();
             writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
         } finally {
             if (tmpByteBuffer != null) {

@@ -869,6 +869,7 @@ public class IndexHolder {
     }
 
     public long[][] joinedSexGroupsIndex = new long[14][];
+    public long[][] birthGroupsIndex = new long[55][];
 
     public class AuxiliaryGroupsCalculatorTask implements Callable<Boolean> {
 
@@ -891,16 +892,28 @@ public class IndexHolder {
                     joinedSexCalculators[i] = new GroupCalculator(joinedSexGroups[i]);
                     joinedSexGroupsIndex[i] = new long[9];
                 }
+                long[][][] birthGroups = new long[55][][];
+                GroupCalculator[] birthCalculators = new GroupCalculator[55];
+                for (int i = 0; i< 55; i++) {
+                    birthGroups[i] = new long[9][];
+                    birthCalculators[i] = new GroupCalculator(birthGroups[i]);
+                    birthGroupsIndex[i] = new long[9];
+                }
                 for (int i = 0; i < size; i++) {
                     Account account = accounts[i];
                     int joinedIndex = joinedYear[account.id] - 11;
                     if (account.sex) {
                         joinedIndex+=7;
                     }
+                    int birthIndex = birthYear[account.id] - 50;
+                    birthCalculators[birthIndex].apply(account);
                     joinedSexCalculators[joinedIndex].apply(account);
                 }
                 for (int i = 0; i< 14; i++) {
                     joinedSexCalculators[i].complete();
+                }
+                for (int i = 0; i< 55; i++) {
+                    birthCalculators[i].complete();
                 }
 
                 long size = 0;
@@ -919,6 +932,22 @@ public class IndexHolder {
                        }
                    }
                 }
+                for (int i = 0; i < 55; i++) {
+                    for (int j = 0; j < 9; j++) {
+                        if (birthGroups[i][j].length != 0) {
+                            long address = UNSAFE.allocateMemory(2 + 8*birthGroups[i][j].length);
+                            size+=2 + 8*birthGroups[i][j].length;
+                            birthGroupsIndex[i][j] = address;
+                            UNSAFE.putShort(address, (short) birthGroups[i][j].length);
+                            address+=2;
+                            for (int k = 0; k < birthGroups[i][j].length; k++) {
+                                UNSAFE.putLong(address, birthGroups[i][j][k]);
+                                address+=8;
+                            }
+                        }
+                    }
+                }
+
                 System.out.println("Finish AuxiliaryGroupsCalculatorTask, size=" + size);
 
             } catch (Exception ex) {
