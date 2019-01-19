@@ -56,28 +56,6 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        /*new Thread(()-> {
-            while (true) {
-                try {
-                    Thread.sleep(2000);
-                    Process process = Runtime.getRuntime().exec(new String[] {"jcmd", "1", "VM.native_memory summary"});
-                    BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-                    String line = null;
-                    List<String> list = new ArrayList<>();
-                    while ((line = bufferedReader.readLine())!=null) {
-                        if (line.contains("Total: reserved")) {
-                            list.add(line);
-                        } else if (line.startsWith("-")) {
-                            list.add(line.replaceAll(" ", ""));
-                        }
-                    }
-                    System.out.println("Date: " + new Date().getTime()/1000 + " " + list);
-                    bufferedReader.close();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-        }).start();*/
         String initFile = null;
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
             initFile = initFileWin;

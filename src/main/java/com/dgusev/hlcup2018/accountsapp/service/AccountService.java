@@ -254,7 +254,7 @@ public class AccountService {
         }
         //JoinedYearPredicate,SexEqPredicate
         else if (predicatesMask == (byte)129) {
-            iterateJoinedSex(joinedYear, sex, groupsCountMap, keysMask);
+            return iterateJoinedSex(joinedYear, sex, keysMask, limit, order);
         }
         else {
             return Collections.EMPTY_LIST;
@@ -313,6 +313,9 @@ public class AccountService {
 
     private void iterateCity(int city, TIntIntMap groupsCountMap, byte keysMask) {
         int[] accounts = indexHolder.cityIndex.get(city);
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id];
             processRecord2(account, groupsCountMap, keysMask);
@@ -321,6 +324,9 @@ public class AccountService {
 
     private void iterateCityBirth(int city,int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
         int[] accounts = indexHolder.cityIndex.get(city);
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id];
             if (BirthYearPredicate.calculateYear(account.birth) == birthYear) {
@@ -331,6 +337,9 @@ public class AccountService {
 
     private void iterateCityJoined(int city,int joinedYear, TIntIntMap groupsCountMap, byte keysMask) {
         int[] accounts = indexHolder.cityIndex.get(city);
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id];
             if (JoinedYearPredicate.calculateYear(account.joined) == joinedYear) {
@@ -341,6 +350,9 @@ public class AccountService {
 
     private void iterateInteres(byte interes, TIntIntMap groupsCountMap, byte keysMask) {
         int[] accounts = indexHolder.interestsIndex.get(interes);
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id & 0x00ffffff];
             processRecord2(account, groupsCountMap, keysMask);
@@ -351,6 +363,9 @@ public class AccountService {
         int[] accounts = indexHolder.interestsIndex.get(interes);
         byte year = (byte)(birthYear - 1900);
         byte[] birthYearIndex = indexHolder.birthYear;
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id & 0x00ffffff];
             if (birthYearIndex[account.id] == year) {
@@ -363,6 +378,9 @@ public class AccountService {
         int[] accounts = indexHolder.interestsIndex.get(interes);
         byte year = (byte)(joinedYear - 2000);
         byte[] joinedYearIndex = indexHolder.joinedYear;
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id & 0x00ffffff];
             if (joinedYearIndex[account.id] == year) {
@@ -373,6 +391,9 @@ public class AccountService {
 
     private void iterateCountry(byte country, TIntIntMap groupsCountMap, byte keysMask) {
         int[] accounts = indexHolder.countryIndex.get(country);
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id];
             processRecord2(account, groupsCountMap, keysMask);
@@ -383,6 +404,9 @@ public class AccountService {
         int[] accounts = indexHolder.countryIndex.get(country);
         byte year = (byte)(birthYear - 1900);
         byte[] birthYearIndex = indexHolder.birthYear;
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id];
             if (birthYearIndex[account.id] == year) {
@@ -395,6 +419,9 @@ public class AccountService {
         int[] accounts = indexHolder.countryIndex.get(country);
         byte year = (byte)(joinedYear - 2000);
         byte[] joinedYearIndex = indexHolder.joinedYear;
+        if (accounts == null) {
+            return;
+        }
         for (int id : accounts) {
             Account account = accountIdMap[id];
             if (joinedYearIndex[account.id] == year) {
@@ -450,16 +477,17 @@ public class AccountService {
         }
     }
 
-    private void iterateJoinedSex(int joinedYear, boolean sex, TIntIntMap groupsCountMap, byte keysMask) {
-        if (indexHolder.joinedIndex.get(joinedYear) != null) {
-            int[] index = indexHolder.joinedIndex.get(joinedYear);
-            for (int id : index) {
-                Account account = accountIdMap[id];
-                if (account.sex == sex) {
-                    processRecord2(account, groupsCountMap, keysMask);
-                }
-            }
+    private List<Group> iterateJoinedSex(int joinedYear, boolean sex, byte keysMask, int limit, int order) {
+        if (joinedYear < 2011 || joinedYear > 2017) {
+            return Collections.EMPTY_LIST;
         }
+        int number = joinedYear - 2011;
+        if (sex) {
+            number+=7;
+        }
+
+        long[] index = indexHolder.joinedSexGroupsIndex[number];
+        return iterateIndex(keysMask, limit, order, index);
     }
 
     private List<Group> iterateFullScan(byte keysMask, int limit, int order) {
@@ -536,6 +564,60 @@ public class AccountService {
         }
         return result;
     }
+
+    private List<Group> iterateIndex(byte keysMask, int limit, int order, long[] indexAddresses) {
+        long address = 0;
+        if (keysMask == 0b00000100) {
+            address = indexAddresses[0];
+        } else if (keysMask == 0b00001001) {
+            address = indexAddresses[1];
+        } else if (keysMask == 0b00001000) {
+            address = indexAddresses[2];
+        } else if (keysMask == 0b00000010) {
+            address = indexAddresses[3];
+        } else if (keysMask == 0b00010001) {
+            address = indexAddresses[4];
+        } else if (keysMask == 0b00000001) {
+            address = indexAddresses[5];
+        } else if (keysMask == 0b00010000) {
+            address = indexAddresses[6];
+        } else if (keysMask == 0b00001010) {
+            address = indexAddresses[7];
+        } else if (keysMask == 0b00010010) {
+            address = indexAddresses[8];
+        }
+        if (address == 0) {
+            return Collections.EMPTY_LIST;
+        }
+        List<Group> result = new ArrayList<>();
+        Group[] groupsArray = groupsPool.get();
+        int counter = 0;
+        int length = UNSAFE.getShort(address);
+        if (order ==  1) {
+            address+=2;
+            for (int i = 0; i < length && i < limit; i++) {
+                long grp = UNSAFE.getLong(address);
+                address+=8;
+                Group group = groupsArray[counter++];
+                group.count = (int)grp;
+                group.values = (int)(grp >> 32);
+                result.add(group);
+            }
+        } else {
+            address+=2;
+            address+=(length - 1)*8;
+            for (int i = length - 1; i >= 0 && counter < limit; i--) {
+                long grp = UNSAFE.getLong(address);
+                address-=8;
+                Group group = groupsArray[counter++];
+                group.count = (int)grp;
+                group.values = (int)(grp >> 32);
+                result.add(group);
+            }
+        }
+        return result;
+    }
+
 
 
     private int compare(int count1, int group1, int count2, int group2, List<String> keys, int order) {
@@ -1261,6 +1343,7 @@ public class AccountService {
                 prev = id;
             }
         }
+        addAccountToGroups(account);
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
                 if (LAST_UPDATE_TIMESTAMP == 0) {
@@ -1271,6 +1354,207 @@ public class AccountService {
         }
         LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
     }
+
+    private void addAccountToGroups(Account account) {
+        addToJoinedSexIndex(account);
+    }
+
+    private void removeAccountFromGroups(Account account) {
+        removeFromJoinedSexIndex(account);
+    }
+
+
+
+    private void addToJoinedSexIndex(Account account) {
+        int indexNumber = JoinedYearPredicate.calculateYear(account.joined) - 2011;
+        if (account.sex) {
+            indexNumber+=7;
+        }
+        long[] index = indexHolder.joinedSexGroupsIndex[indexNumber];
+        addAccountToGroups(account, index);
+    }
+
+    private void removeFromJoinedSexIndex(Account account) {
+        int indexNumber = JoinedYearPredicate.calculateYear(account.joined) - 2011;
+        if (account.sex) {
+            indexNumber+=7;
+        }
+        long[] index = indexHolder.joinedSexGroupsIndex[indexNumber];
+        removeAccountFromGroups(account, index);
+    }
+
+    private void addAccountToGroups(Account account, long[] index) {
+        for (int i = 1; i < 9;i++) {
+            int group = getGroup(account,IndexHolder.masks[i]);
+            incrementGroup(group, index, i);
+        }
+        if (account.interests != null && account.interests.length != 0) {
+            for (byte interes: account.interests) {
+                int group = 0;
+                group |= interes << 20;
+                incrementGroup(group, index, 0);
+            }
+        }
+    }
+
+    private void removeAccountFromGroups(Account account, long[] index) {
+        for (int i = 1; i < 9;i++) {
+            int group = getGroup(account,IndexHolder.masks[i]);
+            decrementGroup(group, index, i);
+        }
+        if (account.interests != null && account.interests.length != 0) {
+            for (byte interes: account.interests) {
+                int group = 0;
+                group |= interes << 20;
+                decrementGroup(group, index, 0);
+            }
+        }
+    }
+
+
+
+    private int getGroup(Account account, byte keyMask) {
+        int group = 0;
+        if ((keyMask & 0b00000001) != 0) {
+            if (account.sex) {
+                group|=1;
+            }
+        }
+        if ((keyMask & 0b00000010) != 0) {
+            group|=account.status << 1;
+        }
+        if ((keyMask & 0b00001000) != 0) {
+            group|=account.country << 3;
+        }
+        if ((keyMask & 0b00010000) != 0) {
+            group|=account.city << 10;
+        }
+        return group;
+    }
+
+    private void incrementGroup(int group, long[] index, int indexNumber) {
+        if (index[indexNumber] == 0) {
+            long address = UNSAFE.allocateMemory(10);
+            index[indexNumber] = address;
+            UNSAFE.putShort(address, (short)1);
+            long value = ((long)group << 32) | 1;
+            UNSAFE.putLong(address+2, value);
+        } else {
+            long address = index[indexNumber];
+            int count = UNSAFE.getShort(address);
+            address+=2;
+            for (int i = 0; i < count; i++) {
+                long value = UNSAFE.getLong(address);
+                int grp = (int) (value >>> 32);
+                if (grp == group) {
+                    value++;
+                    UNSAFE.putLong(address, value);
+                    long position = address;
+                    while (position != index[indexNumber] + 2 + (count - 1)*8) {
+                        long value1 = UNSAFE.getLong(position);
+                        long value2 = UNSAFE.getLong(position + 8);
+                        int count1 = (int) value1;
+                        int group1 = (int)(value1 >>> 32);
+                        int count2 = (int) value2;
+                        int group2 = (int)(value2 >>> 32);
+                        int cc = compare(count1, group1, count2, group2, IndexHolder.keys[indexNumber], 1);
+                        if (cc > 0) {
+                            UNSAFE.putLong(position, value2);
+                            UNSAFE.putLong(position + 8, value1);
+                        } else {
+                            break;
+                        }
+                        position+=8;
+                    }
+                    return;
+                }
+                address+=8;
+            }
+            long oldAddress = index[indexNumber];
+            long newAddress = UNSAFE.allocateMemory(2 + (count +1)*8);
+            index[indexNumber] = newAddress;
+            UNSAFE.copyMemory(oldAddress, newAddress, 2 +count*8);
+            UNSAFE.putShort(newAddress, (short)(count + 1));
+            long newValue = ((long)group << 32) | 1;
+            UNSAFE.putLong(newAddress + 2 + count*8, newValue);
+            long position = newAddress + 2 + count*8;
+            while (position != newAddress + 2) {
+                long value1 = UNSAFE.getLong(position - 8);
+                long value2 = UNSAFE.getLong(position);
+                int count1 = (int) value1;
+                int group1 = (int)(value1 >>> 32);
+                int count2 = (int) value2;
+                int group2 = (int)(value2 >>> 32);
+                int cc = compare(count1, group1, count2, group2, IndexHolder.keys[indexNumber], 1);
+                if (cc > 0) {
+                    UNSAFE.putLong(position, value1);
+                    UNSAFE.putLong(position - 8, value2);
+                } else {
+                    break;
+                }
+                position-=8;
+            }
+            UNSAFE.freeMemory(oldAddress);
+        }
+    }
+
+    private void decrementGroup(int group, long[] index, int indexNumber) {
+        if (index[indexNumber] != 0) {
+            long address = index[indexNumber];
+            int count = UNSAFE.getShort(address);
+            address+=2;
+            for (int i = 0; i < count; i++) {
+                long value = UNSAFE.getLong(address);
+                int grp = (int) (value >>> 32);
+                if (grp == group) {
+                    int cnt = (int)(value);
+                    if (cnt != 1) {
+                        value--;
+                        UNSAFE.putLong(address, value);
+                        long position = address;
+                        while (position != index[indexNumber] + 2) {
+                            long value1 = UNSAFE.getLong(position - 8);
+                            long value2 = UNSAFE.getLong(position);
+                            int count1 = (int) value1;
+                            int group1 = (int)(value1 >>> 32);
+                            int count2 = (int) value2;
+                            int group2 = (int)(value2 >>> 32);
+                            int cc = compare(count1, group1, count2, group2, IndexHolder.keys[indexNumber], 1);
+                            if (cc > 0) {
+                                UNSAFE.putLong(position, value1);
+                                UNSAFE.putLong(position - 8, value2);
+                            } else {
+                                break;
+                            }
+                            position-=8;
+                        }
+                    } else {
+                        if (count == 1) {
+                            UNSAFE.freeMemory(index[indexNumber]);
+                            index[indexNumber] = 0;
+                        } else {
+                            long newAddress = UNSAFE.allocateMemory(2 + (count - 1) * 8);
+                            UNSAFE.putShort(newAddress, (short)(count - 1));
+                            long newPointer = newAddress + 2;
+                            long oldPointer = index[indexNumber] + 2;
+                            for (int j = 0; j < count; j++) {
+                                if (j != i) {
+                                    UNSAFE.putLong(newPointer, UNSAFE.getLong(oldPointer));
+                                    newPointer+=8;
+                                }
+                                oldPointer+=8;
+                            }
+                            UNSAFE.freeMemory(index[indexNumber]);
+                            index[indexNumber] = newAddress;
+                        }
+                    }
+                    return;
+                }
+                address+=8;
+            }
+        }
+    }
+
 
     public synchronized void update(AccountDTO accountDTO) {
         if (accountDTO.sex != null && !ALLOWED_SEX.contains(accountDTO.sex)) {
@@ -1307,6 +1591,9 @@ public class AccountService {
             emails.remove(oldAcc.email);
             emails.add(accountDTO.email);
             oldAcc.email = accountDTO.email;
+        }
+        if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0) {
+            removeAccountFromGroups(oldAcc);
         }
         if (accountDTO.fname != null) {
             oldAcc.fname = dictionary.getOrCreateFname(accountDTO.fname);
@@ -1353,6 +1640,9 @@ public class AccountService {
             oldAcc.premiumFinish = accountDTO.premiumFinish;
             oldAcc.premium = oldAcc.premiumStart != 0 && oldAcc.premiumStart <= nowProvider.getNow() && (oldAcc.premiumFinish == 0 || oldAcc.premiumFinish > nowProvider.getNow());
 
+        }
+        if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0) {
+            addAccountToGroups(oldAcc);
         }
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
@@ -1543,26 +1833,6 @@ public class AccountService {
                 ex.printStackTrace();
             }
         }
-    }
-
-    private boolean containsLike(Account account, int like) {
-        if (account.likes == null || account.likes.length == 0){
-            return false;
-        }
-        for (long l : account.likes) {
-            int id = (int)(l >> 32);
-            if (id == like) {
-                return true;
-            }
-            if (id < like) {
-                return false;
-            }
-        }
-        return false;
-    }
-
-    private static class IntegerHolder {
-        public int count;
     }
 
     public static class Similarity {

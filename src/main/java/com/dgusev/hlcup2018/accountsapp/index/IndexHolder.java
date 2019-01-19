@@ -78,6 +78,31 @@ public class IndexHolder {
     public static final byte[] birthYear = new byte[AccountService.MAX_ID];
     public static final byte[] joinedYear = new byte[AccountService.MAX_ID];
 
+    public static final byte[] masks = new byte[9];
+    public static final List[] keys = new List[9];
+
+    static {
+        masks[0] = 0b00000100;
+        masks[1] = 0b00001001;
+        masks[2] = 0b00001000;
+        masks[3] = 0b00000010;
+        masks[4] = 0b00010001;
+        masks[5] = 0b00000001;
+        masks[6] = 0b00010000;
+        masks[7] = 0b00001010;
+        masks[8] = 0b00010010;
+        keys[0] = Arrays.asList("interests");
+        keys[1] = Arrays.asList("country", "sex");
+        keys[2] = Arrays.asList("country");
+        keys[3] = Arrays.asList("status");
+        keys[4] = Arrays.asList("city", "sex");
+        keys[5] = Arrays.asList("sex");
+        keys[6] = Arrays.asList("city");
+        keys[7] = Arrays.asList("country", "status");
+        keys[8] = Arrays.asList("city", "status");
+    }
+
+
     @Autowired
     private NowProvider nowProvider;
 
@@ -733,10 +758,12 @@ public class IndexHolder {
             }
         };
         Callable<Boolean> task4 = new GroupsUpdater(accountDTOList, size);
+        Callable<Boolean> task5 = new AuxiliaryGroupsCalculatorTask(accountDTOList, size);
         System.out.println("Start tasks " + new Date());
         long t1 = System.currentTimeMillis();
         if (initLikes) {
             executorService.invokeAll(Arrays.asList(task1, task2, task3, task4));
+            executorService.submit(task5).get();
         } else {
             executorService.invokeAll(Arrays.asList(task1, task2, task4));
         }
@@ -799,7 +826,7 @@ public class IndexHolder {
                 GroupCalculator status1GroupCalculator = new GroupCalculator(statusGroups[1]);
                 GroupCalculator status2GroupCalculator = new GroupCalculator(statusGroups[2]);
                 joinedGroups = new long[7][][];
-                GroupCalculator[] joinedCalculators = new GroupCalculator[78];
+                GroupCalculator[] joinedCalculators = new GroupCalculator[7];
                 for (int i = 0; i< 7; i++) {
                     joinedGroups[i] = new long[9][];
                     joinedCalculators[i] = new GroupCalculator(joinedGroups[i]);
@@ -841,35 +868,74 @@ public class IndexHolder {
         }
     }
 
+    public long[][] joinedSexGroupsIndex = new long[14][];
+
+    public class AuxiliaryGroupsCalculatorTask implements Callable<Boolean> {
+
+        private Account[] accounts;
+        private int size;
+
+        public AuxiliaryGroupsCalculatorTask(Account[] accountDTOList, int size) {
+            this.accounts = accountDTOList;
+            this.size = size;
+        }
+
+        @Override
+        public Boolean call() throws Exception {
+            try {
+                System.out.println("Start AuxiliaryGroupsCalculatorTask");
+                long[][][] joinedSexGroups = new long[14][][];
+                GroupCalculator[] joinedSexCalculators = new GroupCalculator[14];
+                for (int i = 0; i< 14; i++) {
+                    joinedSexGroups[i] = new long[9][];
+                    joinedSexCalculators[i] = new GroupCalculator(joinedSexGroups[i]);
+                    joinedSexGroupsIndex[i] = new long[9];
+                }
+                for (int i = 0; i < size; i++) {
+                    Account account = accounts[i];
+                    int joinedIndex = joinedYear[account.id] - 11;
+                    if (account.sex) {
+                        joinedIndex+=7;
+                    }
+                    joinedSexCalculators[joinedIndex].apply(account);
+                }
+                for (int i = 0; i< 14; i++) {
+                    joinedSexCalculators[i].complete();
+                }
+
+                long size = 0;
+                for (int i = 0; i < 14; i++) {
+                   for (int j = 0; j < 9; j++) {
+                       if (joinedSexGroups[i][j].length != 0) {
+                           long address = UNSAFE.allocateMemory(2 + 8*joinedSexGroups[i][j].length);
+                           size+=2 + 8*joinedSexGroups[i][j].length;
+                           joinedSexGroupsIndex[i][j] = address;
+                           UNSAFE.putShort(address, (short) joinedSexGroups[i][j].length);
+                           address+=2;
+                           for (int k = 0; k < joinedSexGroups[i][j].length; k++) {
+                               UNSAFE.putLong(address, joinedSexGroups[i][j][k]);
+                               address+=8;
+                           }
+                       }
+                   }
+                }
+                System.out.println("Finish AuxiliaryGroupsCalculatorTask, size=" + size);
+
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+
+            return Boolean.TRUE;
+        }
+    }
+
 
     private class GroupCalculator {
 
-        final byte[] masks;
-        final List[] keys;
         final TIntIntHashMap[] groupCounts;
         final long[][] index;
 
         public GroupCalculator(long[][] index) {
-            masks = new byte[9];
-            masks[0] = 0b00000100;
-            masks[1] = 0b00001001;
-            masks[2] = 0b00001000;
-            masks[3] = 0b00000010;
-            masks[4] = 0b00010001;
-            masks[5] = 0b00000001;
-            masks[6] = 0b00010000;
-            masks[7] = 0b00001010;
-            masks[8] = 0b00010010;
-            keys = new List[9];
-            keys[0] = Arrays.asList("interests");
-            keys[1] = Arrays.asList("country", "sex");
-            keys[2] = Arrays.asList("country");
-            keys[3] = Arrays.asList("status");
-            keys[4] = Arrays.asList("city", "sex");
-            keys[5] = Arrays.asList("sex");
-            keys[6] = Arrays.asList("city");
-            keys[7] = Arrays.asList("country", "status");
-            keys[8] = Arrays.asList("city", "status");
 
             groupCounts = new TIntIntHashMap[9];
             for (int i = 0; i < 9; i++) {

@@ -135,7 +135,7 @@ public class RequestHandler {
                 }
                 long t2 = System.nanoTime();
                 if (t2-t1 > 10000000) {
-                    System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
+               //     System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
                 }
 
             } else if (buf[0] == 'P') {
