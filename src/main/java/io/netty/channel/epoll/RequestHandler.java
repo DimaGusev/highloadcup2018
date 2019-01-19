@@ -135,7 +135,7 @@ public class RequestHandler {
                 }
                 long t2 = System.nanoTime();
                 if (t2-t1 > 5000000) {
-                   // System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
+                    //System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
                 }
 
             } else if (buf[0] == 'P') {
@@ -189,7 +189,7 @@ public class RequestHandler {
         } catch (NotFoundRequest notFoundRequest) {
             writeResponse(socketChannel, fd, byteBuffer, NOT_FOUND);
         } catch (Exception ex) {
-           // ex.printStackTrace();
+            //ex.printStackTrace();
             writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
         } finally {
             if (tmpByteBuffer != null) {
