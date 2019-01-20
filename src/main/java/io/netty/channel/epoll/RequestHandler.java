@@ -26,7 +26,9 @@ import java.util.Map;
 @Component
 public class RequestHandler {
 
-    public static final TIntObjectMap<ByteBuffer> attachments = new TIntObjectHashMap<>();
+    public volatile static ByteBuffer[] attachments = new ByteBuffer[500000];
+
+    public static final TIntObjectMap<TIntArrayList> history = new TIntObjectHashMap<>();
 
     private static final byte[] RESPONSE_201 = "HTTP/1.0 201 Created\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}".getBytes();
     private static final byte[] RESPONSE_202 = "HTTP/1.0 202 Accepted\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 2\r\n\r\n{}".getBytes();
@@ -51,6 +53,7 @@ public class RequestHandler {
     private AccountsController accountsController;
 
     public void handleRead(SelectionKey selectionKey, LinuxSocket fd, byte[] buf, int length, ByteBuffer byteBuffer) throws IOException {
+        RequestHandler.history.get(fd.intValue()).add(-90);
         SocketChannel socketChannel = null;
         if (selectionKey != null) {
             socketChannel = (SocketChannel) selectionKey.channel();
@@ -60,11 +63,17 @@ public class RequestHandler {
             if (selectionKey !=null) {
                 fragmentByteBuf = (ByteBuffer) selectionKey.attachment();
             } else {
-                fragmentByteBuf = attachments.get(fd.intValue());
+                fragmentByteBuf = attachments[fd.intValue()];
             }
+            int position = 0;
+            int nl = 0;
+            int len = length;
             if (fragmentByteBuf != null) {
+                RequestHandler.history.get(fd.intValue()).add(-80);
+                position = fragmentByteBuf.position();
                 fragmentByteBuf.put(buf, 0, length);
                 int newLength = fragmentByteBuf.position();
+                nl = newLength;
                 fragmentByteBuf.flip();
                 fragmentByteBuf.get(buf, 0, newLength);
                 length = newLength;
@@ -72,20 +81,34 @@ public class RequestHandler {
                 if (selectionKey != null) {
                     selectionKey.attach(null);
                 } else {
-                    attachments.remove(fd.intValue());
+                    attachments[fd.intValue()] = null;
+                    attachments = attachments;
                 }
             }
-            if ((buf[0] == 'G' && (buf[length - 1] != '\n' || buf[length - 2] != '\r' || buf[length - 3] != '\n' || buf[length - 4] != '\r')) || (buf[0] == 'P' && isFragmentedPost(buf, length))) {
+            if (buf[0] != 'G' && buf[0] != 'P') {
+                System.out.println("1Buf[0]=" + buf[0] + ",length=" + length + ",fragmented=" + (fragmentByteBuf != null) + ",position=" + position + ",newLength=" + nl + ",len=" + len + ",fd=" + fd);
+            }
+            if ((buf[0] == 'G' && (buf[length - 1] != '\n' || buf[length - 2] != '\r' || buf[length - 3] != '\n' || buf[length - 4] != '\r')) || (buf[0] == 'P' && isFragmentedPost(buf, length, fd))) {
+                if (buf[0] == 'G') {
+                    RequestHandler.history.get(fd.intValue()).add(-70);
+                } else {
+                    RequestHandler.history.get(fd.intValue()).add(-71);
+                }
                 ByteBuffer fragment = ObjectPool.acquireBuffer();
                 fragment.put(buf, 0, length);
                 if (selectionKey != null) {
                     selectionKey.attach(fragment);
                 } else {
-                    attachments.put(fd.intValue(), fragment);
+                    attachments[fd.intValue()] = fragment;
+                    RequestHandler.history.get(fd.intValue()).add(-50);
+                    attachments = attachments;
                 }
                 return;
             }
-
+            if (buf[0] != 'G' && buf[0] != 'P') {
+                System.out.println("2Buf[0]=" + buf[0] + ",length=" + length);
+            }
+            RequestHandler.history.get(fd.intValue()).add(-60);
             if (buf[0] == 'G') {
                 int queryStart = indexOf(buf, 0, length, ' ') + 1;
                 int queryFinish = indexOf(buf, queryStart, length, ' ');
@@ -174,7 +197,7 @@ public class RequestHandler {
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
                 }
             } else {
-                System.out.println("Bad first byte " + (byte)buf[0] + " with length=" + length + " |" + new String(buf, 0, length));
+                System.out.println(fd.intValue() + " Bad first byte " + (byte)buf[0] + " with length=" + length +",history=" + RequestHandler.history.get(fd.intValue()) + " |" + new String(buf, 0, length));
                 byteBuffer.put(BAD_REQUEST);
                 byteBuffer.flip();
                 if (socketChannel != null) {
@@ -193,7 +216,7 @@ public class RequestHandler {
         } catch (NotFoundRequest notFoundRequest) {
             writeResponse(socketChannel, fd, byteBuffer, NOT_FOUND);
         } catch (Exception ex) {
-            //ex.printStackTrace();
+            ex.printStackTrace();
             writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
         }
 
@@ -308,7 +331,7 @@ public class RequestHandler {
         return result;
     }
 
-    private boolean isFragmentedPost(byte[] buf, int length) {
+    private boolean isFragmentedPost(byte[] buf, int length, LinuxSocket fd) {
         int contentLength = 0;
         try {
             contentLength = readContentLength(buf, length);
@@ -332,7 +355,7 @@ public class RequestHandler {
         }
         pointer++;
         if (length - pointer - 2 > contentLength ) {
-            System.out.println("Error, more data than needed, actual=" + (length - pointer) + " ,header=" + contentLength + ": " + new String(buf, 0, length));
+            System.out.println(fd.intValue() + "Error, more data than needed, actual=" + (length - pointer) +",history=" + history.get(fd.intValue()) + " ,header=" + contentLength + ": " + new String(buf, 0, length));
         }
         if (length - pointer - 2  < contentLength ) {
             return true;

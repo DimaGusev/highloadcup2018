@@ -140,7 +140,8 @@ public class ObjectPool {
         if (buffer != null) {
             buffer.clear();
         } else {
-            buffer = ByteBuffer.allocateDirect(5000);
+            buffer = ByteBuffer.allocateDirect(10000);
+            buffer.clear();
         }
         return buffer;
     }

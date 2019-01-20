@@ -18,6 +18,7 @@ import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.hash.TIntHashSet;
+import io.netty.channel.epoll.EpollServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sun.misc.Unsafe;
@@ -46,6 +47,9 @@ public class AccountService {
 
     @Autowired
     private AccountConverter accountConverter;
+
+    @Autowired
+    private EpollServer epollServer;
 
     private Account[] accountList = new Account[MAX_ID];
     private volatile int size;
@@ -1920,6 +1924,7 @@ public class AccountService {
             }
 
             try {
+                epollServer.suspend();
                 System.out.println(LAST_UPDATE_TIMESTAMP);
                 new Thread(() -> {
                         System.out.println("Start update indexes " + new Date());
