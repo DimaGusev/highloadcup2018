@@ -25,8 +25,6 @@ import java.util.stream.Collectors;
 @Component
 public class AccountsController {
 
-    private static final Set<String> ALLOWED_KEYS = new HashSet<>(Arrays.asList("sex", "status", "interests", "country", "city"));
-
     private static final byte[] EMPTY_ACCOUNTS_LIST = "{\"accounts\": []}".getBytes();
     private static final byte[] ACCOUNTS_LIST_START = "{\"accounts\": [".getBytes();
     private static final byte[] LIST_END = "]}".getBytes();
@@ -44,9 +42,6 @@ public class AccountsController {
 
     @Autowired
     private AccountParser accountParser;
-
-    @Autowired
-    private NowProvider nowProvider;
 
     @Autowired
     private LikeParser likeParser;
@@ -68,12 +63,7 @@ public class AccountsController {
         }
     };
 
-    private static final TObjectIntMap<String> predicateMap = new TObjectIntHashMap<>();
-    private static final TObjectIntMap<String> keysMap = new TObjectIntHashMap<>();
-    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger();
-
-
-    public void accountsFilter(Map<String, String> allRequestParams, ByteBuf responseBuf) throws Exception {
+    public int accountsFilter(Map<String, String> allRequestParams, byte[] responseBuf) throws Exception {
         List<Predicate<Account>> predicates = predicateList.get();
         predicates.clear();
         int limit = 0;
@@ -209,7 +199,6 @@ public class AccountsController {
                 }
             } else if (name.startsWith("likes_")) {
                 if (name.equals("likes_contains")) {
-                  //  predicates.add(new LikesContainsPredicateUnsafe(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray(), likeContainsPredicateArray.get()));
                     predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray()));
                 } else {
                     throw BadRequest.INSTANCE;
@@ -228,32 +217,25 @@ public class AccountsController {
         }
         List<Account> result = accountService.filter(predicates, limit, predicateMask);
         if (result.isEmpty()) {
-            responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
+            System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
+            return EMPTY_ACCOUNTS_LIST.length;
         } else {
-            byte[] arr = ObjectPool.acquireFormatterArray();
             int index = 0;
-            System.arraycopy(ACCOUNTS_LIST_START, 0, arr, 0, ACCOUNTS_LIST_START.length);
+            System.arraycopy(ACCOUNTS_LIST_START, 0, responseBuf, 0, ACCOUNTS_LIST_START.length);
             index+=ACCOUNTS_LIST_START.length;
             for (int i = 0; i < result.size(); i++) {
                 if (i != 0) {
-                    arr[index++] = ',';
+                    responseBuf[index++] = ',';
                 }
-                index = accountFormatter.format(result.get(i), fields, arr, index);
+                index = accountFormatter.format(result.get(i), fields, responseBuf, index);
             }
-            System.arraycopy(LIST_END, 0, arr, index, LIST_END.length);
+            System.arraycopy(LIST_END, 0, responseBuf, index, LIST_END.length);
             index+=LIST_END.length;
-            responseBuf.writeBytes(arr, 0, index);
+            return index;
         }
     }
 
-    private static final ThreadLocal<long[]> likeContainsPredicateArray = new ThreadLocal<long[]>() {
-        @Override
-        protected long[] initialValue() {
-            return new long[127];
-        }
-    };
-
-    public void group(Map<String,String> allRequestParams, ByteBuf responseBuf) {
+    public int group(Map<String,String> allRequestParams, byte[] responseBuf) {
             List<String> keys = new ArrayList<>();
             int order = 1;
             int limit = 0;
@@ -296,8 +278,6 @@ public class AccountsController {
                             throw new BadRequest();
                         }
                     }
-                   // String key = String.join(",", keys);
-                    //keysMap.adjustOrPutValue(key, 1, 1);
 
                 } else if (name.equals("order")) {
                     order = Integer.parseInt(parameter.getValue());
@@ -332,33 +312,27 @@ public class AccountsController {
                 }
             }
 
-          //  long t1 = System.currentTimeMillis();
-            //predicates.sort(Comparator.comparing(p -> p.getClass().getSimpleName()));
-            //String predicate = String.join(",", predicates.stream().map(p ->p.getClass().getSimpleName()).collect(Collectors.toList()));
-            //predicateMap.adjustOrPutValue(predicate, 1, 1);
-           // int cnt = ATOMIC_INTEGER.incrementAndGet();
-           // if (cnt % 1000 == 0) {
-          //      System.out.println("Cnt=" + cnt + ",pred=" + predicateMap + ",keys=" + keysMap);
-          //  }
             List<Group> groups = accountService.group(keys, sex, status, country, city, birthYear, interes, like, joinedYear, order, limit, keysMask, predicatesMask);
-           // long t2 = System.currentTimeMillis();
-            //System.out.println("time=" + (t2-t1) + ",query=" + allRequestParams);
             if (groups.isEmpty()) {
-                responseBuf.writeBytes(EMPTY_GROUPS_LIST);
+                System.arraycopy(EMPTY_GROUPS_LIST, 0, responseBuf, 0, EMPTY_GROUPS_LIST.length);
+                return EMPTY_GROUPS_LIST.length;
             } else {
-                byte[] arr = ObjectPool.acquireFormatterArray();
-                responseBuf.writeBytes(GROUPS_LIST_START);
+                int index = 0;
+                System.arraycopy(GROUPS_LIST_START, 0, responseBuf, 0, GROUPS_LIST_START.length);
+                index+=GROUPS_LIST_START.length;
                 for (int i = 0; i < groups.size(); i++) {
                     if (i != 0) {
-                        responseBuf.writeByte(',');
+                        responseBuf[index++] = ',';
                     }
-                    groupFormatter.format(groups.get(i), keys, responseBuf, arr);
+                    index = groupFormatter.format(groups.get(i), keys, responseBuf, index);
                 }
-                responseBuf.writeBytes(LIST_END);
+                System.arraycopy(LIST_END, 0, responseBuf, index, LIST_END.length);
+                index+=LIST_END.length;
+                return index;
             }
     }
 
-    public void recommend(Map<String, String> allRequestParams, int id, ByteBuf responseBuf) {
+    public int recommend(Map<String, String> allRequestParams, int id, byte[] responseBuf) {
             if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
                 throw new NotFoundRequest();
             }
@@ -391,22 +365,26 @@ public class AccountsController {
 
             List<Account> result = accountService.recommend(id, country, city, limit);
             if (result.isEmpty()) {
-                responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
+                System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
+                return EMPTY_ACCOUNTS_LIST.length;
             } else {
-                byte[] arr = ObjectPool.acquireFormatterArray();
-                responseBuf.writeBytes(ACCOUNTS_LIST_START);
+                int index = 0;
+                System.arraycopy(ACCOUNTS_LIST_START, 0, responseBuf, 0, ACCOUNTS_LIST_START.length);
+                index+=ACCOUNTS_LIST_START.length;
                 for (int i = 0; i < result.size(); i++) {
                     if (i != 0) {
-                        responseBuf.writeByte(',');
+                        responseBuf[index++] = ',';
                     }
-                    accountFormatter.formatRecommend(result.get(i), responseBuf, arr);
+                    index = accountFormatter.formatRecommend(result.get(i), responseBuf, index);
                 }
-                responseBuf.writeBytes(LIST_END);
+                System.arraycopy(LIST_END, 0, responseBuf, index, LIST_END.length);
+                index+=LIST_END.length;
+                return index;
             }
     }
 
 
-    public void suggest(Map<String,String> allRequestParams, int id, ByteBuf responseBuf) {
+    public int suggest(Map<String,String> allRequestParams, int id, byte[] responseBuf) {
         if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
             throw new NotFoundRequest();
         }
@@ -438,20 +416,22 @@ public class AccountsController {
 
         List<Account> result = accountService.suggest(id, predicates, limit);
         if (result.isEmpty()) {
-            responseBuf.writeBytes(EMPTY_ACCOUNTS_LIST);
+            System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
+            return EMPTY_ACCOUNTS_LIST.length;
         } else {
-            responseBuf.writeBytes(ACCOUNTS_LIST_START);
-            byte[] arr = ObjectPool.acquireFormatterArray();
+            int index = 0;
+            System.arraycopy(ACCOUNTS_LIST_START, 0, responseBuf, 0, ACCOUNTS_LIST_START.length);
+            index+=ACCOUNTS_LIST_START.length;
             for (int i = 0; i < result.size(); i++) {
                 if (i != 0) {
-                    responseBuf.writeByte(',');
+                    responseBuf[index++] = ',';
                 }
-                accountFormatter.formatSuggest(result.get(i), responseBuf, arr);
+                index = accountFormatter.formatSuggest(result.get(i), responseBuf, index);
             }
-            responseBuf.writeBytes(LIST_END);
-        }
-        if (result != Collections.EMPTY_LIST ) {
+            System.arraycopy(LIST_END, 0, responseBuf, index, LIST_END.length);
+            index+=LIST_END.length;
             ObjectPool.releaseSuggestList(result);
+            return index;
         }
     }
 

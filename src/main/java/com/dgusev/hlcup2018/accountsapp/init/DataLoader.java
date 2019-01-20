@@ -2,7 +2,6 @@ package com.dgusev.hlcup2018.accountsapp.init;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
-import com.dgusev.hlcup2018.accountsapp.netty.NettyServer;
 import com.dgusev.hlcup2018.accountsapp.netty.NioServer;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
@@ -25,9 +24,6 @@ import java.util.zip.ZipFile;
 
 @Component
 public class DataLoader implements CommandLineRunner {
-
-    @Autowired
-    private NettyServer nettyServer;
 
     @Autowired
     private AccountParser accountParser;

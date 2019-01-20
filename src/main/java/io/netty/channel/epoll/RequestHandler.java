@@ -35,8 +35,17 @@ public class RequestHandler {
     private static final byte[] OK_START = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: ".getBytes();
     private static final byte[] HEADERS_TERMINATOR = "\r\n\r\n".getBytes();
 
+    private static final byte[] FILTER = "/accounts/filter/".getBytes();
+    private static final byte[] GROUP = "/accounts/group/".getBytes();
+    private static final byte[] NEW = "/accounts/new/".getBytes();
+    private static final byte[] LIKES = "/accounts/likes/".getBytes();
 
-    private static final PooledByteBufAllocator POOLED_BYTE_BUF_ALLOCATOR = new PooledByteBufAllocator();
+    private ThreadLocal<byte[]> responseArray = new ThreadLocal<byte[]>() {
+        @Override
+        protected byte[] initialValue() {
+            return new byte[10000];
+        }
+    };
 
     @Autowired
     private AccountsController accountsController;
@@ -46,7 +55,6 @@ public class RequestHandler {
         if (selectionKey != null) {
             socketChannel = (SocketChannel) selectionKey.channel();
         }
-        ByteBuf tmpByteBuffer = null;
         try {
             ByteBuffer fragmentByteBuf = null;
             if (selectionKey !=null) {
@@ -83,60 +91,56 @@ public class RequestHandler {
                 int queryFinish = indexOf(buf, queryStart, length, ' ');
                 int endPathIndex = findPathEndIndex(buf, queryStart, queryFinish);
                 int startParameters = endPathIndex + 1;
-                long t1 = System.nanoTime();
-                if (equals(buf, queryStart, endPathIndex, "/accounts/filter/")) {
+                //long t1 = System.nanoTime();
+                if (equals(buf, queryStart, endPathIndex, FILTER)) {
                     Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
-                    tmpByteBuffer = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(10000);
-                    accountsController.accountsFilter(params, tmpByteBuffer);
-                    int bodyLength = tmpByteBuffer.writerIndex();
+                    byte[] responseArr = responseArray.get();
+                    int bodyLength = accountsController.accountsFilter(params, responseArr);
                     byteBuffer.put(OK_START);
                     encodeInt(bodyLength, byteBuffer);
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    tmpByteBuffer.readBytes(byteBuffer);
+                    byteBuffer.put(responseArr, 0, bodyLength);
                     writeResponse(socketChannel, fd,  byteBuffer);
-                } else if (equals(buf, queryStart, endPathIndex, "/accounts/group/")) {
+                } else if (equals(buf, queryStart, endPathIndex, GROUP)) {
                     Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
-                    tmpByteBuffer = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(10000);
-                    accountsController.group(params, tmpByteBuffer);
-                    int bodyLength = tmpByteBuffer.writerIndex();
+                    byte[] responseArr = responseArray.get();
+                    int bodyLength = accountsController.group(params, responseArr);
                     byteBuffer.put(OK_START);
                     encodeInt(bodyLength, byteBuffer);
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    tmpByteBuffer.readBytes(byteBuffer);
+                    byteBuffer.put(responseArr, 0, bodyLength);
                     writeResponse(socketChannel, fd, byteBuffer);
                 } else if (contains(buf, queryStart, endPathIndex, "recommend")) {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                     int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
-                    tmpByteBuffer = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(10000);
-                    accountsController.recommend(QueryParser.parse(buf, startParameters, queryFinish), id, tmpByteBuffer);
-                    int bodyLength = tmpByteBuffer.writerIndex();
+                    byte[] responseArr = responseArray.get();
+                    int bodyLength = accountsController.recommend(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
                     byteBuffer.put(OK_START);
                     encodeInt(bodyLength, byteBuffer);
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    tmpByteBuffer.readBytes(byteBuffer);
+                    byteBuffer.put(responseArr, 0, bodyLength);
                     writeResponse(socketChannel, fd, byteBuffer);
                 } else if (contains(buf, queryStart, endPathIndex, "suggest")) {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                     int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
-                    tmpByteBuffer = POOLED_BYTE_BUF_ALLOCATOR.directBuffer(10000);
-                    accountsController.suggest(QueryParser.parse(buf, startParameters, queryFinish), id, tmpByteBuffer);
-                    int bodyLength = tmpByteBuffer.writerIndex();
+                    byte[] responseArr = responseArray.get();
+                    int bodyLength = accountsController.suggest(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
                     byteBuffer.put(OK_START);
                     encodeInt(bodyLength, byteBuffer);
                     byteBuffer.put(HEADERS_TERMINATOR);
                     byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    tmpByteBuffer.readBytes(byteBuffer);
+                    byteBuffer.put(responseArr, 0, bodyLength);
                     writeResponse(socketChannel, fd, byteBuffer);
                 } else  {
                     throw NotFoundRequest.INSTANCE;
                 }
-                long t2 = System.nanoTime();
-                if (t2-t1 > 5000000) {
+                //long t2 = System.nanoTime();
+                //if (t2-t1 > 5000000) {
                     //System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
-                }
+                //}
 
             } else if (buf[0] == 'P') {
                 int queryStart = indexOf(buf, 0, length, ' ') + 1;
@@ -152,10 +156,10 @@ public class RequestHandler {
                     endIndex--;
                 }
                 endIndex++;
-                if (equals(buf, queryStart, endPathIndex, "/accounts/new/")) {
+                if (equals(buf, queryStart, endPathIndex, NEW)) {
                     accountsController.create(buf, pointer, endIndex);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_201);
-                } else if (equals(buf, queryStart, endPathIndex, "/accounts/likes/")) {
+                } else if (equals(buf, queryStart, endPathIndex, LIKES)) {
                     accountsController.like(buf, pointer, endIndex);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
                 } else {
@@ -191,10 +195,6 @@ public class RequestHandler {
         } catch (Exception ex) {
             //ex.printStackTrace();
             writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
-        } finally {
-            if (tmpByteBuffer != null) {
-                ReferenceCountUtil.release(tmpByteBuffer);
-            }
         }
 
     }
@@ -239,12 +239,12 @@ public class RequestHandler {
         return to;
     }
 
-    private boolean equals(byte[] arr, int from, int to, String value) {
-        if (to - from != value.length()) {
+    private boolean equals(byte[] arr, int from, int to, byte[] value) {
+        if (to - from != value.length) {
             return false;
         }
         for (int i = from; i < to; i++) {
-            if (arr[i] != value.charAt(i - from)) {
+            if (arr[i] != value[i - from]) {
                 return false;
             }
         }
@@ -253,7 +253,7 @@ public class RequestHandler {
     }
 
     private  boolean contains(byte [] buf, int from, int to, String part) {
-        int position = from;
+        int position = from + 10;
         char first = part.charAt(0);
         int partSize = part.length();
         while (position < to) {

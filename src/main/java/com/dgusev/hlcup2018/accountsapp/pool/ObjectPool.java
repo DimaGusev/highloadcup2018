@@ -134,23 +134,6 @@ public class ObjectPool {
     };
 
 
-
-
-    public static List<String> acquireGroup() {
-        ArrayDeque<List<String>> local = groupsPools.get();
-        List<String> group = local.pollFirst();
-        if (group != null) {
-            group.clear();
-        } else {
-            group =  new ArrayList<>(5);
-        }
-        return group;
-    }
-
-    public static void releaseGroup(List<String> group) {
-        groupsPools.get().addLast(group);
-    }
-
     public static ByteBuffer acquireBuffer() {
         ArrayDeque<ByteBuffer> local = buffersPool.get();
         ByteBuffer buffer = local.pollFirst();
@@ -196,9 +179,6 @@ public class ObjectPool {
         intHashSetPools.get().addLast(hashSet);
     }
 
-    public static byte[] acquireFormatterArray() {
-        return formatterPool.get();
-    }
 
     public static AccountService.Similarity acquireSimilarity() {
         ArrayDeque<AccountService.Similarity> local = similarityPool.get();
