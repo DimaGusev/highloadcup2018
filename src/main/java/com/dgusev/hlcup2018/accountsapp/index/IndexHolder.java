@@ -59,6 +59,8 @@ public class IndexHolder {
     public int[] notNullPremium;
     public int[] premiumIndex;
 
+    public String minEmail = "zzzzzzz";
+
 
     public long[] likesIndex;
 
@@ -610,6 +612,9 @@ public class IndexHolder {
                     }
                     if (account.premiumStart != 0) {
                         notNullPremiumCounter++;
+                    }
+                    if (account.email.compareTo(minEmail) < 0) {
+                        minEmail = account.email;
                     }
                 }
                 sexIndex = new TByteObjectHashMap<>();

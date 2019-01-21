@@ -2,6 +2,7 @@ package com.dgusev.hlcup2018.accountsapp.rest;
 
 import com.dgusev.hlcup2018.accountsapp.format.AccountFormatter;
 import com.dgusev.hlcup2018.accountsapp.format.GroupFormatter;
+import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
 import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
@@ -49,6 +50,9 @@ public class AccountsController {
     @Autowired
     private Dictionary dictionary;
 
+    @Autowired
+    private IndexHolder indexHolder;
+
     private static final ThreadLocal<List<Predicate<Account>>> predicateList = new ThreadLocal<List<Predicate<Account>>>() {
         @Override
         protected List<Predicate<Account>> initialValue() {
@@ -72,6 +76,7 @@ public class AccountsController {
         fields.add("id");
         fields.add("email");
         int predicateMask = 0;
+        boolean empty = false;
         for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
             String name = parameter.getKey();
             if (name.equals("query_id")) {
@@ -96,7 +101,11 @@ public class AccountsController {
                 if (name.equals("email_domain")) {
                     predicates.add(new EmailDomainPredicate(parameter.getValue()));
                 } else if (name.equals("email_lt")) {
-                    predicates.add(new EmailLtPredicate(parameter.getValue()));
+                    String value = parameter.getValue();
+                    if (value.compareTo(indexHolder.minEmail) < 0) {
+                        empty = true;
+                    }
+                    predicates.add(new EmailLtPredicate(value));
                 } else if (name.equals("email_gt")) {
                     predicates.add(new EmailGtPredicate(parameter.getValue()));
                 } else {
@@ -214,6 +223,10 @@ public class AccountsController {
             } else {
                 throw BadRequest.INSTANCE;
             }
+        }
+        if (empty) {
+            System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
+            return EMPTY_ACCOUNTS_LIST.length;
         }
         List<Account> result = accountService.filter(predicates, limit, predicateMask);
         if (result.isEmpty()) {

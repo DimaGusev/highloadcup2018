@@ -113,17 +113,14 @@ public class EpollServer {
                                 suspended = true;
                                 continue;
                             }
-                            RequestHandler.history.get(clientFd).add(-99);
                             long event = epollEventArray.events(i);
                             LinuxSocket linuxSocket = clients.get(clientFd);
                             try {
                                 if (linuxSocket != null) {
                                     if ((event & (Native.EPOLLERR | Native.EPOLLIN)) != 0) {
-                                        RequestHandler.history.get(clientFd).add(-98);
                                         ByteBuffer byteBuffer = byteBuffers[counter++ % 10];
                                         byteBuffer.clear();
                                         int cnt = linuxSocket.read(byteBuffer, byteBuffer.position(), byteBuffer.limit());
-                                        RequestHandler.history.get(clientFd).add(cnt);
                                         if (cnt == -1) {
                                             if (RequestHandler.attachments[clientFd] != null) {
                                                 ObjectPool.releaseBuffer(RequestHandler.attachments[clientFd]);
@@ -134,19 +131,12 @@ public class EpollServer {
                                             linuxSocket.close();
                                         } else if (cnt > 0) {
                                             byteBuffer.position(cnt);
-                                           /* int nread = 0;
-                                            while ((nread = linuxSocket.read(byteBuffer, byteBuffer.position(), byteBuffer.limit())) != 0) {
-                                                RequestHandler.history.get(clientFd).add(-95);
-                                                RequestHandler.history.get(clientFd).add(nread);
-                                                byteBuffer.position(byteBuffer.position() + nread);
-                                            }*/
                                             byteBuffer.flip();
                                             byteBuffer.get(buf, 0, byteBuffer.limit());
                                             byteBuffer.clear();
                                             requestHandler.handleRead(null, linuxSocket, buf, cnt, byteBuffer);
                                         }
                                     } else if ((event & Native.EPOLLRDHUP) != 0) {
-                                        RequestHandler.history.get(clientFd).add(-97);
                                         System.out.println("Connection reset fd=" + clientFd);
                                         if (RequestHandler.attachments[clientFd] != null) {
                                             ObjectPool.releaseBuffer(RequestHandler.attachments[clientFd]);
@@ -159,7 +149,6 @@ public class EpollServer {
                                         System.out.println("Unknown event from client fd=" + clientFd + " event=" + event);
                                     }
                                 } else {
-                                    RequestHandler.history.get(clientFd).add(-96);
                                     if (RequestHandler.attachments[clientFd] != null) {
                                         ObjectPool.releaseBuffer(RequestHandler.attachments[clientFd]);
                                         RequestHandler.attachments[clientFd] = null;
@@ -189,11 +178,8 @@ public class EpollServer {
         }
 
         public void register(int clientFd) throws IOException {
-            if (!RequestHandler.history.containsKey(clientFd)) {
-                RequestHandler.history.put(clientFd, new TIntArrayList());
-            }
-            RequestHandler.history.get(clientFd).add(-100);
             RequestHandler.attachments[clientFd] = null;
+            RequestHandler.attachments=RequestHandler.attachments;
             clients.put(clientFd, new LinuxSocket(clientFd));
             Native.epollCtlAdd(epollFd.intValue(), clientFd, Native.EPOLLIN | Native.EPOLLET | Native.EPOLLRDHUP);
         }

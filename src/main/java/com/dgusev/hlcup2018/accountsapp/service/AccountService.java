@@ -775,6 +775,13 @@ public class AccountService {
         }
     };
 
+    private static final ThreadLocal<TIntIntMap> recommendInterestsCountMapPool = new ThreadLocal<TIntIntMap>() {
+        @Override
+        protected TIntIntMap initialValue() {
+            return new TIntIntHashMap();
+        }
+    };
+
     public List<Account> recommend(int id, byte country, int city, int limit) {
         if (limit <= 0) {
             throw new BadRequest();
@@ -782,7 +789,7 @@ public class AccountService {
 
         Account account = accountIdMap[id];
         if (account == null) {
-            throw new NotFoundRequest();
+            throw NotFoundRequest.INSTANCE;
         }
         if (account.interests == null || account.interests.length == 0) {
             return Collections.EMPTY_LIST;
@@ -897,9 +904,15 @@ public class AccountService {
 
         int totalCount = 0;
 
+        //TIntIntMap tIntIntMap = recommendInterestsCountMapPool.get();
+        //tIntIntMap.clear();
         for (byte interes : account.interests) {
             for (int aId : prio1.get(interes)) {
                 if (aId != id) {
+                    //int value = tIntIntMap.adjustOrPutValue(aId, 1, 1);
+                   // if (value != 1) {
+                   //     continue;
+                   // }
                     if (recommend[aId]) {
                         continue;
                     }
