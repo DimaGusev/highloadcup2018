@@ -145,7 +145,7 @@ public class RequestHandler {
                     throw NotFoundRequest.INSTANCE;
                 }
                 long t2 = System.nanoTime();
-                if (t2-t1 > 7000000) {
+                if (t2-t1 > 10000000) {
                     System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
                 }
 
@@ -338,10 +338,10 @@ public class RequestHandler {
             pointer++;
         }
         pointer++;
-        if (length - pointer - 0 > contentLength ) {
+        if (length - pointer - 2 > contentLength ) {
             System.out.println(fd.intValue() + "Error, more data than needed, actual=" + (length - pointer) +",history=" + " ,header=" + contentLength + ": " + new String(buf, 0, length));
         }
-        if (length - pointer - 0  < contentLength ) {
+        if (length - pointer - 2  < contentLength ) {
             return true;
         }
         return false;

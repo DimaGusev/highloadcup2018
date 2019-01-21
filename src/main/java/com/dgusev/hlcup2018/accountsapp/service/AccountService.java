@@ -754,10 +754,10 @@ public class AccountService {
     }
 
 
-    private static final ThreadLocal<boolean[]> recommendSet = new ThreadLocal<boolean[]>() {
+    private static final ThreadLocal<byte[]> recommendSet = new ThreadLocal<byte[]>() {
         @Override
-        protected boolean[] initialValue() {
-            return new boolean[1500000];
+        protected byte[] initialValue() {
+            return new byte[1500000];
         }
     };
 
@@ -797,8 +797,7 @@ public class AccountService {
         if (country == 0 || city == 0) {
             return Collections.EMPTY_LIST;
         }
-        boolean[] recommend = recommendSet.get();
-        resetArray(recommend);
+        byte[] recommend = recommendSet.get();
         int sex = account.sex ? 1 : 0;
         List<Account> result1 = ObjectPool.acquireRecommendList();
         List<Account> result2 = ObjectPool.acquireRecommendList();
@@ -809,7 +808,7 @@ public class AccountService {
         fetchRecommendations2(id, sex, account, country, city, limit, recommend, result1, result2, result3, result4, result5, result6);
         try {
             List<Score> result = ObjectPool.acquireRecommendListResult();
-            fillList(account, result, limit, result1, result2, result3, result4, result5, result6);
+            fillList(account, result, limit, result1, result2, result3, result4, result5, result6, recommend);
             AccountService.Score[] sortArray = recommendSortArray.get();
             int lastIndex = 0;
             int resultSize = result.size();
@@ -877,7 +876,7 @@ public class AccountService {
         }
     }
 
-    private void fetchRecommendations2(int id, int sex, Account account, byte country, int city, int limit, boolean[] recommend, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
+    private void fetchRecommendations2(int id, int sex, Account account, byte country, int city, int limit, byte[] recommend, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
 
         TByteObjectMap<int[]> prio1;
         TByteObjectMap<int[]> prio2;
@@ -913,9 +912,6 @@ public class AccountService {
                    // if (value != 1) {
                    //     continue;
                    // }
-                    if (recommend[aId]) {
-                        continue;
-                    }
                     Account acc = accountIdMap[aId];
                     if (country != -1 && acc.country != country) {
                         continue;
@@ -923,9 +919,12 @@ public class AccountService {
                     if (city != -1 && acc.city != city) {
                         continue;
                     }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
                     result1.add(acc);
                     totalCount++;
-                    recommend[aId] = true;
                 }
             }
         }
@@ -935,9 +934,6 @@ public class AccountService {
         for (byte interes : account.interests) {
             for (int aId : prio2.get(interes)) {
                 if (aId != id) {
-                    if (recommend[aId]) {
-                        continue;
-                    }
                     Account acc = accountIdMap[aId];
                     if (country != -1 && acc.country != country) {
                         continue;
@@ -945,9 +941,12 @@ public class AccountService {
                     if (city != -1 && acc.city != city) {
                         continue;
                     }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
                     result2.add(acc);
                     totalCount++;
-                    recommend[aId] = true;
                 }
             }
         }
@@ -957,9 +956,6 @@ public class AccountService {
         for (byte interes : account.interests) {
             for (int aId : prio3.get(interes)) {
                 if (aId != id) {
-                    if (recommend[aId]) {
-                        continue;
-                    }
                     Account acc = accountIdMap[aId];
                     if (country != -1 && acc.country != country) {
                         continue;
@@ -967,9 +963,12 @@ public class AccountService {
                     if (city != -1 && acc.city != city) {
                         continue;
                     }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
                     result3.add(acc);
                     totalCount++;
-                    recommend[aId] = true;
                 }
             }
         }
@@ -979,9 +978,7 @@ public class AccountService {
         for (byte interes : account.interests) {
             for (int aId : prio4.get(interes)) {
                 if (aId != id) {
-                    if (recommend[aId]) {
-                        continue;
-                    }
+
                     Account acc = accountIdMap[aId];
                     if (country != -1 && acc.country != country) {
                         continue;
@@ -989,9 +986,12 @@ public class AccountService {
                     if (city != -1 && acc.city != city) {
                         continue;
                     }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
                     result4.add(acc);
                     totalCount++;
-                    recommend[aId] = true;
                 }
             }
         }
@@ -1001,9 +1001,6 @@ public class AccountService {
         for (byte interes : account.interests) {
             for (int aId : prio5.get(interes)) {
                 if (aId != id) {
-                    if (recommend[aId]) {
-                        continue;
-                    }
                     Account acc = accountIdMap[aId];
                     if (country != -1 && acc.country != country) {
                         continue;
@@ -1011,9 +1008,12 @@ public class AccountService {
                     if (city != -1 && acc.city != city) {
                         continue;
                     }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
                     result5.add(acc);
                     totalCount++;
-                    recommend[aId] = true;
                 }
             }
         }
@@ -1023,9 +1023,6 @@ public class AccountService {
         for (byte interes : account.interests) {
             for (int aId : prio6.get(interes)) {
                 if (aId != id) {
-                    if (recommend[aId]) {
-                        continue;
-                    }
                     Account acc = accountIdMap[aId];
                     if (country != -1 && acc.country != country) {
                         continue;
@@ -1033,32 +1030,31 @@ public class AccountService {
                     if (city != -1 && acc.city != city) {
                         continue;
                     }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
                     result6.add(acc);
                     totalCount++;
-                    recommend[aId] = true;
                 }
             }
         }
     }
 
-    private void resetArray(boolean[] arr) {
-        Arrays.fill(arr, false);
-    }
-
-    private static void fillList(Account account, List<Score> result, int limit, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
+    private static void fillList(Account account, List<Score> result, int limit, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6, byte[] recommend) {
         Score[] pool = ObjectPool.acquireScore();
         int counter = 0;
         int res1Cnt = result1.size();
         for (int i = 0; i < res1Cnt; i++) {
             Score score = pool[counter++];
-            calculateScore(score, 16000, account, result1.get(i));
+            calculateScore(score, 16000, account, result1.get(i), recommend);
             result.add(score);
         }
         if (result.size() < limit) {
             int cnt = result2.size();
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 14000, account, result2.get(i));
+                calculateScore(score, 14000, account, result2.get(i), recommend);
                 result.add(score);
             }
         }
@@ -1066,7 +1062,7 @@ public class AccountService {
             int cnt = result3.size();
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 12000, account, result3.get(i));
+                calculateScore(score, 12000, account, result3.get(i), recommend);
                 result.add(score);
             }
         }
@@ -1074,7 +1070,7 @@ public class AccountService {
             int cnt = result4.size();
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 6000, account, result4.get(i));
+                calculateScore(score, 6000, account, result4.get(i), recommend);
                 result.add(score);
             }
         }
@@ -1082,7 +1078,7 @@ public class AccountService {
             int cnt = result5.size();
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 4000, account, result5.get(i));
+                calculateScore(score, 4000, account, result5.get(i), recommend);
                 result.add(score);
             }
         }
@@ -1090,7 +1086,7 @@ public class AccountService {
             int cnt = result6.size();
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 2000, account, result6.get(i));
+                calculateScore(score, 2000, account, result6.get(i), recommend);
                 result.add(score);
             }
         }
@@ -1984,13 +1980,16 @@ public class AccountService {
         public long score;
     }
 
-    private static void calculateScore(Score score, int base, Account my, Account other) {
+    private static void calculateScore(Score score, int base, Account my, Account other, byte[] recommend) {
         score.account = other;
         long value = base;
-        int int1 = interestsMatched(my.interests, other.interests);
-        value+=int1;
-        int bd = Math.abs(my.birth - other.birth);
-        value = (value << 32) | (0x7fffffff - bd);
+        value+=recommend[other.id];
+        recommend[other.id] = 0;
+        int delta = my.birth - other.birth;
+        if (delta < 0) {
+            delta=-delta;
+        }
+        value = (value << 32) | (0x7fffffff - delta);
         score.score = value;
     }
 
