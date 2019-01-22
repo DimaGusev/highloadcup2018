@@ -152,7 +152,9 @@ public class AccountParser {
                     while (array[end] == '"') {
                         end--;
                     }
-                    accountDTO.email = new String(array, colon, end + 1 - colon);
+                    byte[] emailBytes = new byte[end + 1 - colon];
+                    System.arraycopy(array, colon, emailBytes, 0, end + 1 - colon);
+                    accountDTO.email = emailBytes;
                 }
                 currentIndex = totalEnd;
             } else if (field.equals("fname")) {
@@ -242,7 +244,9 @@ public class AccountParser {
                    while (array[end] == '"') {
                        end--;
                    }
-                   accountDTO.phone = parseString(array, colon, end + 1 - colon);
+                   byte[] phoneBytes = new byte[end + 1 - colon];
+                   System.arraycopy(array, colon, phoneBytes, 0, end + 1 - colon);
+                   accountDTO.phone = phoneBytes;
                }
                currentIndex = totalEnd;
            } else if (field.equals("sex")) {

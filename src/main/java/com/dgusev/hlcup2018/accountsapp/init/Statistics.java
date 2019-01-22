@@ -35,8 +35,8 @@ public class Statistics {
         count++;
         minId = Math.min(minId, account.id);
         maxId = Math.max(maxId, account.id);
-        int index = account.email.lastIndexOf('@');
-        emailsDomains.add(account.email.substring(index + 1));
+        int index = lastIndexOf(account.email, (byte) '@');
+        emailsDomains.add(substring(account.email, index + 1));
         if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
             fnameNotNull++;
             fnames.add(account.fname);
@@ -47,10 +47,10 @@ public class Statistics {
         }
         if (account.phone != null) {
             phoneNotNull++;
-            int from = account.phone.indexOf('(');
-            int to = account.phone.indexOf(')');
+            int from = indexOf(account.phone, (byte) '(');
+            int to = indexOf(account.phone, (byte) ')');
             if (from != -1 && to != -1) {
-                phoneCodes.add(account.phone.substring(from + 1, to));
+                phoneCodes.add(substring(account.phone, from + 1, to));
             }
         }
         if (account.sex) {
@@ -87,6 +87,38 @@ public class Statistics {
         if (account.likes != null) {
             likesCount+= account.likes.length;
         }
+    }
+
+    private int lastIndexOf(byte[] values, byte ch) {
+
+        for (int i = values.length - 1; i>=0; i--) {
+            if (values[i] == ch) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int indexOf(byte[] values, byte ch) {
+
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == ch) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private String substring(byte[] values, int from) {
+        return substring(values, from, values.length);
+    }
+
+    private String substring(byte[] values, int from, int to) {
+        byte[] result = new byte[to - from];
+        for (int i = from; i < to; i++) {
+            result[i - from] = values[i];
+        }
+        return new String(result);
     }
 
     @Override

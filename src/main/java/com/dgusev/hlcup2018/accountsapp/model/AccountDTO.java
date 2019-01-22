@@ -3,10 +3,10 @@ package com.dgusev.hlcup2018.accountsapp.model;
 public class AccountDTO {
 
     public int id = -1;
-    public String email;
+    public byte[] email;
     public String fname;
     public String sname;
-    public String phone;
+    public byte[] phone;
     public String sex;
     public int birth = Integer.MIN_VALUE;
     public String country;

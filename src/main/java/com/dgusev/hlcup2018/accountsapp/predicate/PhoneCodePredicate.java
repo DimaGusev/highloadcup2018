@@ -20,22 +20,31 @@ public class PhoneCodePredicate extends AbstractPredicate {
         if (account.phone == null) {
             return false;
         }
-        int open = account.phone.indexOf("(");
+        int open = indexOf(account.phone, (byte) '(');
         if (open == -1) {
             return false;
         }
-        if (open + code.length() > account.phone.length()) {
+        if (open + code.length() > account.phone.length) {
             return false;
         }
-        if (account.phone.charAt(open + code.length() + 1) != ')') {
+        if (account.phone[open + code.length() + 1] != ')') {
             return false;
         }
         for (int i = 0; i < code.length(); i++) {
-            if (account.phone.charAt(open + i + 1) != code.charAt(i)) {
+            if (account.phone[open + i + 1] != code.charAt(i)) {
                 return false;
             }
         }
         return true;
+    }
+
+    private int indexOf(byte[] values, byte ch) {
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] == ch) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     public String getCode() {

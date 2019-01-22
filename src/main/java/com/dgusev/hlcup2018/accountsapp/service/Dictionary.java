@@ -36,6 +36,7 @@ public class Dictionary {
     private AtomicInteger snameSequence = new AtomicInteger();
 
     private TByteObjectMap<String> interesDictionary = new TByteObjectHashMap<>();
+    private TByteObjectMap<byte[]> interesDictionaryBytes = new TByteObjectHashMap<>();
     private TObjectByteMap<String> interesReverseDictionary = new TObjectByteHashMap<>();
     private AtomicInteger interesSequence = new AtomicInteger();
 
@@ -159,6 +160,10 @@ public class Dictionary {
         return interesDictionary.get(interes);
     }
 
+    public byte[] getInteresBytes(byte interes) {
+        return interesDictionaryBytes.get(interes);
+    }
+
     public byte getInteres(String interes) {
         return interesReverseDictionary.get(interes);
     }
@@ -167,6 +172,7 @@ public class Dictionary {
         if (!interesReverseDictionary.containsKey(interes)) {
             int id = interesSequence.incrementAndGet();
             interesDictionary.put((byte)id, interes);
+            interesDictionaryBytes.put((byte)id, interes.getBytes());
             interesReverseDictionary.put(interes, (byte)id);
             return (byte) id;
         } else {

@@ -15,6 +15,17 @@ public class GroupFormatter {
 
     private static final byte[] COUNT = "{\"count\":".getBytes();
 
+    private static final byte[] STATUS0 = "свободны".getBytes();
+    private static final byte[] STATUS1 = "всё сложно".getBytes();
+    private static final byte[] STATUS2 = "заняты".getBytes();
+
+
+    private static final byte[] SEX = "sex".getBytes();
+    private static final byte[] COUNTRY = "country".getBytes();
+    private static final byte[] CITY = "city".getBytes();
+    private static final byte[] STATUS = "status".getBytes();
+    private static final byte[] INTERESTS = "interests".getBytes();
+
     @Autowired
     private Dictionary dictionary;
 
@@ -26,32 +37,80 @@ public class GroupFormatter {
         for (int i = 0; i < keys.size(); i++) {
             String key = keys.get(i);
             if (key.equals("sex")) {
-                index = writeField(responseBuf, index, false, keys.get(i));
-                index = writeStringValue(responseBuf, index, ConvertorUtills.convertSex((group.values & 0b00000001) == 1));
+                index = writeField(responseBuf, index, false, SEX);
+                index = writeSex(responseBuf, index, (group.values & 0b00000001) == 1);
             } else if (key.equals("status")) {
-                index = writeField(responseBuf, index, false, keys.get(i));
-                index = writeStringValue(responseBuf, index, ConvertorUtills.convertStatusNumber((byte)((group.values >> 1) & 0b00000011)));
+                index = writeField(responseBuf, index, false, STATUS);
+                index = writeStatus(responseBuf, index, (byte)((group.values >> 1) & 0b00000011));
             } else if (key.equals("interests")) {
-                String interes = dictionary.getInteres((byte)((group.values >> 20) & 0b01111111));
+                byte[] interes = dictionary.getInteresBytes((byte)((group.values >> 20) & 0b01111111));
                 if (interes != null) {
-                    index = writeField(responseBuf, index, false, keys.get(i));
+                    index = writeField(responseBuf, index, false, INTERESTS);
                     index = writeStringValue(responseBuf, index, interes);
                 }
             } else if (key.equals("country")) {
-                String country = dictionary.getCountry((byte)((group.values >> 3) & 0b01111111));
+                byte[] country = dictionary.getCountryBytes((byte)((group.values >> 3) & 0b01111111));
                 if (country != null) {
-                    index = writeField(responseBuf, index, false, keys.get(i));
+                    index = writeField(responseBuf, index, false, COUNTRY);
                     index = writeStringValue(responseBuf, index, country);
                 }
             } else if (key.equals("city")) {
-                String city = dictionary.getCity((int)((group.values >> 10) & 0b0000001111111111));
+                byte[] city = dictionary.getCityBytes((int)((group.values >> 10) & 0b0000001111111111));
                 if (city != null) {
-                    index = writeField(responseBuf, index, false, keys.get(i));
+                    index = writeField(responseBuf, index, false, CITY);
                     index = writeStringValue(responseBuf, index, city);
                 }
             }
         }
         responseBuf[index++] = '}';
+        return index;
+    }
+
+
+    private int writeStringValue(byte[] arr, int index, byte[] value) {
+        arr[index++] = '\"';
+        System.arraycopy(value, 0, arr, index, value.length);
+        index+=value.length;
+        arr[index++] = '\"';
+        return index;
+    }
+
+    private int writeSex(byte[] arr, int index, boolean sex) {
+        arr[index++] = '\"';
+        if (sex) {
+            arr[index++] = 'm';
+        } else {
+            arr[index++] = 'f';
+        }
+        arr[index++] = '\"';
+        return index;
+    }
+
+    private int writeStatus(byte[] arr, int index, byte status) {
+        arr[index++] = '\"';
+        if (status == 0) {
+            System.arraycopy(STATUS0, 0, arr, index, STATUS0.length);
+            index+=STATUS0.length;
+        } else if (status == 1){
+            System.arraycopy(STATUS1, 0, arr, index, STATUS1.length);
+            index+=STATUS1.length;
+        } else {
+            System.arraycopy(STATUS2, 0, arr, index, STATUS2.length);
+            index+=STATUS2.length;
+        }
+        arr[index++] = '\"';
+        return index;
+    }
+
+    private int writeField(byte[] arr, int index, boolean first, byte[] field) {
+        if (!first) {
+            arr[index++] = ',';
+        }
+        arr[index++] = '\"';
+        System.arraycopy(field, 0, arr, index, field.length);
+        index+=field.length;
+        arr[index++] = '\"';
+        arr[index++] = ':';
         return index;
     }
 

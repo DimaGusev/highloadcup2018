@@ -5,19 +5,22 @@ import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
 import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 
+import java.util.Arrays;
 import java.util.function.Predicate;
 
 public class EmailEqPredicate extends AbstractPredicate {
 
     private String email;
+    private byte[] emailBytes;
 
     public EmailEqPredicate(String email) {
         this.email = email;
+        this.emailBytes = email.getBytes();
     }
 
     @Override
     public boolean test(Account account) {
-        return account.email.equals(email);
+        return Arrays.equals(account.email,emailBytes);
     }
 
     public String getEmail() {

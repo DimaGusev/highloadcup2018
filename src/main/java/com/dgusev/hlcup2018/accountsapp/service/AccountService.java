@@ -17,12 +17,15 @@ import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 import gnu.trove.set.TIntSet;
+import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TIntHashSet;
+import gnu.trove.set.hash.TLongHashSet;
 import io.netty.channel.epoll.EpollServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sun.misc.Unsafe;
 
+import java.lang.reflect.Array;
 import java.util.*;
 import java.util.function.Predicate;
 
@@ -55,8 +58,8 @@ public class AccountService {
     private volatile int size;
     private Account[] accountIdMap = new Account[MAX_ID];
 
-    private Set<String> emails = new HashSet<>();
-    private Set<String> phones = new HashSet<>();
+    private TLongSet emails = new TLongHashSet();
+    private TLongSet phones = new TLongHashSet();
 
     public static volatile long LAST_UPDATE_TIMESTAMP;
 
@@ -782,6 +785,35 @@ public class AccountService {
         }
     };
 
+    private static final ThreadLocal<Account[][]> recommendArrayPool = new ThreadLocal<Account[][]>() {
+        @Override
+        protected Account[][] initialValue() {
+            Account[][] accounts = new Account[6][];
+            for (int i = 0; i < 6; i++) {
+                accounts[i] = new Account[15000];
+            }
+            return accounts;
+        }
+    };
+
+    private static final ThreadLocal<int[]> recommendArraySizePool = new ThreadLocal<int[]>() {
+        @Override
+        protected int[] initialValue() {
+            return new int[6];
+        }
+    };
+
+    private static final ThreadLocal<Score[]> recommendArrayResultPool = new ThreadLocal<Score[]>() {
+        @Override
+        protected Score[] initialValue() {
+            return new Score[15000];
+        }
+    };
+
+
+
+
+
     public List<Account> recommend(int id, byte country, int city, int limit) {
         if (limit <= 0) {
             throw new BadRequest();
@@ -799,84 +831,73 @@ public class AccountService {
         }
         byte[] recommend = recommendSet.get();
         int sex = account.sex ? 1 : 0;
-        List<Account> result1 = ObjectPool.acquireRecommendList();
-        List<Account> result2 = ObjectPool.acquireRecommendList();
-        List<Account> result3 = ObjectPool.acquireRecommendList();
-        List<Account> result4 = ObjectPool.acquireRecommendList();
-        List<Account> result5 = ObjectPool.acquireRecommendList();
-        List<Account> result6 = ObjectPool.acquireRecommendList();
-        fetchRecommendations2(id, sex, account, country, city, limit, recommend, result1, result2, result3, result4, result5, result6);
-        try {
-            List<Score> result = ObjectPool.acquireRecommendListResult();
-            fillList(account, result, limit, result1, result2, result3, result4, result5, result6, recommend);
-            AccountService.Score[] sortArray = recommendSortArray.get();
-            int lastIndex = 0;
-            int resultSize = result.size();
-            for (int i = 0; i < resultSize; i++) {
-                Score item = result.get(i);
-                if (lastIndex == limit) {
-                    Score lastScore = sortArray[lastIndex - 1];
-                    if (lastScore.score > item.score) {
+        Account[][] recommendArray = recommendArrayPool.get();
+        int[] sizeArr = recommendArraySizePool.get();
+        for (int i = 0; i < 6; i++) {
+            sizeArr[i] = 0;
+        }
+        fetchRecommendations2(id, sex, account, country, city, limit, recommend, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr);
+        Score[] result = recommendArrayResultPool.get();
+        int size = fillList(account, result, limit, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr, recommend);
+        AccountService.Score[] sortArray = recommendSortArray.get();
+        int lastIndex = 0;
+        for (int i = 0; i < size; i++) {
+            Score item = result[i];
+            if (lastIndex == limit) {
+                Score lastScore = sortArray[lastIndex - 1];
+                if (lastScore.score > item.score) {
+                    continue;
+                } else if (lastScore.score == item.score) {
+                    if (lastScore.account.id < item.account.id) {
                         continue;
-                    } else if (lastScore.score == item.score) {
-                        if (lastScore.account.id < item.account.id) {
-                            continue;
-                        }
                     }
-                    int insertIndex = 0;
-                    for (int j = 0; j < limit; j++) {
-                        if (item.score > sortArray[j].score) {
+                }
+                int insertIndex = 0;
+                for (int j = 0; j < limit; j++) {
+                    if (item.score > sortArray[j].score) {
+                        insertIndex = j;
+                        break;
+                    } else if (item.score == sortArray[j].score) {
+                        if (item.account.id < sortArray[j].account.id) {
                             insertIndex = j;
                             break;
-                        } else if (item.score == sortArray[j].score) {
-                            if (item.account.id < sortArray[j].account.id) {
-                                insertIndex = j;
-                                break;
-                            }
                         }
                     }
+                }
+                System.arraycopy(sortArray, insertIndex, sortArray, insertIndex + 1, limit - insertIndex - 1);
+                sortArray[insertIndex] = item;
+            } else {
+                int insertIndex = -1;
+                for (int j = 0; j < lastIndex; j++) {
+                    if (item.score > sortArray[j].score) {
+                        insertIndex = j;
+                        break;
+                    } else if (item.score == sortArray[j].score) {
+                        if (item.account.id < sortArray[j].account.id) {
+                            insertIndex = j;
+                            break;
+                        }
+                    }
+                }
+                if (insertIndex == -1) {
+                    sortArray[lastIndex] = item;
+                } else {
                     System.arraycopy(sortArray, insertIndex, sortArray, insertIndex + 1, limit - insertIndex - 1);
                     sortArray[insertIndex] = item;
-                } else  {
-                    int insertIndex = -1;
-                    for (int j = 0; j < lastIndex; j++) {
-                        if (item.score > sortArray[j].score) {
-                            insertIndex = j;
-                            break;
-                        } else if (item.score == sortArray[j].score) {
-                            if (item.account.id < sortArray[j].account.id) {
-                                insertIndex = j;
-                                break;
-                            }
-                        }
-                    }
-                    if (insertIndex == -1) {
-                        sortArray[lastIndex] = item;
-                    } else {
-                        System.arraycopy(sortArray, insertIndex, sortArray, insertIndex + 1, limit - insertIndex - 1);
-                        sortArray[insertIndex] = item;
-                    }
-                    lastIndex++;
                 }
+                lastIndex++;
             }
-
-            List<Account> response = recommendResult.get();
-            response.clear();
-            for (int i = 0; i < lastIndex; i++) {
-                response.add(sortArray[i].account);
-            }
-            return response;
-        } finally {
-            ObjectPool.releaseRecommendList(result1);
-            ObjectPool.releaseRecommendList(result2);
-            ObjectPool.releaseRecommendList(result3);
-            ObjectPool.releaseRecommendList(result4);
-            ObjectPool.releaseRecommendList(result5);
-            ObjectPool.releaseRecommendList(result6);
         }
+
+        List<Account> response = recommendResult.get();
+        response.clear();
+        for (int i = 0; i < lastIndex; i++) {
+            response.add(sortArray[i].account);
+        }
+        return response;
     }
 
-    private void fetchRecommendations2(int id, int sex, Account account, byte country, int city, int limit, byte[] recommend, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6) {
+    private void fetchRecommendations2(int id, int sex, Account account, byte country, int city, int limit, byte[] recommend, Account[] result1, Account[] result2, Account[] result3, Account[] result4, Account[] result5, Account[] result6, int[] sizeArr) {
 
         TByteObjectMap<int[]> prio1;
         TByteObjectMap<int[]> prio2;
@@ -884,6 +905,13 @@ public class AccountService {
         TByteObjectMap<int[]> prio4;
         TByteObjectMap<int[]> prio5;
         TByteObjectMap<int[]> prio6;
+
+        int result1Size = 0;
+        int result2Size = 0;
+        int result3Size = 0;
+        int result4Size = 0;
+        int result5Size = 0;
+        int result6Size = 0;
 
         if (sex == 1) {
             prio1 = indexHolder.sexFalsePremiumState0Index;
@@ -903,15 +931,9 @@ public class AccountService {
 
         int totalCount = 0;
 
-        //TIntIntMap tIntIntMap = recommendInterestsCountMapPool.get();
-        //tIntIntMap.clear();
         for (byte interes : account.interests) {
             for (int aId : prio1.get(interes)) {
                 if (aId != id) {
-                    //int value = tIntIntMap.adjustOrPutValue(aId, 1, 1);
-                   // if (value != 1) {
-                   //     continue;
-                   // }
                     Account acc = accountIdMap[aId];
                     if (country != -1 && acc.country != country) {
                         continue;
@@ -923,12 +945,13 @@ public class AccountService {
                     if (cnt > 1) {
                         continue;
                     }
-                    result1.add(acc);
+                    result1[result1Size++] = acc;
                     totalCount++;
                 }
             }
         }
         if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
             return;
         }
         for (byte interes : account.interests) {
@@ -945,12 +968,14 @@ public class AccountService {
                     if (cnt > 1) {
                         continue;
                     }
-                    result2.add(acc);
+                    result2[result2Size++] = acc;
                     totalCount++;
                 }
             }
         }
         if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
             return;
         }
         for (byte interes : account.interests) {
@@ -967,12 +992,15 @@ public class AccountService {
                     if (cnt > 1) {
                         continue;
                     }
-                    result3.add(acc);
+                    result3[result3Size++] = acc;
                     totalCount++;
                 }
             }
         }
         if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
+            sizeArr[2] = result3Size;
             return;
         }
         for (byte interes : account.interests) {
@@ -990,12 +1018,16 @@ public class AccountService {
                     if (cnt > 1) {
                         continue;
                     }
-                    result4.add(acc);
+                    result4[result4Size++] = acc;
                     totalCount++;
                 }
             }
         }
         if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
+            sizeArr[2] = result3Size;
+            sizeArr[3] = result4Size;
             return;
         }
         for (byte interes : account.interests) {
@@ -1012,12 +1044,17 @@ public class AccountService {
                     if (cnt > 1) {
                         continue;
                     }
-                    result5.add(acc);
+                    result5[result5Size++] = acc;
                     totalCount++;
                 }
             }
         }
         if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
+            sizeArr[2] = result3Size;
+            sizeArr[3] = result4Size;
+            sizeArr[4] = result5Size;
             return;
         }
         for (byte interes : account.interests) {
@@ -1034,84 +1071,70 @@ public class AccountService {
                     if (cnt > 1) {
                         continue;
                     }
-                    result6.add(acc);
+                    result6[result6Size++] = acc;
                     totalCount++;
                 }
             }
         }
+        sizeArr[0] = result1Size;
+        sizeArr[1] = result2Size;
+        sizeArr[2] = result3Size;
+        sizeArr[3] = result4Size;
+        sizeArr[4] = result5Size;
+        sizeArr[5] = result6Size;
     }
 
-    private static void fillList(Account account, List<Score> result, int limit, List<Account> result1, List<Account> result2, List<Account> result3, List<Account> result4, List<Account> result5, List<Account> result6, byte[] recommend) {
+    private static int fillList(Account account, Score[] result, int limit, Account[] result1, Account[] result2, Account[] result3, Account[] result4, Account[] result5, Account[] result6, int[] sizeArr, byte[] recommend) {
+        int size = 0;
         Score[] pool = ObjectPool.acquireScore();
         int counter = 0;
-        int res1Cnt = result1.size();
+        int res1Cnt = sizeArr[0];
         for (int i = 0; i < res1Cnt; i++) {
             Score score = pool[counter++];
-            calculateScore(score, 16000, account, result1.get(i), recommend);
-            result.add(score);
+            calculateScore(score, 16000, account, result1[i], recommend);
+            result[size++] = score;
         }
-        if (result.size() < limit) {
-            int cnt = result2.size();
+        if (size < limit) {
+            int cnt = sizeArr[1];
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 14000, account, result2.get(i), recommend);
-                result.add(score);
+                calculateScore(score, 14000, account, result2[i], recommend);
+                result[size++] = score;
             }
         }
-        if (result.size() < limit) {
-            int cnt = result3.size();
+        if (size < limit) {
+            int cnt = sizeArr[2];
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 12000, account, result3.get(i), recommend);
-                result.add(score);
+                calculateScore(score, 12000, account, result3[i], recommend);
+                result[size++] = score;
             }
         }
-        if (result.size() < limit) {
-            int cnt = result4.size();
+        if (size < limit) {
+            int cnt = sizeArr[3];
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 6000, account, result4.get(i), recommend);
-                result.add(score);
+                calculateScore(score, 6000, account, result4[i], recommend);
+                result[size++] = score;
             }
         }
-        if (result.size() < limit) {
-            int cnt = result5.size();
+        if (size < limit) {
+            int cnt = sizeArr[4];
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 4000, account, result5.get(i), recommend);
-                result.add(score);
+                calculateScore(score, 4000, account, result5[i], recommend);
+                result[size++] = score;
             }
         }
-        if (result.size() < limit) {
-            int cnt = result6.size();
+        if (size < limit) {
+            int cnt = sizeArr[5];
             for (int i = 0; i < cnt; i++) {
                 Score score = pool[counter++];
-                calculateScore(score, 2000, account, result6.get(i), recommend);
-                result.add(score);
+                calculateScore(score, 2000, account, result6[i], recommend);
+                result[size++] = score;
             }
         }
-    }
-
-    private static int interestsMatched(byte[] myInterests, byte[] othersInterests) {
-        int index1 = 0;
-        int index2 = 0;
-        int count = 0;
-        while (index1 < myInterests.length && index2 < othersInterests.length) {
-            byte int1 = myInterests[index1];
-            byte int2 = othersInterests[index2];
-            if (int1 == int2) {
-                count++;
-                index1++;
-                index2++;
-            } else {
-                if (int1 < int2) {
-                    index1++;
-                } else {
-                    index2++;
-                }
-            }
-        }
-        return count;
+        return size;
     }
 
     public List<Account> suggest(int id, List<Predicate<Account>> predicates, int limit) {
@@ -1314,9 +1337,9 @@ public class AccountService {
             }
         }
         accountIdMap[account.id] =  account;
-        emails.add(account.email);
+        emails.add(calculateHash(account.email, 0 , account.email.length));
         if (account.phone != null) {
-            phones.add(account.phone);
+            phones.add(calculateHash(account.phone, 0, account.phone.length));
         }
     }
 
@@ -1324,9 +1347,9 @@ public class AccountService {
         accountList[size] = account;
         size++;
         accountIdMap[account.id] =  account;
-        emails.add(account.email);
+        emails.add(calculateHash(account.email, 0 , account.email.length));
         if (account.phone != null) {
-            phones.add(account.phone);
+            phones.add(calculateHash(account.phone, 0, account.phone.length));
         }
     }
 
@@ -1352,16 +1375,16 @@ public class AccountService {
         if (!ALLOWED_STATUS.contains(accountDTO.status)) {
             throw new BadRequest();
         }
-        if (!accountDTO.email.contains("@")) {
+        if (!contains(accountDTO.email, (byte) '@')) {
             throw new BadRequest();
         }
         if (accountIdMap[accountDTO.id] != null) {
             throw new BadRequest();
         }
-        if (emails.contains(accountDTO.email)) {
+        if (emails.contains(calculateHash(accountDTO.email, 0, accountDTO.email.length))) {
             throw new BadRequest();
         }
-        if (accountDTO.phone != null && phones.contains(accountDTO.phone)) {
+        if (accountDTO.phone != null && phones.contains(calculateHash(accountDTO.phone, 0, accountDTO.phone.length))) {
             throw new BadRequest();
         }
         Account account = accountConverter.convert(accountDTO);
@@ -1703,26 +1726,26 @@ public class AccountService {
         if (oldAcc == null) {
             throw new NotFoundRequest();
         }
-        if (accountDTO.email != null && !accountDTO.email.contains("@")) {
+        if (accountDTO.email != null && !contains(accountDTO.email,(byte) '@')) {
             throw new BadRequest();
         }
         if (accountDTO.status != null) {
             ConvertorUtills.convertStatusNumber(accountDTO.status);
         }
-        if (accountDTO.email != null && !oldAcc.email.equals(accountDTO.email)) {
-            if (emails.contains(accountDTO.email)) {
+        if (accountDTO.email != null && !Arrays.equals(oldAcc.email,accountDTO.email)) {
+            if (emails.contains(calculateHash(accountDTO.email, 0,  accountDTO.email.length))) {
                 throw new BadRequest();
             }
         }
-        if ((accountDTO.phone != null && oldAcc.phone == null) ||( accountDTO.phone != null && !oldAcc.phone.equals(accountDTO.phone))) {
-            if (phones.contains(accountDTO.phone)) {
+        if ((accountDTO.phone != null && oldAcc.phone == null) ||( accountDTO.phone != null && !Arrays.equals(oldAcc.phone, accountDTO.phone))) {
+            if (phones.contains(calculateHash(accountDTO.phone, 0,  accountDTO.phone.length))) {
                 throw new BadRequest();
             }
         }
 
-        if (accountDTO.email != null && !oldAcc.email.equals(accountDTO.email)) {
-            emails.remove(oldAcc.email);
-            emails.add(accountDTO.email);
+        if (accountDTO.email != null && !Arrays.equals(oldAcc.email, accountDTO.email)) {
+            emails.remove(calculateHash(oldAcc.email, 0, oldAcc.email.length));
+            emails.add(calculateHash(accountDTO.email, 0, accountDTO.email.length));
             oldAcc.email = accountDTO.email;
         }
         if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0 || accountDTO.birth != 0) {
@@ -1738,12 +1761,12 @@ public class AccountService {
         if (accountDTO.sname != null) {
             oldAcc.sname = dictionary.getOrCreateSname(accountDTO.sname);
         }
-        if (accountDTO.phone != null && oldAcc.phone != null && !oldAcc.phone.equals(accountDTO.phone)) {
-            phones.remove(oldAcc.phone);
-            phones.add(accountDTO.phone);
+        if (accountDTO.phone != null && oldAcc.phone != null && !Arrays.equals(oldAcc.phone, accountDTO.phone)) {
+            phones.remove(calculateHash(oldAcc.phone, 0, oldAcc.phone.length));
+            phones.add(calculateHash(accountDTO.phone, 0, accountDTO.phone.length));
             oldAcc.phone = accountDTO.phone;
         } else if (oldAcc.phone == null && accountDTO.phone != null) {
-            phones.add(accountDTO.phone);
+            phones.add(calculateHash(accountDTO.phone, 0, accountDTO.phone.length));
             oldAcc.phone = accountDTO.phone;
         }
         if (accountDTO.birth != Integer.MIN_VALUE) {
@@ -1787,6 +1810,14 @@ public class AccountService {
             }
         }
         LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
+    }
+
+    private long calculateHash(byte[] values, int from, int to) {
+        long hash = 0;
+        for (int i = from; i < to; i++) {
+            hash = 31 * hash + values[i];
+        }
+        return hash;
     }
 
 
@@ -1991,6 +2022,15 @@ public class AccountService {
         }
         value = (value << 32) | (0x7fffffff - delta);
         score.score = value;
+    }
+
+    private boolean contains(byte[] values, byte ch) {
+        for (int i = values.length - 1; i >= 0; i--) {
+            if (values[i] == ch) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

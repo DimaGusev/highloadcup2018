@@ -5,10 +5,10 @@ import com.dgusev.hlcup2018.accountsapp.service.Unsafe;
 
 public class Account {
     public int id = -1;
-    public String email;
+    public byte[] email;
     public int fname;
     public int sname;
-    public String phone;
+    public byte[] phone;
     public boolean sex;
     public int birth = Integer.MIN_VALUE;
     public byte country;

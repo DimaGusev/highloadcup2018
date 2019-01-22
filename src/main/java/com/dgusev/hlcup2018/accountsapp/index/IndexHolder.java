@@ -47,8 +47,8 @@ public class IndexHolder {
     public Map<String, int[]> emailDomainIndex;
     public TIntObjectMap<int[]> fnameIndex;
     public TIntObjectMap<int[]> snameIndex;
-    public TObjectIntMap<String> emailIndex;
-    public TObjectIntMap<String> phoneIndex;
+    public TObjectIntMap<byte[]> emailIndex;
+    public TObjectIntMap<byte[]> phoneIndex;
     public Map<String, int[]> phoneCodeIndex;
 
     public int[] nullCountry;
@@ -59,7 +59,7 @@ public class IndexHolder {
     public int[] notNullPremium;
     public int[] premiumIndex;
 
-    public String minEmail = "zzzzzzz";
+    public byte[] minEmail = "zzzzzzz".getBytes();
 
 
     public long[] likesIndex;
@@ -117,10 +117,10 @@ public class IndexHolder {
         int now = nowProvider.getNow();
         Callable<Boolean> task1 = new Callable<Boolean>() {
 
-            private long calculateHash(String values, int from, int to) {
+            private long calculateHash(byte[] values, int from, int to) {
                 long hash = 0;
                 for (int i = from; i < to; i++) {
-                    hash = 31 * hash + values.charAt(i);
+                    hash = 31 * hash + values[i];
                 }
                 return hash;
             }
@@ -298,11 +298,11 @@ public class IndexHolder {
                             }
                         }
                     }
-                    int at = account.email.lastIndexOf('@');
-                    long hash = calculateHash(account.email, at + 1 , account.email.length());
+                    int at = lastIndexOf(account.email, (byte) '@');
+                    long hash = calculateHash(account.email, at + 1 , account.email.length);
                     String domain = domainsMap.get(hash);
                     if (domain == null) {
-                        domain = account.email.substring(at + 1);
+                        domain = substring(account.email, at + 1);
                         domainsMap.put(hash, domain);
                     }
                     if (!tmpEmailDomainIndex.containsKey(domain)) {
@@ -494,11 +494,11 @@ public class IndexHolder {
                             }
                         }
                     }
-                    int at = account.email.lastIndexOf('@');
-                    long hash = calculateHash(account.email, at + 1 , account.email.length());
+                    int at = lastIndexOf(account.email, (byte) '@');
+                    long hash = calculateHash(account.email, at + 1 , account.email.length);
                     String domain = domainsMap.get(hash);
                     if (domain == null) {
-                        domain = account.email.substring(at + 1);
+                        domain = substring(account.email, at + 1);
                         domainsMap.put(hash, domain);
                     }
                     emailDomainIndex.get(domain)[tmpEmailDomainIndex.get(domain)] = account.id;
@@ -516,13 +516,45 @@ public class IndexHolder {
                 System.out.println("Finish init IndexHolder " + new Date());
                 return true;
             }
+
+            private int lastIndexOf(byte[] values, byte ch) {
+
+                for (int i = values.length - 1; i>=0; i--) {
+                    if (values[i] == ch) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            private int indexOf(byte[] values, byte ch) {
+
+                for (int i = 0; i < values.length; i++) {
+                    if (values[i] == ch) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            private String substring(byte[] values, int from) {
+                return substring(values, from, values.length);
+            }
+
+            private String substring(byte[] values, int from, int to) {
+                byte[] result = new byte[to - from];
+                for (int i = from; i < to; i++) {
+                    result[i - from] = values[i];
+                }
+                return new String(result);
+            }
         };
         Callable<Boolean> task2 = new Callable<Boolean>() {
 
-            private long calculateHash(String values, int from, int to) {
+            private long calculateHash(byte[] values, int from, int to) {
                 long hash = 0;
                 for (int i = from; i < to; i++) {
-                    hash = 31 * hash + values.charAt(i);
+                    hash = 31 * hash + values[i];
                 }
                 return hash;
             }
@@ -592,14 +624,14 @@ public class IndexHolder {
                     if (account.phone != null) {
                         phoneIndex.put(account.phone, account.id);
                         notNullPhoneCounter++;
-                        int open = account.phone.indexOf("(");
+                        int open = indexOf(account.phone, (byte) '(');
                         if (open != -1) {
-                            int close = account.phone.indexOf(')', open + 1);
+                            int close = indexOf(account.phone, (byte) ')', open + 1);
                             if (close != -1) {
                                 long hash = calculateHash(account.phone, open + 1, close);
                                 String code = phoneCodeMap.get(hash);
                                 if (code == null) {
-                                    code = account.phone.substring(open + 1, close);
+                                    code = substring(account.phone, open + 1, close);
                                     phoneCodeMap.put(hash, code);
                                 }
                                 if (!tmpPhoneCodeIndex.containsKey(code)) {
@@ -613,7 +645,7 @@ public class IndexHolder {
                     if (account.premiumStart != 0) {
                         notNullPremiumCounter++;
                     }
-                    if (account.email.compareTo(minEmail) < 0) {
+                    if (compareTo(account.email, minEmail) < 0) {
                         minEmail = account.email;
                     }
                 }
@@ -672,14 +704,14 @@ public class IndexHolder {
                     tmpBirthYearIndex.put(year, tmpBirthYearIndex.get(year) + 1);
                     if (account.phone != null) {
                         notNullPhone[notNullPhoneCounter++] = account.id;
-                        int open = account.phone.indexOf("(");
+                        int open = indexOf(account.phone, (byte) '(');
                         if (open != -1) {
-                            int close = account.phone.indexOf(')', open + 1);
+                            int close = indexOf(account.phone, (byte) ')', open + 1);
                             if (close != -1) {
                                 long hash = calculateHash(account.phone, open + 1, close);
                                 String code = phoneCodeMap.get(hash);
                                 if (code == null) {
-                                    code = account.phone.substring(open + 1, close);
+                                    code = substring(account.phone, open + 1, close);
                                     phoneCodeMap.put(hash, code);
                                 }
                                 phoneCodeIndex.get(code)[tmpPhoneCodeIndex.get(code)] = account.id;
@@ -699,6 +731,58 @@ public class IndexHolder {
 
                 System.out.println("Finish init IndexHolder " + new Date());
                 return true;
+            }
+
+            private int indexOf(byte[] values, byte ch) {
+
+                for (int i = 0; i < values.length; i++) {
+                    if (values[i] == ch) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            private int compareTo(byte[] values1, byte[] values2) {
+                int len1 = values1.length;
+                int len2 = values2.length;
+                int lim = 0;
+                if (len1 < len2) {
+                    lim = len1;
+                } else {
+                    lim = len2;
+                }
+                int k = 0;
+                while (k < lim) {
+                    byte c1 = values1[k];
+                    byte c2 = values2[k];
+                    if (c1 != c2) {
+                        return c1 - c2;
+                    }
+                    k++;
+                }
+                return len1 - len2;
+            }
+
+            private int indexOf(byte[] values, byte ch, int from) {
+                for (int i = from; i < values.length; i++) {
+                    if (values[i] == ch) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            private String substring(byte[] values, int from) {
+                return substring(values, from, values.length);
+            }
+
+            private String substring(byte[] values, int from, int to) {
+                byte[] result = new byte[to - from];
+                for (int i = from; i < to; i++) {
+                    result[i - from] = values[i];
+                }
+                return new String(result);
             }
         };
         Callable<Boolean> task3 = new Callable<Boolean>() {

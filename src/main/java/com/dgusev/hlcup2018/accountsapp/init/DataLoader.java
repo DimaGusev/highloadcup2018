@@ -181,23 +181,6 @@ public class DataLoader implements CommandLineRunner {
                             byte[] accountBytes = new byte[index];
                             System.arraycopy(buf, 0, accountBytes, 0, index);
                             AccountDTO accountDTO = accountParser.parse(accountBytes);
-                            if (System.getProperty("os.name").toLowerCase().contains("win") && initFileWin.endsWith("data2.zip")) {
-                                if (i > 3) {
-                                    accountDTO.id = 10000 * (i-1) + accountDTO.id;
-                                    accountDTO.email = i + accountDTO.email;
-                                    if (accountDTO.phone != null) {
-                                        accountDTO.phone = i + accountDTO.phone;
-                                    }
-                                    if (accountDTO.likes != null) {
-                                        for (int j = 0; j < accountDTO.likes.length; j++) {
-                                            int id = (int)(accountDTO.likes[j]>>32);
-                                            id = 10000 * (i-1) + id;
-                                            accountDTO.likes[j] = 0xffffffffL & accountDTO.likes[j];
-                                            accountDTO.likes[j] = accountDTO.likes[j] | ((long)id << 32);
-                                        }
-                                    }
-                                }
-                            }
                             accounts.add(accountConverter.convert(accountDTO));
 
                         }

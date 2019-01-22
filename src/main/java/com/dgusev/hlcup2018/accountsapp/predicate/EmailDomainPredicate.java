@@ -10,16 +10,29 @@ import java.util.function.Predicate;
 public class EmailDomainPredicate extends AbstractPredicate {
 
     private String domain;
-    private String atDomain;
+    private byte[] atDomain;
 
     public EmailDomainPredicate(String domain) {
-        this.atDomain = "@" + domain;
+        this.atDomain = ("@" + domain).getBytes();
         this.domain = domain;
     }
 
     @Override
-    public boolean test(Account Account) {
-        return Account.email.endsWith(atDomain);
+    public boolean test(Account account) {
+        return endsWith(account.email, atDomain);
+    }
+
+    private boolean endsWith(byte[] value, byte[] atDomain) {
+        if (atDomain.length > value.length) {
+            return false;
+        }
+        int index = value.length - atDomain.length;
+        for (int i = 0; i < atDomain.length; i++) {
+            if (atDomain[i] != value[index++]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public String getDomain() {

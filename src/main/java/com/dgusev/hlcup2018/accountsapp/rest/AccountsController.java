@@ -102,7 +102,7 @@ public class AccountsController {
                     predicates.add(new EmailDomainPredicate(parameter.getValue()));
                 } else if (name.equals("email_lt")) {
                     String value = parameter.getValue();
-                    if (value.compareTo(indexHolder.minEmail) < 0) {
+                    if (compareTo(value, indexHolder.minEmail) < 0) {
                         empty = true;
                     }
                     predicates.add(new EmailLtPredicate(value));
@@ -246,6 +246,27 @@ public class AccountsController {
             index+=LIST_END.length;
             return index;
         }
+    }
+
+    private int compareTo(String values1, byte[] values2) {
+        int len1 = values1.length();
+        int len2 = values2.length;
+        int lim = 0;
+        if (len1 < len2) {
+            lim = len1;
+        } else {
+            lim = len2;
+        }
+        int k = 0;
+        while (k < lim) {
+            byte c1 = (byte) values1.charAt(k);
+            byte c2 = values2[k];
+            if (c1 != c2) {
+                return c1 - c2;
+            }
+            k++;
+        }
+        return len1 - len2;
     }
 
     public int group(Map<String,String> allRequestParams, byte[] responseBuf) {

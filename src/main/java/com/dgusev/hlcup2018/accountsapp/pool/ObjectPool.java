@@ -248,12 +248,6 @@ public class ObjectPool {
         return list;
     }
 
-    public static List<AccountService.Score> acquireRecommendListResult() {
-        List<AccountService.Score> list =  recommendListPool.get();
-        list.clear();
-        return list;
-    }
-
     public static List<IndexScan> acquireIndexScanList() {
         List<IndexScan> list =  indexScanPool.get();
         list.clear();
