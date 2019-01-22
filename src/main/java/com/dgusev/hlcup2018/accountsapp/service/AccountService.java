@@ -1365,7 +1365,7 @@ public class AccountService {
     }
 
 
-    public synchronized void add(AccountDTO accountDTO) {
+    public synchronized void addValidate(AccountDTO accountDTO) {
         if (accountDTO.id == -1 || accountDTO.email == null || accountDTO.sex == null || accountDTO.birth == Integer.MIN_VALUE || accountDTO.joined == Integer.MIN_VALUE || accountDTO.status == null) {
             throw new BadRequest();
         }
@@ -1387,6 +1387,10 @@ public class AccountService {
         if (accountDTO.phone != null && phones.contains(calculateHash(accountDTO.phone, 0, accountDTO.phone.length))) {
             throw new BadRequest();
         }
+    }
+
+
+    public synchronized void add(AccountDTO accountDTO) {
         Account account = accountConverter.convert(accountDTO);
         this.load(account);
         if (account.likes != null && account.likes.length != 0) {
@@ -1711,8 +1715,7 @@ public class AccountService {
         }
     }
 
-
-    public synchronized void update(AccountDTO accountDTO) {
+    public synchronized void updateValidate(AccountDTO accountDTO) {
         if (accountDTO.sex != null && !ALLOWED_SEX.contains(accountDTO.sex)) {
             throw new BadRequest();
         }
@@ -1742,7 +1745,10 @@ public class AccountService {
                 throw new BadRequest();
             }
         }
+    }
 
+    public synchronized void update(AccountDTO accountDTO) {
+        Account oldAcc = accountIdMap[accountDTO.id];
         if (accountDTO.email != null && !Arrays.equals(oldAcc.email, accountDTO.email)) {
             emails.remove(calculateHash(oldAcc.email, 0, oldAcc.email.length));
             emails.add(calculateHash(accountDTO.email, 0, accountDTO.email.length));
@@ -1820,17 +1826,19 @@ public class AccountService {
         return hash;
     }
 
+    public synchronized void likeValidate(List<LikeRequest> likeRequests) {
+        for (int i = 0; i < likeRequests.size(); i++) {
+            LikeRequest likeRequest = likeRequests.get(i);
+            if (likeRequest.likee >= MAX_ID || likeRequest.liker >= MAX_ID) {
+                throw BadRequest.INSTANCE;
+            }
+            if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || accountIdMap[likeRequest.likee] == null || accountIdMap[likeRequest.liker] == null) {
+                throw BadRequest.INSTANCE;
+            }
+        }
+    }
 
     public synchronized void like(List<LikeRequest> likeRequests) {
-            for (int i = 0; i < likeRequests.size(); i++) {
-                LikeRequest likeRequest = likeRequests.get(i);
-                if (likeRequest.likee >= MAX_ID || likeRequest.liker >= MAX_ID) {
-                    throw BadRequest.INSTANCE;
-                }
-                if (likeRequest.likee == -1 || likeRequest.liker == -1 || likeRequest.ts == -1 || accountIdMap[likeRequest.likee] == null || accountIdMap[likeRequest.liker] == null) {
-                    throw BadRequest.INSTANCE;
-                }
-            }
             for (int i = 0; i < likeRequests.size(); i++) {
                 LikeRequest likeRequest = likeRequests.get(i);
                 Account account = accountIdMap[likeRequest.liker];

@@ -470,22 +470,11 @@ public class AccountsController {
     }
 
 
-
-    public void create(byte[] body, int length) {
-            AccountDTO accountDTO = accountParser.parse(body, length);
-            accountService.add(accountDTO);
-    }
-
     public void create(byte[] body, int from, int length) {
         AccountDTO accountDTO = accountParser.parse(body, from, length);
         accountService.add(accountDTO);
     }
 
-    public void update(byte[] body, int length, int id) {
-            AccountDTO accountDTO = accountParser.parse(body, length);
-            accountDTO.id = id;
-            accountService.update(accountDTO);
-    }
 
     public void update(byte[] body, int from, int length, int id) {
         AccountDTO accountDTO = accountParser.parse(body, from, length);
@@ -493,11 +482,6 @@ public class AccountsController {
         accountService.update(accountDTO);
     }
 
-
-    public void like(byte[] body, int length) {
-        List<LikeRequest> requests = likeParser.parse(body, length);
-        accountService.like(requests);
-    }
 
     public void like(byte[] body, int from, int length) {
         List<LikeRequest> requests = likeParser.parse(body, from, length);

@@ -1,10 +1,15 @@
 package io.netty.channel.epoll;
 
+import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
+import com.dgusev.hlcup2018.accountsapp.model.LikeRequest;
 import com.dgusev.hlcup2018.accountsapp.model.NotFoundRequest;
+import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
+import com.dgusev.hlcup2018.accountsapp.parse.LikeParser;
 import com.dgusev.hlcup2018.accountsapp.parse.QueryParser;
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.rest.AccountsController;
+import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntObjectMap;
@@ -21,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -48,7 +54,16 @@ public class RequestHandler {
     };
 
     @Autowired
+    private AccountService accountService;
+
+    @Autowired
     private AccountsController accountsController;
+
+    @Autowired
+    private AccountParser accountParser;
+
+    @Autowired
+    private LikeParser likeParser;
 
     public void handleRead(SelectionKey selectionKey, LinuxSocket fd, byte[] buf, int length, ByteBuffer byteBuffer) throws IOException {
         SocketChannel socketChannel = null;
@@ -164,11 +179,15 @@ public class RequestHandler {
                 }
                 endIndex++;
                 if (equals(buf, queryStart, endPathIndex, NEW)) {
-                    accountsController.create(buf, pointer, endIndex);
+                    AccountDTO accountDTO = accountParser.parse(buf, pointer, endIndex);
+                    accountService.addValidate(accountDTO);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_201);
+                    accountService.add(accountDTO);
                 } else if (equals(buf, queryStart, endPathIndex, LIKES)) {
-                    accountsController.like(buf, pointer, endIndex);
+                    List<LikeRequest> requests = likeParser.parse(buf, pointer, endIndex);
+                    accountService.likeValidate(requests);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
+                    accountService.like(requests);
                 } else {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                     int id = 0;
@@ -177,8 +196,11 @@ public class RequestHandler {
                     } catch (BadRequest ex) {
                         throw NotFoundRequest.INSTANCE;
                     }
-                    accountsController.update(buf, pointer, endIndex, id);
+                    AccountDTO accountDTO = accountParser.parse(buf, pointer, endIndex);
+                    accountDTO.id = id;
+                    accountService.updateValidate(accountDTO);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
+                    accountService.update(accountDTO);
                 }
             } else {
                 System.out.println(fd.intValue() + " Bad first byte " + (byte)buf[0] + " with length=" + length +",history=" + " |" + new String(buf, 0, length));
