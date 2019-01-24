@@ -20,6 +20,7 @@ import io.netty.channel.epoll.Native;
 import io.netty.util.ReferenceCountUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import sun.misc.Unsafe;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -28,9 +29,17 @@ import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class RequestHandler {
+
+    private static final Unsafe UNSAFE = com.dgusev.hlcup2018.accountsapp.service.Unsafe.UNSAFE;
+
+    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger();
+
+
+    public volatile static long[] cache = new long[100000];
 
     public volatile static ByteBuffer[] attachments = new ByteBuffer[200000];
 
@@ -42,6 +51,7 @@ public class RequestHandler {
     private static final byte[] HEADERS_TERMINATOR = "\r\n\r\n".getBytes();
 
     private static final byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
+    private static final byte[] QUERY_ID = "query_id=".getBytes();
 
     private static final byte[] FILTER = "/accounts/filter/".getBytes();
     private static final byte[] GROUP = "/accounts/group/".getBytes();
@@ -67,7 +77,7 @@ public class RequestHandler {
     @Autowired
     private LikeParser likeParser;
 
-    public void handleRead(SelectionKey selectionKey, LinuxSocket fd, byte[] buf, int length, ByteBuffer byteBuffer) throws IOException {
+    public void handleRead(SelectionKey selectionKey, LinuxSocket fd, byte[] buf, int length, ByteBuffer byteBuffer, long address) throws IOException {
         SocketChannel socketChannel = null;
         if (selectionKey != null) {
             socketChannel = (SocketChannel) selectionKey.channel();
@@ -116,54 +126,91 @@ public class RequestHandler {
                 int endPathIndex = findPathEndIndex(buf, queryStart, queryFinish);
                 int startParameters = endPathIndex + 1;
                 long t1 = System.nanoTime();
-                if (equals(buf, queryStart, endPathIndex, FILTER)) {
-                    Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
-                    byte[] responseArr = responseArray.get();
-                    int bodyLength = accountsController.accountsFilter(params, responseArr);
-                    byteBuffer.put(OK_START);
-                    encodeInt(bodyLength, byteBuffer);
-                    byteBuffer.put(HEADERS_TERMINATOR);
-                    byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    byteBuffer.put(responseArr, 0, bodyLength);
-                    writeResponse(socketChannel, fd,  byteBuffer);
-                } else if (equals(buf, queryStart, endPathIndex, GROUP)) {
-                    Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
-                    byte[] responseArr = responseArray.get();
-                    int bodyLength = accountsController.group(params, responseArr);
-                    byteBuffer.put(OK_START);
-                    encodeInt(bodyLength, byteBuffer);
-                    byteBuffer.put(HEADERS_TERMINATOR);
-                    byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    byteBuffer.put(responseArr, 0, bodyLength);
+                int queryId = readQueryId(buf, queryStart, queryFinish);
+                long addr = cache[queryId];
+                if (addr != 0) {
+                    int cnt = ATOMIC_INTEGER.incrementAndGet();
+                    if ((cnt % 5000) == 0) {
+                        System.out.println("Dup="+cnt);
+                    }
+                    int size = UNSAFE.getShort(addr);
+                    UNSAFE.copyMemory(addr + 2, address, size);
+                    byteBuffer.position(size);
                     writeResponse(socketChannel, fd, byteBuffer);
-                } else if (contains(buf, queryStart, endPathIndex, "recommend")) {
-                    int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
-                    int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
-                    byte[] responseArr = responseArray.get();
-                    int bodyLength = accountsController.recommend(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
-                    byteBuffer.put(OK_START);
-                    encodeInt(bodyLength, byteBuffer);
-                    byteBuffer.put(HEADERS_TERMINATOR);
-                    byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    byteBuffer.put(responseArr, 0, bodyLength);
-                    writeResponse(socketChannel, fd, byteBuffer);
-                } else if (contains(buf, queryStart, endPathIndex, "suggest")) {
-                    int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
-                    int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
-                    byte[] responseArr = responseArray.get();
-                    int bodyLength = accountsController.suggest(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
-                    byteBuffer.put(OK_START);
-                    encodeInt(bodyLength, byteBuffer);
-                    byteBuffer.put(HEADERS_TERMINATOR);
-                    byteBuffer.limit(byteBuffer.position() + bodyLength);
-                    byteBuffer.put(responseArr, 0, bodyLength);
-                    writeResponse(socketChannel, fd, byteBuffer);
-                } else  {
-                    throw NotFoundRequest.INSTANCE;
-                }
-                long t2 = System.nanoTime();
-                if (t2-t1 > 10000000) {
-                    System.out.println("Time=" +(t2-t1)+", query=" + new String(buf, queryStart, queryFinish));
+                } else {
+                    if (equals(buf, queryStart, endPathIndex, FILTER)) {
+                        Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
+                        byte[] responseArr = responseArray.get();
+                        int bodyLength = accountsController.accountsFilter(params, responseArr);
+                        byteBuffer.put(OK_START);
+                        encodeInt(bodyLength, byteBuffer);
+                        byteBuffer.put(HEADERS_TERMINATOR);
+                        byteBuffer.limit(byteBuffer.position() + bodyLength);
+                        byteBuffer.put(responseArr, 0, bodyLength);
+                        int position = byteBuffer.position();
+                        writeResponse(socketChannel, fd, byteBuffer);
+                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                        UNSAFE.putShort(cacheAddr, (short)position);
+                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
+                        cache[queryId] = cacheAddr;
+                        cache = cache;
+                    } else if (equals(buf, queryStart, endPathIndex, GROUP)) {
+                        Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
+                        byte[] responseArr = responseArray.get();
+                        int bodyLength = accountsController.group(params, responseArr);
+                        byteBuffer.put(OK_START);
+                        encodeInt(bodyLength, byteBuffer);
+                        byteBuffer.put(HEADERS_TERMINATOR);
+                        byteBuffer.limit(byteBuffer.position() + bodyLength);
+                        byteBuffer.put(responseArr, 0, bodyLength);
+                        int position = byteBuffer.position();
+                        writeResponse(socketChannel, fd, byteBuffer);
+                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                        UNSAFE.putShort(cacheAddr, (short)position);
+                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
+                        cache[queryId] = cacheAddr;
+                        cache = cache;
+                    } else if (contains(buf, queryStart, endPathIndex, "recommend")) {
+                        int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
+                        int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
+                        byte[] responseArr = responseArray.get();
+                        int bodyLength = accountsController.recommend(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
+                        byteBuffer.put(OK_START);
+                        encodeInt(bodyLength, byteBuffer);
+                        byteBuffer.put(HEADERS_TERMINATOR);
+                        byteBuffer.limit(byteBuffer.position() + bodyLength);
+                        byteBuffer.put(responseArr, 0, bodyLength);
+                        int position = byteBuffer.position();
+                        writeResponse(socketChannel, fd, byteBuffer);
+                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                        UNSAFE.putShort(cacheAddr, (short)position);
+                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
+                        cache[queryId] = cacheAddr;
+                        cache = cache;
+                    } else if (contains(buf, queryStart, endPathIndex, "suggest")) {
+                        int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
+                        int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
+                        byte[] responseArr = responseArray.get();
+                        int bodyLength = accountsController.suggest(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
+                        byteBuffer.put(OK_START);
+                        encodeInt(bodyLength, byteBuffer);
+                        byteBuffer.put(HEADERS_TERMINATOR);
+                        byteBuffer.limit(byteBuffer.position() + bodyLength);
+                        byteBuffer.put(responseArr, 0, bodyLength);
+                        int position = byteBuffer.position();
+                        writeResponse(socketChannel, fd, byteBuffer);
+                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                        UNSAFE.putShort(cacheAddr, (short)position);
+                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
+                        cache[queryId] = cacheAddr;
+                        cache = cache;
+                    } else {
+                        throw NotFoundRequest.INSTANCE;
+                    }
+                    long t2 = System.nanoTime();
+                    if (t2 - t1 > 10000000) {
+                        System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
+                    }
                 }
 
             } else if (buf[0] == 'P') {
@@ -246,6 +293,7 @@ public class RequestHandler {
         byteBuffer.flip();
         if (socketChannel != null) {
             socketChannel.write(byteBuffer);
+
         } else {
             fd.write(byteBuffer, byteBuffer.position(), byteBuffer.limit());
         }
@@ -387,6 +435,35 @@ public class RequestHandler {
                     }
                     if (partOffset == partSize) {
                         return decodeInt(buf, position, indexOf(buf, position, length, '\r') - position);
+                    }
+                }
+            } else {
+                position++;
+            }
+        }
+        return -1;
+    }
+
+    private int readQueryId(byte[] buf, int from, int length) {
+        int position = from;
+        byte first = QUERY_ID[0];
+        int partSize = QUERY_ID.length;
+        while (position < length) {
+            if (buf[position] == first) {
+                if (position + partSize > length) {
+                    return -1;
+                } else {
+                    int partOffset = 0;
+                    while ((partOffset < partSize) && buf[position] == QUERY_ID[partOffset]) {
+                        position++;
+                        partOffset++;
+                    }
+                    if (partOffset == partSize) {
+                        int to = position;
+                        while (buf[to] > 47 && buf[to] < 58) {
+                            to++;
+                        }
+                        return decodeInt(buf, position, to - position);
                     }
                 }
             } else {

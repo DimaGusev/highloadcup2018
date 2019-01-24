@@ -21,6 +21,7 @@ import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TIntHashSet;
 import gnu.trove.set.hash.TLongHashSet;
 import io.netty.channel.epoll.EpollServer;
+import io.netty.channel.epoll.RequestHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sun.misc.Unsafe;
@@ -2013,6 +2014,14 @@ public class AccountService {
                 long t2 = System.currentTimeMillis();
                 System.out.println("Finish update likes" + new Date() + " took " + (t2 - t1));
                 }).start();
+                for (int i = 0; i < 100000;i++) {
+                    long addr = RequestHandler.cache[i];
+                    if (addr != 0) {
+                        UNSAFE.freeMemory(addr);
+                        RequestHandler.cache[i] = 0;
+                    }
+                }
+                RequestHandler.cache = RequestHandler.cache;
                 indexHolder.init(accountList, size, false);
                 //System.gc();
                 System.out.println("End update indexes " + new Date());

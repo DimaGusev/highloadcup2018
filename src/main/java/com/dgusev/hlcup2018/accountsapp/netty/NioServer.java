@@ -6,8 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.net.StandardSocketOptions;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.ArrayDeque;
@@ -53,10 +55,8 @@ public class NioServer {
 
         @Override
         public void run() {
-            ByteBuffer[] byteBuffers = new ByteBuffer[5];
-            for (int i = 0; i < 5; i++) {
-                byteBuffers[i] = ByteBuffer.allocateDirect(10000);
-            }
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10000);
+            long address = getAddress(byteBuffer);
             int counter = 0;
             byte[] buf = new byte[100000];
             try {
@@ -72,7 +72,6 @@ public class NioServer {
                             SocketChannel socketChannel = (SocketChannel) selectionKey.channel();
                             try {
                                 if (selectionKey.isReadable()) {
-                                    ByteBuffer byteBuffer = byteBuffers[counter++ % 5];
                                     byteBuffer.clear();
                                     int cnt = socketChannel.read(byteBuffer);
                                     if (cnt == -1) {
@@ -87,7 +86,7 @@ public class NioServer {
                                         byteBuffer.flip();
                                         byteBuffer.get(buf, 0, cnt);
                                         byteBuffer.clear();
-                                        requestHandler.handleRead(selectionKey, null, buf, cnt, byteBuffer);
+                                        requestHandler.handleRead(selectionKey, null, buf, cnt, byteBuffer, address);
                                     }
                                 }
                             } catch (Exception ex) {
@@ -119,6 +118,17 @@ public class NioServer {
             socketChannel.setOption(StandardSocketOptions.SO_LINGER, 0);
             queue.offer(socketChannel);
             selector.wakeup();
+        }
+    }
+
+    private long getAddress(ByteBuffer byteBuffer) {
+        try {
+            Field field = Buffer.class.getDeclaredField("address");
+            field.setAccessible(true);
+            return (long)field.get(byteBuffer);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return 0;
         }
     }
 

@@ -10,7 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.SocketChannel;
@@ -87,6 +89,7 @@ public class EpollServer {
         @Override
         public void run() {
             ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10000);
+            long address = getAddress(byteBuffer);
             byte[] buf = new byte[100000];
             FileDescriptor fakeDescriptor = new FileDescriptor(0);
             boolean suspended = false;
@@ -129,7 +132,7 @@ public class EpollServer {
                                             byteBuffer.flip();
                                             byteBuffer.get(buf, 0, byteBuffer.limit());
                                             byteBuffer.clear();
-                                            requestHandler.handleRead(null, linuxSocket, buf, cnt, byteBuffer);
+                                            requestHandler.handleRead(null, linuxSocket, buf, cnt, byteBuffer, address);
                                         }
                                     } else if ((event & Native.EPOLLRDHUP) != 0) {
                                         System.out.println("Connection reset fd=" + clientFd);
@@ -183,6 +186,19 @@ public class EpollServer {
             Native.eventFdWrite(suspendFd, 1);
         }
     }
+
+
+    private long getAddress(ByteBuffer byteBuffer) {
+       try {
+           Field field = Buffer.class.getDeclaredField("address");
+           field.setAccessible(true);
+           return (long)field.get(byteBuffer);
+       } catch (Exception ex) {
+           ex.printStackTrace();
+           return 0;
+       }
+    }
+
 
 
     public void suspend() {
