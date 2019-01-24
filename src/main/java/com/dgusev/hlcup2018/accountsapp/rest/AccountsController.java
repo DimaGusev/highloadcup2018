@@ -368,7 +368,7 @@ public class AccountsController {
 
     public int recommend(Map<String, String> allRequestParams, int id, byte[] responseBuf) {
             if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
-                throw new NotFoundRequest();
+                throw NotFoundRequest.INSTANCE;
             }
             int limit = 0;
             byte country = -1;
@@ -380,20 +380,20 @@ public class AccountsController {
                 } else if (name.equals("limit")) {
                     limit = Integer.parseInt(parameter.getValue());
                     if (limit < 0) {
-                        throw new BadRequest();
+                        throw BadRequest.INSTANCE;
                     }
                 } else if (name.equals("country")) {
                     if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
-                        throw new BadRequest();
+                        throw BadRequest.INSTANCE;
                     }
                     country = dictionary.getCountry(parameter.getValue());
                 } else if (name.equals("city")) {
                     if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
-                        throw new BadRequest();
+                        throw BadRequest.INSTANCE;
                     }
                     city = dictionary.getCity(parameter.getValue());
                 } else {
-                    throw new BadRequest();
+                    throw BadRequest.INSTANCE;
                 }
             }
 
@@ -420,9 +420,11 @@ public class AccountsController {
 
     public int suggest(Map<String,String> allRequestParams, int id, byte[] responseBuf) {
         if (id >= AccountService.MAX_ID || accountService.findById(id) == null) {
-            throw new NotFoundRequest();
+            throw NotFoundRequest.INSTANCE;
         }
         int limit = 0;
+        byte country = -1;
+        int city = -1;
         List<Predicate<Account>> predicates = new ArrayList<>();
         for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
             String name = parameter.getKey();
@@ -431,24 +433,24 @@ public class AccountsController {
             } else if (name.equals("limit")) {
                 limit = Integer.parseInt(parameter.getValue());
                 if (limit <= 0) {
-                    throw new BadRequest();
+                    throw BadRequest.INSTANCE;
                 }
             } else if (name.equals("country")) {
                 if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
-                    throw new BadRequest();
+                    throw BadRequest.INSTANCE;
                 }
-                predicates.add(new CountryEqPredicate(dictionary.getCountry(parameter.getValue())));
+                country = dictionary.getCountry(parameter.getValue());
             } else if (name.equals("city")) {
                 if (parameter.getValue() == null || parameter.getValue().isEmpty()) {
-                    throw new BadRequest();
+                    throw BadRequest.INSTANCE;
                 }
-                predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
+                city = dictionary.getCity(parameter.getValue());
             } else {
-                throw new BadRequest();
+                throw BadRequest.INSTANCE;
             }
         }
 
-        List<Account> result = accountService.suggest(id, predicates, limit);
+        List<Account> result = accountService.suggest(id, country, city, limit);
         if (result.isEmpty()) {
             System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
             return EMPTY_ACCOUNTS_LIST.length;
@@ -467,25 +469,6 @@ public class AccountsController {
             ObjectPool.releaseSuggestList(result);
             return index;
         }
-    }
-
-
-    public void create(byte[] body, int from, int length) {
-        AccountDTO accountDTO = accountParser.parse(body, from, length);
-        accountService.add(accountDTO);
-    }
-
-
-    public void update(byte[] body, int from, int length, int id) {
-        AccountDTO accountDTO = accountParser.parse(body, from, length);
-        accountDTO.id = id;
-        accountService.update(accountDTO);
-    }
-
-
-    public void like(byte[] body, int from, int length) {
-        List<LikeRequest> requests = likeParser.parse(body, from, length);
-        accountService.like(requests);
     }
 
 

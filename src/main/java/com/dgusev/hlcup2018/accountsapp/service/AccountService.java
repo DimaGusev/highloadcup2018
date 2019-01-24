@@ -1137,25 +1137,60 @@ public class AccountService {
         return size;
     }
 
-    public List<Account> suggest(int id, List<Predicate<Account>> predicates, int limit) {
+    private static ThreadLocal<AccountService.Similarity[]> similarityListPool = new ThreadLocal<AccountService.Similarity[]>() {
+        @Override
+        protected AccountService.Similarity[] initialValue() {
+            AccountService.Similarity[] array =   new AccountService.Similarity[10000];
+            for (int i = 0; i < 10000; i++) {
+                array[i] =new AccountService.Similarity();
+            }
+            return array;
+        }
+    };
+
+    public List<Account> suggest(int id, byte country, int city, int limit) {
         Account account = accountIdMap[id];
         if (account == null) {
-            throw new NotFoundRequest();
+            throw NotFoundRequest.INSTANCE;
         }
         if (account.likes == null || account.likes.length == 0) {
             return Collections.EMPTY_LIST;
         }
-        predicates.add(new SexEqPredicate(account.sex));
-        predicates.add(a -> a.id != id);
+
+        if (country == 0 || city == 0) {
+            return Collections.EMPTY_LIST;
+        }
 
         boolean targetSex = !account.sex;
 
         TIntHashSet myLikes = ObjectPool.acquireTIntHash();
         TIntHashSet suggests = ObjectPool.acquireTIntHash();
+        Similarity[] suggestResult = similarityListPool.get();
+        int totalSize = fillSuggestResult(account, myLikes, country, city, suggestResult, suggests);
+
+        List<Account> result = null;
+        if (totalSize == 0) {
+            return Collections.EMPTY_LIST;
+        }
+        try {
+
+            result = ObjectPool.acquireSuggestList();
+            sortAndFetchFromSimilar(result, suggestResult, totalSize, targetSex, limit, myLikes);
+            return result;
+        } finally {
+            ObjectPool.releaseTIntHash(myLikes);
+            ObjectPool.releaseTIntHash(suggests);
+        }
+    }
+
+    private int fillSuggestResult(Account account, TIntHashSet myLikes, byte country, int city, Similarity[] suggestResult, TIntHashSet suggests) {
+        int myId = account.id;
+        int totalSize = 0;
+        int prev = -1;
         for (long like: account.likes) {
             int lid = (int)(like >> 32);
-            boolean newLike = myLikes.add(lid);
-            if (newLike) {
+            if (lid != prev) {
+                myLikes.add(lid);
                 long address = indexHolder.likesIndex[lid];
                 if (address != 0) {
                     int size = UNSAFE.getByte(address);
@@ -1163,83 +1198,55 @@ public class AccountService {
                     for (int i = 0; i < size; i++) {
                         int l = UNSAFE.getInt(address);
                         address+=4;
-                        suggests.add(l);
-                    }
-                }
-            }
-        }
-        Similarity[] suggestResult = null;
-        int size = 0;
-        List<Account> result = null;
-        if (suggests.isEmpty()) {
-            return Collections.EMPTY_LIST;
-        }
-        try {
-            int[] likersIndex = ObjectPool.acquireLikersArray();
-            if (suggests.size() > likersIndex.length) {
-                System.out.println("Suggest array not enough " + suggests.size());
-            }
-            suggests.toArray(likersIndex);
-            Arrays.sort(likersIndex, 0, suggests.size());
-            reverse(likersIndex, 0, suggests.size());
-            IndexScan likersIndexScan = new ArrayIndexScan(likersIndex, 0, suggests.size());
-
-            List<IndexScan> indexScans = getAvailableIndexScan(predicates);
-            indexScans.add(likersIndexScan);
-            IndexScan indexScan = new CompositeIndexScan(indexScans);
-            Predicate<Account> accountPredicate = andPredicates(predicates);
-            suggestResult = ObjectPool.acquireSimilarityList();
-            while (true) {
-                int next = indexScan.getNext();
-                if (next == -1) {
-                    break;
-                }
-                Account acc = accountIdMap[next];
-                if (accountPredicate.test(acc)) {
-                    Similarity similarity = ObjectPool.acquireSimilarity();
-                    similarity.account = acc;
-                    similarity.similarity = getSimilarity(account, acc);
-                    suggestResult[size++] = similarity;
-                }
-            }
-            result = ObjectPool.acquireSuggestList();
-            TIntSet likersSet = new TIntHashSet();
-            double maxSimilarity = Double.MAX_VALUE;
-            while (true) {
-                Similarity s = findNextMaxSimilarity(suggestResult, size, maxSimilarity);
-                if (s ==  null) {
-                    break;
-                }
-                maxSimilarity = s.similarity;
-                for (int j = 0; j < s.account.likes.length; j++) {
-                    int lid = (int)(s.account.likes[j] >> 32);
-                    if (!myLikes.contains(lid) && accountIdMap[lid].sex == targetSex) {
-                        if (!likersSet.contains(lid)) {
-                            likersSet.add(lid);
-                            result.add(accountIdMap[lid]);
-                            if (result.size() == limit) {
-                                break;
-                            }
+                        if (l == myId) {
+                            continue;
+                        }
+                        Account acc = accountIdMap[l];
+                        if (acc.sex != account.sex) {
+                            continue;
+                        }
+                        if (country != -1 && acc.country != country) {
+                            continue;
+                        }
+                        if (city != -1 && acc.city != city) {
+                            continue;
+                        }
+                        if (!suggests.contains(l)) {
+                            Similarity similarity = suggestResult[totalSize++];
+                            similarity.account = acc;
+                            similarity.similarity = getSimilarity(account, acc);
+                            suggests.add(l);
                         }
                     }
                 }
-                if (result.size() == limit) {
-                    break;
+            }
+        }
+        return totalSize;
+    }
+
+    private void sortAndFetchFromSimilar(List<Account> result, Similarity[] suggestResult, int totalSize, boolean targetSex, int limit, TIntHashSet myLikes) {
+        TIntSet likersSet = new TIntHashSet();
+        double maxSimilarity = Double.MAX_VALUE;
+        while (true) {
+            Similarity s = findNextMaxSimilarity(suggestResult, totalSize, maxSimilarity);
+            if (s ==  null) {
+                break;
+            }
+            maxSimilarity = s.similarity;
+            for (int j = 0; j < s.account.likes.length; j++) {
+                int lid = (int)(s.account.likes[j] >> 32);
+                if (!myLikes.contains(lid) && accountIdMap[lid].sex == targetSex) {
+                    if (!likersSet.contains(lid)) {
+                        likersSet.add(lid);
+                        result.add(accountIdMap[lid]);
+                        if (result.size() == limit) {
+                            break;
+                        }
+                    }
                 }
             }
-
-            return result;
-        } finally {
-            ObjectPool.releaseTIntHash(myLikes);
-            ObjectPool.releaseTIntHash(suggests);
-            if (suggestResult != null) {
-                try {
-                    for (int i = 0; i < size; i++) {
-                        ObjectPool.releaseSimilarity(suggestResult[i]);
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+            if (result.size() == limit) {
+                break;
             }
         }
     }
@@ -1283,7 +1290,9 @@ public class AccountService {
         int index1 = 0;
         int index2 = 0;
         double similarity = 0;
-        while (index1 < a1.likes.length && index2 < a2.likes.length) {
+        int len1 = a1.likes.length;
+        int len2 = a2.likes.length;
+        while (index1 < len1 && index2 < len2) {
             int like1 = (int)(a1.likes[index1] >> 32);
             int like2 = (int)(a2.likes[index2] >> 32);
             if (like1 == like2) {
@@ -1293,12 +1302,12 @@ public class AccountService {
                 int cnt2 = 1;
                 index1++;
                 index2++;
-                while (index1 < a1.likes.length && (int)(a1.likes[index1] >> 32) == like1) {
+                while (index1 < len1 && (int)(a1.likes[index1] >> 32) == like1) {
                     sum1+=(int)a1.likes[index1];
                     cnt1++;
                     index1++;
                 }
-                while (index2 < a2.likes.length && (int)(a2.likes[index2] >> 32) == like2) {
+                while (index2 < len2 && (int)(a2.likes[index2] >> 32) == like2) {
                     sum2+=(int)a2.likes[index2];
                     cnt2++;
                     index2++;
@@ -1308,7 +1317,11 @@ public class AccountService {
                 if (t1 == t2) {
                     similarity+=1;
                 } else {
-                    similarity += 1 / Math.abs(t1 - t2);
+                    if (t1 > t2) {
+                        similarity += 1 / (t1 - t2);
+                    } else {
+                        similarity += 1 / (t2 - t1);
+                    }
                 }
 
             } else {

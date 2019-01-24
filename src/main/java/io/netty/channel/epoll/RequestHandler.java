@@ -41,6 +41,8 @@ public class RequestHandler {
     private static final byte[] OK_START = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: ".getBytes();
     private static final byte[] HEADERS_TERMINATOR = "\r\n\r\n".getBytes();
 
+    private static final byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
+
     private static final byte[] FILTER = "/accounts/filter/".getBytes();
     private static final byte[] GROUP = "/accounts/group/".getBytes();
     private static final byte[] NEW = "/accounts/new/".getBytes();
@@ -369,18 +371,17 @@ public class RequestHandler {
         return false;
     }
 
-    private int readContentLength(byte[] buf, int length) {
-        String contentLengthHeader = "Content-Length: ";
+    private int readContentLength(byte[] buf, int length) { ;
         int position = 0;
-        char first = contentLengthHeader.charAt(0);
-        int partSize = contentLengthHeader.length();
+        byte first = CONTENT_LENGTH[0];
+        int partSize = CONTENT_LENGTH.length;
         while (position < length) {
             if (buf[position] == first) {
                 if (position + partSize > length) {
                     return -1;
                 } else {
                     int partOffset = 0;
-                    while ((partOffset < partSize) && buf[position] == contentLengthHeader.charAt(partOffset)) {
+                    while ((partOffset < partSize) && buf[position] == CONTENT_LENGTH[partOffset]) {
                         position++;
                         partOffset++;
                     }

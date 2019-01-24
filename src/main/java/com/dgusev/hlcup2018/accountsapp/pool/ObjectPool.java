@@ -34,17 +34,6 @@ public class ObjectPool {
         }
     };
 
-    private static ThreadLocal<ArrayDeque<AccountService.Similarity>> similarityPool = new ThreadLocal<ArrayDeque<AccountService.Similarity>>() {
-        @Override
-        protected ArrayDeque<AccountService.Similarity> initialValue() {
-            ArrayDeque arrayDeque =  new ArrayDeque<>(20000);
-            for (int i = 0; i < 20000; i++) {
-                arrayDeque.add(new AccountService.Similarity());
-            }
-            return arrayDeque;
-        }
-    };
-
     private static ThreadLocal<AccountService.Score[]> scorePool = new ThreadLocal<AccountService.Score[]>() {
         @Override
         protected AccountService.Score[] initialValue() {
@@ -70,7 +59,7 @@ public class ObjectPool {
     private static ThreadLocal<AccountService.Similarity[]> listSimilarityPool = new ThreadLocal<AccountService.Similarity[]>() {
         @Override
         protected AccountService.Similarity[] initialValue() {
-            return new AccountService.Similarity[100000];
+            return new AccountService.Similarity[10000];
         }
     };
 
@@ -178,21 +167,6 @@ public class ObjectPool {
 
     public static void releaseTIntHash(TIntHashSet hashSet) {
         intHashSetPools.get().addLast(hashSet);
-    }
-
-
-    public static AccountService.Similarity acquireSimilarity() {
-        ArrayDeque<AccountService.Similarity> local = similarityPool.get();
-        AccountService.Similarity similarity = local.pollFirst();
-        if (similarity != null) {
-            return similarity;
-        } else {
-            return new AccountService.Similarity();
-        }
-    }
-
-    public static void releaseSimilarity(AccountService.Similarity similarity) {
-        similarityPool.get().addLast(similarity);
     }
 
     public static AccountService.Score[] acquireScore() {

@@ -86,11 +86,7 @@ public class EpollServer {
 
         @Override
         public void run() {
-            ByteBuffer[] byteBuffers = new ByteBuffer[10];
-            for (int i = 0; i < 10; i++) {
-                byteBuffers[i] = ByteBuffer.allocateDirect(10000);
-            }
-            int counter = 0;
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(10000);
             byte[] buf = new byte[100000];
             FileDescriptor fakeDescriptor = new FileDescriptor(0);
             boolean suspended = false;
@@ -118,7 +114,6 @@ public class EpollServer {
                             try {
                                 if (linuxSocket != null) {
                                     if ((event & (Native.EPOLLERR | Native.EPOLLIN)) != 0) {
-                                        ByteBuffer byteBuffer = byteBuffers[counter++ % 10];
                                         byteBuffer.clear();
                                         int cnt = linuxSocket.read(byteBuffer, byteBuffer.position(), byteBuffer.limit());
                                         if (cnt == -1) {
