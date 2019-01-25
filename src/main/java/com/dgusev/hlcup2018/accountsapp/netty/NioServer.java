@@ -18,11 +18,10 @@ import java.util.Queue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class NioServer {
-
-    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger();
 
     public void start() throws Exception {
         ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();

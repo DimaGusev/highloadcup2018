@@ -21,12 +21,14 @@ import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class EpollServer {
 
 
-    private static final AtomicInteger REQUESTS = new AtomicInteger();
+   //private static final AtomicLong ATOMIC_LONG = new AtomicLong();
+
 
     @Autowired
     private RequestHandler requestHandler;
@@ -34,6 +36,16 @@ public class EpollServer {
     private Worker[] workerList;
 
     public void start() throws Exception {
+        /*new Thread(()-> {
+            while (true) {
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("T=" + ATOMIC_LONG.get());
+            }
+        }).start();*/
         boolean available = Epoll.isAvailable();
         if (!available) {
             throw new IllegalStateException("Native support is not available");
@@ -132,7 +144,10 @@ public class EpollServer {
                                             byteBuffer.flip();
                                             byteBuffer.get(buf, 0, byteBuffer.limit());
                                             byteBuffer.clear();
+                                            //long t1 = System.nanoTime();
                                             requestHandler.handleRead(null, linuxSocket, buf, cnt, byteBuffer, address);
+                                            //long t2 = System.nanoTime();
+                                           // ATOMIC_LONG.addAndGet(t2-t1);
                                         }
                                     } else if ((event & Native.EPOLLRDHUP) != 0) {
                                         System.out.println("Connection reset fd=" + clientFd);
@@ -178,7 +193,10 @@ public class EpollServer {
         public void register(int clientFd) throws IOException {
             RequestHandler.attachments[clientFd] = null;
             RequestHandler.attachments=RequestHandler.attachments;
-            clients.put(clientFd, new LinuxSocket(clientFd));
+            LinuxSocket linuxSocket = new LinuxSocket(clientFd);
+            linuxSocket.setTcpNoDelay(true);
+            //linuxSocket.setSoLinger(0);
+            clients.put(clientFd, linuxSocket);
             Native.epollCtlAdd(epollFd.intValue(), clientFd, Native.EPOLLIN | Native.EPOLLET | Native.EPOLLRDHUP);
         }
 

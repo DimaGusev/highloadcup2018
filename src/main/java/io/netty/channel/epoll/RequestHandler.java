@@ -126,6 +126,7 @@ public class RequestHandler {
                 long t1 = System.nanoTime();
                 int queryId = readQueryId(buf, queryStart, queryFinish);
                 long addr = cache[queryId];
+                //addr = 0;
                 if (addr != 0) {
                     int size = UNSAFE.getShort(addr);
                     UNSAFE.copyMemory(addr + 2, address, size);
@@ -202,7 +203,7 @@ public class RequestHandler {
                         throw NotFoundRequest.INSTANCE;
                     }
                     long t2 = System.nanoTime();
-                    if (t2 - t1 > 7000000) {
+                    if (t2 - t1 > 10000000) {
                         System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
                     }
                 }
@@ -415,7 +416,7 @@ public class RequestHandler {
         return false;
     }
 
-    private int readContentLength(byte[] buf, int length) { ;
+    private int readContentLength(byte[] buf, int length) {
         int position = 0;
         byte first = CONTENT_LENGTH[0];
         int partSize = CONTENT_LENGTH.length;
