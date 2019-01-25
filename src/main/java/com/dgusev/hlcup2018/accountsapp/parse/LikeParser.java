@@ -47,8 +47,7 @@ public class LikeParser {
         if (length - from < 2) {
             throw BAD_REQUEST;
         }
-        List<LikeRequest> requests =  likeRequestList.get();
-        requests.clear();
+        List<LikeRequest> requests = new ArrayList<>();
         int currentIndex = indexOf(array, from, length, '[');
         while (true) {
             if (indexOf(array, currentIndex, length,'{') == -1) {

@@ -29,15 +29,13 @@ import java.nio.channels.SocketChannel;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component
 public class RequestHandler {
 
     private static final Unsafe UNSAFE = com.dgusev.hlcup2018.accountsapp.service.Unsafe.UNSAFE;
-
-    private static final AtomicInteger ATOMIC_INTEGER = new AtomicInteger();
-
 
     public volatile static long[] cache = new long[100000];
 
@@ -129,10 +127,6 @@ public class RequestHandler {
                 int queryId = readQueryId(buf, queryStart, queryFinish);
                 long addr = cache[queryId];
                 if (addr != 0) {
-                    int cnt = ATOMIC_INTEGER.incrementAndGet();
-                    if ((cnt % 5000) == 0) {
-                        System.out.println("Dup="+cnt);
-                    }
                     int size = UNSAFE.getShort(addr);
                     UNSAFE.copyMemory(addr + 2, address, size);
                     byteBuffer.position(size);
@@ -208,12 +202,13 @@ public class RequestHandler {
                         throw NotFoundRequest.INSTANCE;
                     }
                     long t2 = System.nanoTime();
-                    if (t2 - t1 > 10000000) {
+                    if (t2 - t1 > 7000000) {
                         System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
                     }
                 }
 
             } else if (buf[0] == 'P') {
+
                 int queryStart = indexOf(buf, 0, length, ' ') + 1;
                 int queryFinish = indexOf(buf, queryStart, length, ' ');
                 int endPathIndex = findPathEndIndex(buf, queryStart, queryFinish);
@@ -227,16 +222,17 @@ public class RequestHandler {
                     endIndex--;
                 }
                 endIndex++;
+                accountService.receivedPost();
                 if (equals(buf, queryStart, endPathIndex, NEW)) {
                     AccountDTO accountDTO = accountParser.parse(buf, pointer, endIndex);
                     accountService.addValidate(accountDTO);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_201);
-                    accountService.add(accountDTO);
+                    accountService.schedule(() -> {accountService.add(accountDTO);});
                 } else if (equals(buf, queryStart, endPathIndex, LIKES)) {
                     List<LikeRequest> requests = likeParser.parse(buf, pointer, endIndex);
                     accountService.likeValidate(requests);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
-                    accountService.like(requests);
+                    accountService.schedule(() -> {accountService.like(requests);});
                 } else {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                     int id = 0;
@@ -249,7 +245,7 @@ public class RequestHandler {
                     accountDTO.id = id;
                     accountService.updateValidate(accountDTO);
                     writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
-                    accountService.update(accountDTO);
+                    accountService.schedule(() -> {accountService.update(accountDTO);});
                 }
             } else {
                 System.out.println(fd.intValue() + " Bad first byte " + (byte)buf[0] + " with length=" + length +",history=" + " |" + new String(buf, 0, length));

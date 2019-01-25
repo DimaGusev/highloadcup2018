@@ -26,8 +26,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sun.misc.Unsafe;
 
+import javax.annotation.PostConstruct;
 import java.lang.reflect.Array;
 import java.util.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Predicate;
 
 @Service
@@ -39,6 +43,10 @@ public class AccountService {
     private static final Set<String> ALLOWED_SEX = new HashSet<>(Arrays.asList("m", "f"));
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
     private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>(180000, 1);
+
+
+    public static CountDownLatch countDownLatch = new CountDownLatch(1);
+
 
     @Autowired
     private NowProvider nowProvider;
@@ -1418,15 +1426,6 @@ public class AccountService {
             }
         }
         addAccountToGroups(account);
-        if (LAST_UPDATE_TIMESTAMP == 0) {
-            synchronized (this) {
-                if (LAST_UPDATE_TIMESTAMP == 0) {
-                    LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
-                    new Thread(new IndexUpdater()).start();
-                }
-            }
-        }
-        LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
     }
 
     private void addAccountToGroups(Account account) {
@@ -1821,15 +1820,6 @@ public class AccountService {
         if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0 || accountDTO.birth != 0) {
             addAccountToGroups(oldAcc);
         }
-        if (LAST_UPDATE_TIMESTAMP == 0) {
-            synchronized (this) {
-                if (LAST_UPDATE_TIMESTAMP == 0) {
-                    LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
-                    new Thread(new IndexUpdater()).start();
-                }
-            }
-        }
-        LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
     }
 
     private long calculateHash(byte[] values, int from, int to) {
@@ -1865,15 +1855,6 @@ public class AccountService {
                 phase2.get(likeRequest.liker).add(like);
                 addUserToLikeIndex(likeRequest.liker, likeRequest.likee);
             }
-            if (LAST_UPDATE_TIMESTAMP == 0) {
-                synchronized (this) {
-                    if (LAST_UPDATE_TIMESTAMP == 0) {
-                        LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
-                        new Thread(new IndexUpdater()).start();
-                    }
-                }
-            }
-            LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
     }
 
     private void addUserToLikeIndex(int liker, int likee) {
@@ -1987,7 +1968,9 @@ public class AccountService {
 
             try {
                 epollServer.suspend();
+                schedule(TERMINATOR);
                 System.out.println(LAST_UPDATE_TIMESTAMP);
+                countDownLatch.await();
                 new Thread(() -> {
                         System.out.println("Start update indexes " + new Date());
                 System.out.println("Start update likes" + new Date());
@@ -2031,6 +2014,19 @@ public class AccountService {
         }
     }
 
+    public void receivedPost() {
+        if (LAST_UPDATE_TIMESTAMP == 0) {
+            synchronized (this) {
+                if (LAST_UPDATE_TIMESTAMP == 0) {
+                    LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
+                    new Thread(new IndexUpdater()).start();
+                    executorThread.start();
+                }
+            }
+        }
+        LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
+    }
+
     public static class Similarity {
         public Account account;
         public double similarity;
@@ -2062,5 +2058,40 @@ public class AccountService {
         }
         return false;
     }
+
+    public void schedule(Runnable runnable) {
+        try {
+            TASKS.put(runnable);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private BlockingQueue<Runnable> TASKS = new ArrayBlockingQueue<>(50000);
+
+    private static final Runnable TERMINATOR = new Runnable() {
+        @Override
+        public void run() {
+            throw new NullPointerException();
+        }
+    };
+
+    private Thread executorThread = new Thread(()-> {
+        try {
+            while (true) {
+                Runnable runnable = TASKS.take();
+                if (runnable == TERMINATOR) {
+                    System.out.println(TASKS.size());
+                    System.out.println("Terminator="+new Date().getTime());
+                    countDownLatch.countDown();
+                    break;
+                } else {
+                    runnable.run();
+                }
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    });
 
 }
