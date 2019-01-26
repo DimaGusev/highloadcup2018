@@ -9,10 +9,8 @@ import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
-import gnu.trove.map.TByteObjectMap;
-import gnu.trove.map.TIntIntMap;
-import gnu.trove.map.TIntObjectMap;
-import gnu.trove.map.TLongObjectMap;
+import gnu.trove.map.*;
+import gnu.trove.map.hash.TIntDoubleHashMap;
 import gnu.trove.map.hash.TIntIntHashMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
@@ -190,11 +188,15 @@ public class AccountService {
             long address = indexHolder.likesIndex[like];
             if (address != 0) {
                 byte size = UNSAFE.getByte(address);
-                address++;
+                address+=5;
+                int prev = -1;
                 for (int i = 0; i < size; i++) {
                     int id = UNSAFE.getInt(address);
-                    address+=4;
-                    processRecord2(accountIdMap[id], groupsCountMap, keysMask);
+                    address+=8;
+                    if (id != prev) {
+                        processRecord2(accountIdMap[id], groupsCountMap, keysMask);
+                        prev = id;
+                    }
                 }
             }
         }
@@ -203,13 +205,17 @@ public class AccountService {
             long address = indexHolder.likesIndex[like];
             if (address != 0) {
                 byte size = UNSAFE.getByte(address);
-                address++;
+                address+=5;
+                int prev = -1;
                 for (int i = 0; i < size; i++) {
                     int id = UNSAFE.getInt(address);
-                    address+=4;
+                    address+=8;
                     Account account = accountIdMap[id];
                     if (JoinedYearPredicate.calculateYear(account.joined) == joinedYear) {
-                        processRecord2(account, groupsCountMap, keysMask);
+                        if (id != prev) {
+                            processRecord2(accountIdMap[id], groupsCountMap, keysMask);
+                            prev = id;
+                        }
                     }
                 }
             }
@@ -219,13 +225,17 @@ public class AccountService {
             long address = indexHolder.likesIndex[like];
             if (address != 0) {
                 byte size = UNSAFE.getByte(address);
-                address++;
+                address+=5;
+                int prev = -1;
                 for (int i = 0; i < size; i++) {
                     int id = UNSAFE.getInt(address);
-                    address+=4;
+                    address+=8;
                     Account account = accountIdMap[id];
                     if (BirthYearPredicate.calculateYear(account.birth) == birthYear) {
-                        processRecord2(account, groupsCountMap, keysMask);
+                        if (id != prev) {
+                            processRecord2(accountIdMap[id], groupsCountMap, keysMask);
+                            prev = id;
+                        }
                     }
                 }
             }
@@ -1140,6 +1150,20 @@ public class AccountService {
         }
     };
 
+    private static ThreadLocal<TIntHashSet> suggestIntSet = new ThreadLocal<TIntHashSet>() {
+        @Override
+        protected TIntHashSet initialValue() {
+            return new TIntHashSet();
+        }
+    };
+
+    private static ThreadLocal<TIntDoubleMap> similarityMap = new ThreadLocal<TIntDoubleMap>() {
+        @Override
+        protected TIntDoubleMap initialValue() {
+            return new TIntDoubleHashMap();
+        }
+    };
+
     public List<Account> suggest(int id, byte country, int city, int limit) {
         Account account = accountIdMap[id];
         if (account == null) {
@@ -1155,24 +1179,20 @@ public class AccountService {
 
         boolean targetSex = !account.sex;
 
-        TIntHashSet myLikes = ObjectPool.acquireTIntHash();
-        TIntHashSet suggests = ObjectPool.acquireTIntHash();
+        TIntHashSet myLikes = suggestIntSet.get();
+        myLikes.clear();
+        TIntDoubleMap suggests = similarityMap.get();
+        suggests.clear();
         Similarity[] suggestResult = similarityListPool.get();
-        int totalSize = fillSuggestResult(account, myLikes, country, city, suggestResult, suggests);
+        int totalSize = fillSuggestResult2(account, myLikes, country, city, suggestResult, suggests);
 
         List<Account> result = null;
         if (totalSize == 0) {
             return Collections.EMPTY_LIST;
         }
-        try {
-
-            result = ObjectPool.acquireSuggestList();
-            sortAndFetchFromSimilar(result, suggestResult, totalSize, targetSex, limit, myLikes);
-            return result;
-        } finally {
-            ObjectPool.releaseTIntHash(myLikes);
-            ObjectPool.releaseTIntHash(suggests);
-        }
+        result = ObjectPool.acquireSuggestList();
+        sortAndFetchFromSimilar(result, suggestResult, totalSize, targetSex, limit, myLikes);
+        return result;
     }
 
     private int fillSuggestResult(Account account, TIntHashSet myLikes, byte country, int city, Similarity[] suggestResult, TIntHashSet suggests) {
@@ -1186,10 +1206,10 @@ public class AccountService {
                 long address = indexHolder.likesIndex[lid];
                 if (address != 0) {
                     int size = UNSAFE.getByte(address);
-                    address++;
+                    address+=5;
                     for (int i = 0; i < size; i++) {
                         int l = UNSAFE.getInt(address);
-                        address+=4;
+                        address+=8;
                         if (l == myId) {
                             continue;
                         }
@@ -1214,6 +1234,102 @@ public class AccountService {
             }
         }
         return totalSize;
+    }
+
+    private int fillSuggestResult2(Account account, TIntHashSet myLikes, byte country, int city, Similarity[] suggestResult, TIntDoubleMap suggests) {
+        int myId = account.id;
+        int totalSize = 0;
+        for (int i = 0; i < account.likes.length; i++) {
+            int lid = (int)(account.likes[i] >> 32);
+            if (lid == myId) {
+                continue;
+            }
+            myLikes.add(lid);
+            double sum = (int)account.likes[i];
+            int cnt = 1;
+            i++;
+            while (i < account.likes.length) {
+                int nextLike =  (int)(account.likes[i] >> 32);
+                if (nextLike != lid) {
+                    i--;
+                    break;
+                }
+                sum += (int)account.likes[i];
+                cnt++;
+                i++;
+            }
+            double avgTimestamp = sum/cnt;
+            long address = indexHolder.likesIndex[lid];
+            long nextLike = 0;
+            if (address != 0) {
+                int size = UNSAFE.getByte(address);
+                address++;
+                nextLike = UNSAFE.getLong(address);
+                for (int j = 0; j < size; j++) {
+                    long like = nextLike;
+                    address+=8;
+                    int accId = (int)(like >> 32);
+                    Account acc = accountIdMap[accId];
+                    if (acc.sex != account.sex) {
+                        if (j < size - 1) {
+                            nextLike = UNSAFE.getLong(address);
+                        }
+                        continue;
+                    }
+                    if (country != -1 && acc.country != country) {
+                        if (j < size - 1) {
+                            nextLike = UNSAFE.getLong(address);
+                        }
+                        continue;
+                    }
+                    if (city != -1 && acc.city != city) {
+                        if (j < size - 1) {
+                            nextLike = UNSAFE.getLong(address);
+                        }
+                        continue;
+                    }
+                    int timestamp = (int)like;
+                    double sum2 = timestamp;
+                    int cnt2 = 1;
+                    j++;
+                    while ( j < size) {
+                        nextLike = UNSAFE.getLong(address);
+                        address+=8;
+                        int nextId = (int)(nextLike >> 32);
+                        int nextTimestamp = (int)nextLike;
+                        if (nextId != accId) {
+                            address-=8;
+                            j--;
+                            break;
+                        }
+                        sum2+=nextTimestamp;
+                        cnt2++;
+                        j++;
+                    }
+                    double avgTimestamp2 = sum2/cnt2;
+                    double delta = 0;
+                    if (avgTimestamp2 > avgTimestamp) {
+                        delta = 1/(avgTimestamp2 - avgTimestamp);
+                    } else if (avgTimestamp2 < avgTimestamp) {
+                        delta = 1/(avgTimestamp - avgTimestamp2);
+                    } else {
+                        delta = 1;
+                    }
+                    suggests.adjustOrPutValue(accId, delta, delta);
+                }
+            }
+        }
+
+        int[] size = new int[1];
+        size[0] = totalSize;
+
+        suggests.forEachEntry((i,d) -> {
+            Similarity similarity = suggestResult[size[0]++];
+            similarity.account = accountIdMap[i];
+            similarity.similarity = d;
+            return true;
+        });
+        return size[0];
     }
 
     private void sortAndFetchFromSimilar(List<Account> result, Similarity[] suggestResult, int totalSize, boolean targetSex, int limit, TIntHashSet myLikes) {
@@ -1399,13 +1515,12 @@ public class AccountService {
         Account account = accountConverter.convert(accountDTO);
         this.load(account);
         if (account.likes != null && account.likes.length != 0) {
-            int prev = -1;
             for (int j = 0; j < account.likes.length; j++) {
                 int id = (int)(account.likes[j] >> 32);
-                if (prev != id) {
-                    addUserToLikeIndex(account.id, id);
-                }
-                prev = id;
+                long like = 0;
+                like = (long)account.id << 32;
+                like |= (int)account.likes[j];
+                addUserToLikeIndex(account.id, id, like);
             }
         }
         addAccountToGroups(account);
@@ -1968,46 +2083,50 @@ public class AccountService {
                     phase2.put(likeRequest.liker, ObjectPool.acquireLikeList());
                 }
                 phase2.get(likeRequest.liker).add(like);
-                addUserToLikeIndex(likeRequest.liker, likeRequest.likee);
+                like = 0;
+                like = (long) likeRequest.liker << 32;
+                like = (likeRequest.ts | like);
+                addUserToLikeIndex(likeRequest.liker, likeRequest.likee, like);
             }
     }
 
-    private void addUserToLikeIndex(int liker, int likee) {
+    private void addUserToLikeIndex(int liker, int likee, long like) {
         long address = indexHolder.likesIndex[likee];
         if (address == 0) {
-            address = UNSAFE.allocateMemory(5);
+            address = UNSAFE.allocateMemory(9);
             UNSAFE.putByte(address, (byte)1);
-            UNSAFE.putInt(address + 1, liker);
+            UNSAFE.putLong(address + 1, like);
             indexHolder.likesIndex[likee] = address;
         } else {
             int size = UNSAFE.getByte(address);
             int insertId = size;
             boolean dontInsert = false;
-            long pointer = address + 1;
+            long pointer = address + 5;
             for (int i = 0; i < size; i++) {
                 int id = UNSAFE.getInt(pointer);
-                pointer+=4;
+                pointer+=8;
                 if (id < liker) {
                     insertId = i;
                     break;
-                } else if (id == liker) {
+                }
+                /*else if (id == liker) {
                     dontInsert = true;
                     break;
-                }
+                }*/
             }
             if (!dontInsert) {
-                long newAddress = UNSAFE.allocateMemory(1 + (size+1)*4);
+                long newAddress = UNSAFE.allocateMemory(1 + (size+1)*8);
                 UNSAFE.putByte(newAddress, (byte)(size + 1));
                 if (insertId == 0) {
-                    UNSAFE.copyMemory(address + 1, newAddress + 1 + 4, size * 4);
-                    UNSAFE.putInt(newAddress + 1, liker);
+                    UNSAFE.copyMemory(address + 1, newAddress + 1 + 8, size * 8);
+                    UNSAFE.putLong(newAddress + 1, like);
                 } else if (insertId == size) {
-                    UNSAFE.copyMemory(address + 1, newAddress + 1, size * 4);
-                    UNSAFE.putInt(newAddress + 1 + 4*size, liker);
+                    UNSAFE.copyMemory(address + 1, newAddress + 1, size * 8);
+                    UNSAFE.putLong(newAddress + 1 + 8*size, like);
                 } else {
-                    UNSAFE.copyMemory(address + 1, newAddress + 1, insertId * 4);
-                    UNSAFE.copyMemory(address + 1 + insertId * 4, newAddress + 1 + (insertId+1) * 4, (size - insertId) * 4);
-                    UNSAFE.putInt(newAddress + 1 + 4*insertId, liker);
+                    UNSAFE.copyMemory(address + 1, newAddress + 1, insertId * 8);
+                    UNSAFE.copyMemory(address + 1 + insertId * 8, newAddress + 1 + (insertId+1) * 8, (size - insertId) * 8);
+                    UNSAFE.putLong(newAddress + 1 + 8*insertId, like);
                 }
                 indexHolder.likesIndex[likee] = newAddress;
                 UNSAFE.freeMemory(address);

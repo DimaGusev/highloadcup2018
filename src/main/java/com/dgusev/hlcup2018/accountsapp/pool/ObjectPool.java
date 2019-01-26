@@ -154,21 +154,6 @@ public class ObjectPool {
         recommendListPools.get().addLast(group);
     }
 
-    public static TIntHashSet acquireTIntHash() {
-        ArrayDeque<TIntHashSet> local = intHashSetPools.get();
-        TIntHashSet hashSet = local.pollFirst();
-        if (hashSet != null) {
-            hashSet.clear();
-        } else {
-            hashSet =  new TIntHashSet();
-        }
-        return hashSet;
-    }
-
-    public static void releaseTIntHash(TIntHashSet hashSet) {
-        intHashSetPools.get().addLast(hashSet);
-    }
-
     public static AccountService.Score[] acquireScore() {
         return scorePool.get();
     }

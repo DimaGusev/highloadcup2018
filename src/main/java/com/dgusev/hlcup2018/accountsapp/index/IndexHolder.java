@@ -795,14 +795,9 @@ public class IndexHolder {
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
                     if (account.likes != null && account.likes.length != 0) {
-                        int prev = -1;
                         for (long like : account.likes) {
                             int id = (int) (like >> 32);
-                            if (prev == id) {
-                                continue;
-                            }
                             LIKE_TMP_ARRAY[id]++;
-                            prev = id;
                         }
                     }
                 }
@@ -814,7 +809,7 @@ public class IndexHolder {
                 for (int i = 0; i < AccountService.MAX_ID; i++) {
                     int count = LIKE_TMP_ARRAY[i];
                     if (count != 0) {
-                        likesIndex[i] = UNSAFE.allocateMemory(1 + 4 * count);
+                        likesIndex[i] = UNSAFE.allocateMemory(1 + 8 * count);
                         UNSAFE.putByte(likesIndex[i], (byte) count);
                         LIKE_TMP_ARRAY[i] = 0;
                     }
@@ -826,16 +821,11 @@ public class IndexHolder {
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
                     if (account.likes != null && account.likes.length != 0) {
-                        int prev = -1;
                         for (long like : account.likes) {
                             int id = (int) (like >> 32);
-                            if (prev == id) {
-                                continue;
-                            }
-                            long address = likesIndex[id] + 1 + LIKE_TMP_ARRAY[id] * 4;
-                            UNSAFE.putInt(address, account.id);
+                            long address = likesIndex[id] + 1 + LIKE_TMP_ARRAY[id] * 8;
+                            UNSAFE.putLong(address, ((long)account.id << 32) | (int)like);
                             LIKE_TMP_ARRAY[id]++;
-                            prev = id;
                         }
                     }
                 }

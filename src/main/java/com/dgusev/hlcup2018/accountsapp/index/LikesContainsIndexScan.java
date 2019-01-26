@@ -37,8 +37,8 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
         for (int i = 0; i < count; i++) {
             if (lengthList[i] != 0) {
                 indexes[i]++;
-                state[i] = UNSAFE.getInt(indexList[i]);
-                indexList[i]+=4;
+                state[i] = UNSAFE.getInt(indexList[i] + 4);
+                indexList[i]+=8;
             } else {
                 state[i] = -1;
             }
@@ -72,8 +72,18 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
                     for (int i = 0; i < indexList.length; i++) {
                         if (indexes[i] < lengthList[i]) {
                             indexes[i]++;
-                            state[i] = UNSAFE.getInt(indexList[i]);
-                            indexList[i]+=4;
+                            int prevState = state[i];
+                            state[i] = UNSAFE.getInt(indexList[i] + 4);
+                            indexList[i]+=8;
+                            while (state[i] == prevState) {
+                                if (indexes[i] < lengthList[i]) {
+                                    indexes[i]++;
+                                    state[i] = UNSAFE.getInt(indexList[i] + 4);
+                                    indexList[i]+=8;
+                                } else {
+                                    state[i] = -1;
+                                }
+                            }
                         } else {
                             state[i] = -1;
                         }
@@ -85,8 +95,18 @@ public class LikesContainsIndexScan extends AbstractIndexScan {
                     if (state[i] != min) {
                         if (indexes[i] < lengthList[i]) {
                             indexes[i]++;
-                            state[i] = UNSAFE.getInt(indexList[i]);
-                            indexList[i]+=4;
+                            int prevState = state[i];
+                            state[i] = UNSAFE.getInt(indexList[i] + 4);
+                            indexList[i]+=8;
+                            while (state[i] == prevState) {
+                                if (indexes[i] < lengthList[i]) {
+                                    indexes[i]++;
+                                    state[i] = UNSAFE.getInt(indexList[i] + 4);
+                                    indexList[i]+=8;
+                                } else {
+                                    state[i] = -1;
+                                }
+                            }
                         } else {
                             state[i] = -1;
                         }
