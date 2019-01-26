@@ -248,7 +248,7 @@ public class AccountService {
         }
         //BirthYearPredicate,InterestsContainsPredicate
         else if (predicatesMask == 48) {
-            iterateInteresBirth(interes, birthYear, groupsCountMap, keysMask);
+            return iterateInteresBirth(interes, birthYear, keysMask, limit, order);
         }
         //InterestsContainsPredicate,JoinedYearPredicate
         else if (predicatesMask == (byte)160) {
@@ -260,11 +260,11 @@ public class AccountService {
         }
         //BirthYearPredicate,CountryEqPredicate
         else if (predicatesMask == 20) {
-            iterateCountryBirth(country, birthYear, groupsCountMap, keysMask);
+            return iterateCountryBirth(country, birthYear, keysMask, limit, order);
         }
         //CountryEqPredicate,JoinedYearPredicate
         else if (predicatesMask == (byte)132) {
-            iterateCountryJoined(country, joinedYear, groupsCountMap, keysMask);
+            return iterateCountryJoined(country, joinedYear, keysMask, limit, order);
         }
         //BirthYearPredicate
         else if (predicatesMask == 16) {
@@ -397,19 +397,16 @@ public class AccountService {
         return iterateIndex(keysMask, limit, order, index);
     }
 
-    private void iterateInteresBirth(byte interes,int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
-        int[] accounts = indexHolder.interestsIndex.get(interes);
-        byte year = (byte)(birthYear - 1900);
-        byte[] birthYearIndex = indexHolder.birthYear;
-        if (accounts == null) {
-            return;
+    private List<Group> iterateInteresBirth(byte interes,int birthYear, byte keysMask, int limit, int order) {
+        if (interes == 0) {
+            return Collections.EMPTY_LIST;
         }
-        for (int id : accounts) {
-            Account account = accountIdMap[id & 0x00ffffff];
-            if (birthYearIndex[account.id] == year) {
-                processRecord2(account, groupsCountMap, keysMask);
-            }
+        if (birthYear < 1950 || birthYear >= 2005) {
+            return Collections.EMPTY_LIST;
         }
+        int number = birthYear - 1950;
+        long[] index = indexHolder.interesBirthGroupsIndex[number*90 + interes - 1];
+        return iterateIndex(keysMask, limit, order, index);
     }
 
     private List<Group> iterateInteresJoined(byte interes,int joinedYear, byte keysMask, int limit, int order) {
@@ -432,34 +429,28 @@ public class AccountService {
         return iterateIndex(keysMask, limit, order, index);
     }
 
-    private void iterateCountryBirth(byte country,int birthYear, TIntIntMap groupsCountMap, byte keysMask) {
-        int[] accounts = indexHolder.countryIndex.get(country);
-        byte year = (byte)(birthYear - 1900);
-        byte[] birthYearIndex = indexHolder.birthYear;
-        if (accounts == null) {
-            return;
+    private List<Group> iterateCountryBirth(byte country,int birthYear, byte keysMask, int limit, int order) {
+        if (country == 0) {
+            return Collections.EMPTY_LIST;
         }
-        for (int id : accounts) {
-            Account account = accountIdMap[id];
-            if (birthYearIndex[account.id] == year) {
-                processRecord2(account, groupsCountMap, keysMask);
-            }
+        if (birthYear < 1950 || birthYear >= 2005) {
+            return Collections.EMPTY_LIST;
         }
+        int number = birthYear - 1950;
+        long[] index = indexHolder.countryBirthGroupsIndex[number*70 + country - 1];
+        return iterateIndex(keysMask, limit, order, index);
     }
 
-    private void iterateCountryJoined(byte country,int joinedYear, TIntIntMap groupsCountMap, byte keysMask) {
-        int[] accounts = indexHolder.countryIndex.get(country);
-        byte year = (byte)(joinedYear - 2000);
-        byte[] joinedYearIndex = indexHolder.joinedYear;
-        if (accounts == null) {
-            return;
+    private List<Group> iterateCountryJoined(byte country,int joinedYear, byte keysMask, int limit, int order) {
+        if (country == 0) {
+            return Collections.EMPTY_LIST;
         }
-        for (int id : accounts) {
-            Account account = accountIdMap[id];
-            if (joinedYearIndex[account.id] == year) {
-                processRecord2(account, groupsCountMap, keysMask);
-            }
+        if (joinedYear < 2011 || joinedYear > 2017) {
+            return Collections.EMPTY_LIST;
         }
+        int number = joinedYear - 2011;
+        long[] index = indexHolder.countryJoinedGroupsIndex[number*70 + country - 1];
+        return iterateIndex(keysMask, limit, order, index);
     }
 
 
@@ -1287,7 +1278,7 @@ public class AccountService {
         }
     }
 
-    private double getSimilarity(Account a1, Account a2) {
+    public double getSimilarity(Account a1, Account a2) {
         int index1 = 0;
         int index2 = 0;
         double similarity = 0;
@@ -1428,7 +1419,10 @@ public class AccountService {
         addToBirthStatusIndex(account);
         addToInteresIndex(account);
         addToInteresJoinedIndex(account);
+        addToInteresBirthIndex(account);
         addToCountryIndex(account);
+        addToCountryJoinedIndex(account);
+        addToCountryBirthIndex(account);
         addToCityIndex(account);
         addToCityBirthIndex(account);
         addToCityJoinedIndex(account);
@@ -1442,7 +1436,10 @@ public class AccountService {
         removeFromBirthStatusIndex(account);
         removeFromInteresIndex(account);
         removeFromInteresJoinedIndex(account);
+        removeFromInteresBirthIndex(account);
         removeFromCountryIndex(account);
+        removeFromCountryJoinedIndex(account);
+        removeFromCountryBirthIndex(account);
         removeFromCityIndex(account);
         removeFromCityBirthIndex(account);
         removeFromCityJoinedIndex(account);
@@ -1507,9 +1504,35 @@ public class AccountService {
         }
     }
 
+    private void addToInteresBirthIndex(Account account) {
+        if (account.interests != null && account.interests.length != 0) {
+            int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
+            for (byte interes: account.interests) {
+                long[] index = indexHolder.interesBirthGroupsIndex[indexNumber*90 + interes - 1];
+                addAccountToGroups(account, index);
+            }
+        }
+    }
+
     private void addToCountryIndex(Account account) {
         if (account.country != 0) {
             long[] index = indexHolder.countryGroupsIndex[account.country - 1];
+            addAccountToGroups(account, index);
+        }
+    }
+
+    private void addToCountryJoinedIndex(Account account) {
+        if (account.country != 0) {
+            int indexNumber = JoinedYearPredicate.calculateYear(account.joined) - 2011;
+            long[] index = indexHolder.countryJoinedGroupsIndex[indexNumber*70 + account.country - 1];
+            addAccountToGroups(account, index);
+        }
+    }
+
+    private void addToCountryBirthIndex(Account account) {
+        if (account.country != 0) {
+            int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
+            long[] index = indexHolder.countryBirthGroupsIndex[indexNumber*70 + account.country - 1];
             addAccountToGroups(account, index);
         }
     }
@@ -1594,9 +1617,35 @@ public class AccountService {
         }
     }
 
+    private void removeFromInteresBirthIndex(Account account) {
+        if (account.interests != null && account.interests.length != 0) {
+            int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
+            for (byte interes: account.interests) {
+                long[] index = indexHolder.interesBirthGroupsIndex[indexNumber*90 + interes - 1];
+                removeAccountFromGroups(account, index);
+            }
+        }
+    }
+
     private void removeFromCountryIndex(Account account) {
         if (account.country != 0) {
             long[] index = indexHolder.countryGroupsIndex[account.country - 1];
+            removeAccountFromGroups(account, index);
+        }
+    }
+
+    private void removeFromCountryJoinedIndex(Account account) {
+        if (account.country != 0) {
+            int indexNumber = JoinedYearPredicate.calculateYear(account.joined) - 2011;
+            long[] index = indexHolder.countryJoinedGroupsIndex[indexNumber*70 + account.country - 1];
+            removeAccountFromGroups(account, index);
+        }
+    }
+
+    private void removeFromCountryBirthIndex(Account account) {
+        if (account.country != 0) {
+            int indexNumber = BirthYearPredicate.calculateYear(account.birth) - 1950;
+            long[] index = indexHolder.countryBirthGroupsIndex[indexNumber*70 + account.country - 1];
             removeAccountFromGroups(account, index);
         }
     }

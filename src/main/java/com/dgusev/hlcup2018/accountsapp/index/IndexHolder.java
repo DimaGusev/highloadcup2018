@@ -728,10 +728,10 @@ public class IndexHolder {
                         tmpJoinedIndex.put(jyear, tmpJoinedIndex.get(jyear) + 1);
                     }
                 }
-
-                System.out.println("Finish init IndexHolder " + new Date());
+                System.out.println("Finish init IndexHolder2 " + new Date());
                 return true;
             }
+
 
             private int indexOf(byte[] values, byte ch) {
 
@@ -964,7 +964,10 @@ public class IndexHolder {
     public long[][] birthStatusGroupsIndex = new long[165][];
     public long[][] interesGroupsIndex = new long[90][];
     public long[][] interesJoinedGroupsIndex = new long[630][];
+    public long[][] interesBirthGroupsIndex = new long[4950][];
     public long[][] countryGroupsIndex = new long[70][];
+    public long[][] countryJoinedGroupsIndex = new long[490][];
+    public long[][] countryBirthGroupsIndex = new long[3850][];
     public long[][] cityGroupsIndex = new long[700][];
     public long[][] cityBirthGroupsIndex = new long[38500][];
     public long[][] cityJoinedGroupsIndex = new long[4900][];
@@ -1032,12 +1035,33 @@ public class IndexHolder {
                     interesJoinedCalculators[i] = new GroupCalculator(interesJoinedGroups[i]);
                     interesJoinedGroupsIndex[i] = new long[9];
                 }
+                long[][][] interesBirthGroups = new long[4950][][];
+                GroupCalculator[] interesBirthCalculators = new GroupCalculator[4950];
+                for (int i = 0; i< 4950; i++) {
+                    interesBirthGroups[i] = new long[9][];
+                    interesBirthCalculators[i] = new GroupCalculator(interesBirthGroups[i]);
+                    interesBirthGroupsIndex[i] = new long[9];
+                }
                 long[][][] countryGroups = new long[70][][];
                 GroupCalculator[] countryCalculators = new GroupCalculator[70];
                 for (int i = 0; i< 70; i++) {
                     countryGroups[i] = new long[9][];
                     countryCalculators[i] = new GroupCalculator(countryGroups[i]);
                     countryGroupsIndex[i] = new long[9];
+                }
+                long[][][] countryJoinedGroups = new long[490][][];
+                GroupCalculator[] countryJoinedCalculators = new GroupCalculator[490];
+                for (int i = 0; i< 490; i++) {
+                    countryJoinedGroups[i] = new long[9][];
+                    countryJoinedCalculators[i] = new GroupCalculator(countryJoinedGroups[i]);
+                    countryJoinedGroupsIndex[i] = new long[9];
+                }
+                long[][][] countryBirthGroups = new long[3850][][];
+                GroupCalculator[] countryBirthCalculators = new GroupCalculator[3850];
+                for (int i = 0; i< 3850; i++) {
+                    countryBirthGroups[i] = new long[9][];
+                    countryBirthCalculators[i] = new GroupCalculator(countryBirthGroups[i]);
+                    countryBirthGroupsIndex[i] = new long[9];
                 }
                 long[][][] cityGroups = new long[700][][];
                 GroupCalculator[] cityCalculators = new GroupCalculator[700];
@@ -1085,10 +1109,13 @@ public class IndexHolder {
                         for (byte interes: account.interests) {
                             interesCalculators[interes - 1].apply(account);
                             interesJoinedCalculators[joinedYearNumber*90 + interes - 1].apply(account);
+                            interesBirthCalculators[birthIndex*90 + interes - 1].apply(account);
                         }
                     }
                     if (account.country != 0) {
                         countryCalculators[account.country - 1].apply(account);
+                        countryJoinedCalculators[joinedYearNumber*70 + account.country - 1].apply(account);
+                        countryBirthCalculators[birthIndex*70 + account.country - 1].apply(account);
                     }
                     if (account.city != 0) {
                         cityCalculators[account.city - 1].apply(account);
@@ -1117,8 +1144,17 @@ public class IndexHolder {
                 for (int i = 0; i< 630; i++) {
                     interesJoinedCalculators[i].complete();
                 }
+                for (int i = 0; i< 4950; i++) {
+                    interesBirthCalculators[i].complete();
+                }
                 for (int i = 0; i< 70; i++) {
                     countryCalculators[i].complete();
+                }
+                for (int i = 0; i< 490; i++) {
+                    countryJoinedCalculators[i].complete();
+                }
+                for (int i = 0; i< 3850; i++) {
+                    countryBirthCalculators[i].complete();
                 }
                 for (int i = 0; i< 700; i++) {
                     cityCalculators[i].complete();
@@ -1241,6 +1277,22 @@ public class IndexHolder {
                     }
                 }
 
+                for (int i = 0; i < 4950; i++) {
+                    for (int j = 0; j < 9; j++) {
+                        if (interesBirthGroups[i][j].length != 0) {
+                            long address = UNSAFE.allocateMemory(2 + 8*interesBirthGroups[i][j].length);
+                            size+=2 + 8*interesBirthGroups[i][j].length;
+                            interesBirthGroupsIndex[i][j] = address;
+                            UNSAFE.putShort(address, (short) interesBirthGroups[i][j].length);
+                            address+=2;
+                            for (int k = 0; k < interesBirthGroups[i][j].length; k++) {
+                                UNSAFE.putLong(address, interesBirthGroups[i][j][k]);
+                                address+=8;
+                            }
+                        }
+                    }
+                }
+
                 for (int i = 0; i < 70; i++) {
                     for (int j = 0; j < 9; j++) {
                         if (countryGroups[i][j].length != 0) {
@@ -1251,6 +1303,38 @@ public class IndexHolder {
                             address+=2;
                             for (int k = 0; k < countryGroups[i][j].length; k++) {
                                 UNSAFE.putLong(address, countryGroups[i][j][k]);
+                                address+=8;
+                            }
+                        }
+                    }
+                }
+
+                for (int i = 0; i < 490; i++) {
+                    for (int j = 0; j < 9; j++) {
+                        if (countryJoinedGroups[i][j].length != 0) {
+                            long address = UNSAFE.allocateMemory(2 + 8*countryJoinedGroups[i][j].length);
+                            size+=2 + 8*countryJoinedGroups[i][j].length;
+                            countryJoinedGroupsIndex[i][j] = address;
+                            UNSAFE.putShort(address, (short) countryJoinedGroups[i][j].length);
+                            address+=2;
+                            for (int k = 0; k < countryJoinedGroups[i][j].length; k++) {
+                                UNSAFE.putLong(address, countryJoinedGroups[i][j][k]);
+                                address+=8;
+                            }
+                        }
+                    }
+                }
+
+                for (int i = 0; i < 3850; i++) {
+                    for (int j = 0; j < 9; j++) {
+                        if (countryBirthGroups[i][j].length != 0) {
+                            long address = UNSAFE.allocateMemory(2 + 8*countryBirthGroups[i][j].length);
+                            size+=2 + 8*countryBirthGroups[i][j].length;
+                            countryBirthGroupsIndex[i][j] = address;
+                            UNSAFE.putShort(address, (short) countryBirthGroups[i][j].length);
+                            address+=2;
+                            for (int k = 0; k < countryBirthGroups[i][j].length; k++) {
+                                UNSAFE.putLong(address, countryBirthGroups[i][j][k]);
                                 address+=8;
                             }
                         }
