@@ -15,7 +15,9 @@ import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.*;
 import gnu.trove.map.hash.*;
 import gnu.trove.set.TIntSet;
+import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TIntHashSet;
+import gnu.trove.set.hash.TLongHashSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import sun.misc.Unsafe;
@@ -50,6 +52,8 @@ public class IndexHolder {
     public TObjectIntMap<byte[]> emailIndex;
     public TObjectIntMap<byte[]> phoneIndex;
     public Map<String, int[]> phoneCodeIndex;
+    public TIntObjectMap<int[]> countryBirthIndex;
+
 
     public int[] nullCountry;
     public int[] nullCity;
@@ -571,6 +575,7 @@ public class IndexHolder {
                 birthYearIndex = null;
                 phoneCodeIndex = null;
                 joinedIndex = null;
+                countryBirthIndex = null;
                 TByteIntMap tmpSexIndex = new TByteIntHashMap();
                 TObjectIntMap<String> tmpPhoneCodeIndex = new TObjectIntHashMap<>();
                 int nullSnameCounter = 0;
@@ -580,6 +585,7 @@ public class IndexHolder {
                 tmpSexIndex.put((byte)1, 0);
                 tmpSexIndex.put((byte)0, 0);
                 TIntIntMap tmpCityIndex = new TIntIntHashMap();
+                TIntIntMap tmpCountryBirthIndex = new TIntIntHashMap();
                 TIntIntMap tmpSnameIndex = new TIntIntHashMap();
                 TIntIntMap tmpJoinedIndex = new TIntIntHashMap();
                 phoneIndex = new TObjectIntHashMap<>();
@@ -601,6 +607,10 @@ public class IndexHolder {
                         tmpBirthYearIndex.put(year, 1);
                     } else {
                         tmpBirthYearIndex.put(year, tmpBirthYearIndex.get(year) + 1);
+                    }
+                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                        int index = 55* account.country + (year - 1950);
+                        tmpCountryBirthIndex.adjustOrPutValue(index, 1, 1);
                     }
                     if (account.joined != Integer.MIN_VALUE) {
                         int jyear = JoinedYearPredicate.calculateYear(account.joined);
@@ -665,6 +675,11 @@ public class IndexHolder {
                     cityIndex.put(entry, new int[tmpCityIndex.get(entry)]);
                     tmpCityIndex.put(entry, 0);
                 }
+                countryBirthIndex = new TIntObjectHashMap<>();
+                for (int entry : tmpCountryBirthIndex.keys()) {
+                    countryBirthIndex.put(entry, new int[tmpCountryBirthIndex.get(entry)]);
+                    tmpCountryBirthIndex.put(entry, 0);
+                }
                 snameIndex = new TIntObjectHashMap<>();
                 for (int entry : tmpSnameIndex.keys()) {
                     snameIndex.put(entry, new int[tmpSnameIndex.get(entry)]);
@@ -702,6 +717,11 @@ public class IndexHolder {
                     int year = BirthYearPredicate.calculateYear( account.birth);
                     birthYearIndex.get(year)[tmpBirthYearIndex.get(year)] = account.id;
                     tmpBirthYearIndex.put(year, tmpBirthYearIndex.get(year) + 1);
+                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                        int index = 55* account.country + (year - 1950);
+                        countryBirthIndex.get(index)[tmpCountryBirthIndex.get(index)] = account.id;
+                        tmpCountryBirthIndex.increment(index);
+                    }
                     if (account.phone != null) {
                         notNullPhone[notNullPhoneCounter++] = account.id;
                         int open = indexOf(account.phone, (byte) '(');

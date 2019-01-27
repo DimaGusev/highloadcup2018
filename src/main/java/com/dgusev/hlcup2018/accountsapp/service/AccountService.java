@@ -74,7 +74,7 @@ public class AccountService {
         if (limit <= 0) {
             throw new BadRequest();
         }
-        if (predicateMask == 3) {
+        if ((predicateMask & 3) == 3) {
             FnameAnyPredicate fnameAnyPredicate = null;
             SexEqPredicate sexEqPredicate = null;
             for (int i = 0; i < predicates.size(); i++) {
@@ -102,6 +102,104 @@ public class AccountService {
             }
             if (allNull) {
                 return Collections.EMPTY_LIST;
+            }
+        }
+        if ((predicateMask & 0b00001100) == 12) {
+            BirthYearPredicate birthYearPredicate = null;
+            CountryEqPredicate countryEqPredicate = null;
+
+            for (int i = 0; i < predicates.size(); i++) {
+                Predicate<Account> predicate = predicates.get(i);
+                if (predicate instanceof BirthYearPredicate) {
+                    birthYearPredicate = (BirthYearPredicate) predicate;
+                } else if (predicate instanceof CountryEqPredicate) {
+                    countryEqPredicate = (CountryEqPredicate) predicate;
+                }
+            }
+            predicates.remove(birthYearPredicate);
+            predicates.remove(countryEqPredicate);
+            int index = 55* countryEqPredicate.getCounty() + (birthYearPredicate.getYear() - 1950);
+            int[] indexArray = indexHolder.countryBirthIndex.get(index);
+            if (indexArray == null) {
+                return Collections.EMPTY_LIST;
+            }
+            Predicate<Account> accountPredicate = andPredicates(predicates);
+            List<Account> result = ObjectPool.acquireFilterList();
+            int count = 0;
+            int indexPosition = 0;
+            final int indexSize = indexArray.length;
+            while (indexPosition < indexSize) {
+                int next = indexArray[indexPosition++];
+                if (next == -1) {
+                    break;
+                }
+
+                Account account = accountIdMap[next];
+                if (accountPredicate.test(account)) {
+                    result.add(account);
+                    count++;
+                    if (count == limit) {
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+
+        if ((predicateMask & 0b00010000) != 0) {
+            if ((predicateMask & 0b00100100) != 0) {
+
+                CountryEqPredicate countryEqPredicate = null;
+                CityEqPredicate cityEqPredicate = null;
+                InterestsContainsPredicate interestsContainsPredicate = null;
+                AbstractPredicate usefulIndex = null;
+                for (int i = 0; i < predicates.size(); i++) {
+                    Predicate<Account> predicate =  predicates.get(i);
+                    if (predicate instanceof AbstractPredicate) {
+                        if (predicate instanceof CountryEqPredicate) {
+                            countryEqPredicate = (CountryEqPredicate) predicate;
+                        }
+                        if (predicate instanceof CityEqPredicate) {
+                            cityEqPredicate = (CityEqPredicate) predicate;
+                        }
+                        if (predicate instanceof InterestsContainsPredicate) {
+                            interestsContainsPredicate = (InterestsContainsPredicate) predicate;
+                        }
+                        AbstractPredicate abstractPredicate = (AbstractPredicate) predicate;
+                        if (abstractPredicate.getIndexCordiality() != Integer.MAX_VALUE) {
+                            if (usefulIndex == null) {
+                                usefulIndex = abstractPredicate;
+                            } else {
+                                if (abstractPredicate.getIndexCordiality() < usefulIndex.getIndexCordiality()) {
+                                    usefulIndex = abstractPredicate;
+                                }
+                            }
+                        }
+                    }
+                }
+                if (usefulIndex == countryEqPredicate || usefulIndex == cityEqPredicate) {
+                   IndexScan indexScan = interestsContainsPredicate.createIndexScan(indexHolder);
+                   predicates.remove(interestsContainsPredicate);
+                    Predicate<Account> accountPredicate = andPredicates(predicates);
+                    List<Account> result = ObjectPool.acquireFilterList();
+                    int count = 0;
+                    while (true) {
+                        int next = indexScan.getNext();
+                        if (next == -1) {
+                            break;
+                        }
+                        Account account = accountIdMap[next];
+                        if (accountPredicate.test(account)) {
+                            result.add(account);
+                            count++;
+                            if (count == limit) {
+                                break;
+                            }
+                        }
+                    }
+                    return result;
+                }
+
             }
         }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);

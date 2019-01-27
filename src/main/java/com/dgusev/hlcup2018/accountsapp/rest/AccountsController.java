@@ -26,10 +26,10 @@ import java.util.stream.Collectors;
 @Component
 public class AccountsController {
 
-    private static final byte[] EMPTY_ACCOUNTS_LIST = "{\"accounts\": []}".getBytes();
+    public static final byte[] EMPTY_ACCOUNTS_LIST = "{\"accounts\": []}".getBytes();
     private static final byte[] ACCOUNTS_LIST_START = "{\"accounts\": [".getBytes();
     private static final byte[] LIST_END = "]}".getBytes();
-    private static final byte[] EMPTY_GROUPS_LIST = "{\"groups\": []}".getBytes();
+    public static final byte[] EMPTY_GROUPS_LIST = "{\"groups\": []}".getBytes();
     private static final byte[] GROUPS_LIST_START = "{\"groups\": [".getBytes();
 
     @Autowired
@@ -40,12 +40,6 @@ public class AccountsController {
 
     @Autowired
     private GroupFormatter groupFormatter;
-
-    @Autowired
-    private AccountParser accountParser;
-
-    @Autowired
-    private LikeParser likeParser;
 
     @Autowired
     private Dictionary dictionary;
@@ -156,6 +150,7 @@ public class AccountsController {
                 }
             } else if (name.startsWith("country_")) {
                 if (name.equals("country_eq")) {
+                    predicateMask|=1<<2;
                     byte countryIndex = dictionary.getCountry(parameter.getValue());
                     predicates.add(new CountryEqPredicate(countryIndex));
                 } else if (name.equals("country_null")) {
@@ -165,6 +160,7 @@ public class AccountsController {
                 }
             } else if (name.startsWith("city_")) {
                 if (name.equals("city_eq")) {
+                    predicateMask|=1<<5;
                     predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
                 } else if (name.equals("city_any")) {
                     String[] cities = parameter.getValue().split(",");
@@ -184,12 +180,14 @@ public class AccountsController {
                 } else if (name.equals("birth_gt")) {
                     predicates.add(new BirthGtPredicate(Integer.parseInt(parameter.getValue())));
                 } else if (name.equals("birth_year")) {
+                    predicateMask|=1<<3;
                     predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("interests_")) {
                 if (name.equals("interests_contains")) {
+                    predicateMask|=1<<4;
                     String[] interests = parameter.getValue().split(",");
                     byte[] values = new byte[interests.length];
                     for (int i = 0; i < interests.length; i++) {
@@ -225,13 +223,11 @@ public class AccountsController {
             }
         }
         if (empty) {
-            System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
-            return EMPTY_ACCOUNTS_LIST.length;
+            return 0;
         }
         List<Account> result = accountService.filter(predicates, limit, predicateMask);
         if (result.isEmpty()) {
-            System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
-            return EMPTY_ACCOUNTS_LIST.length;
+            return 0;
         } else {
             int index = 0;
             System.arraycopy(ACCOUNTS_LIST_START, 0, responseBuf, 0, ACCOUNTS_LIST_START.length);
@@ -348,8 +344,7 @@ public class AccountsController {
 
             List<Group> groups = accountService.group(keys, sex, status, country, city, birthYear, interes, like, joinedYear, order, limit, keysMask, predicatesMask);
             if (groups.isEmpty()) {
-                System.arraycopy(EMPTY_GROUPS_LIST, 0, responseBuf, 0, EMPTY_GROUPS_LIST.length);
-                return EMPTY_GROUPS_LIST.length;
+                return 0;
             } else {
                 int index = 0;
                 System.arraycopy(GROUPS_LIST_START, 0, responseBuf, 0, GROUPS_LIST_START.length);
@@ -399,8 +394,7 @@ public class AccountsController {
 
             List<Account> result = accountService.recommend(id, country, city, limit);
             if (result.isEmpty()) {
-                System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
-                return EMPTY_ACCOUNTS_LIST.length;
+                return 0;
             } else {
                 int index = 0;
                 System.arraycopy(ACCOUNTS_LIST_START, 0, responseBuf, 0, ACCOUNTS_LIST_START.length);
@@ -452,8 +446,7 @@ public class AccountsController {
 
         List<Account> result = accountService.suggest(id, country, city, limit);
         if (result.isEmpty()) {
-            System.arraycopy(EMPTY_ACCOUNTS_LIST, 0, responseBuf, 0, EMPTY_ACCOUNTS_LIST.length);
-            return EMPTY_ACCOUNTS_LIST.length;
+            return 0;
         } else {
             int index = 0;
             System.arraycopy(ACCOUNTS_LIST_START, 0, responseBuf, 0, ACCOUNTS_LIST_START.length);

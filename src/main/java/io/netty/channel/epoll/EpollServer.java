@@ -195,7 +195,7 @@ public class EpollServer {
             RequestHandler.attachments=RequestHandler.attachments;
             LinuxSocket linuxSocket = new LinuxSocket(clientFd);
             linuxSocket.setTcpNoDelay(true);
-            //linuxSocket.setSoLinger(0);
+            linuxSocket.setSoLinger(0);
             clients.put(clientFd, linuxSocket);
             Native.epollCtlAdd(epollFd.intValue(), clientFd, Native.EPOLLIN | Native.EPOLLET | Native.EPOLLRDHUP);
         }

@@ -48,7 +48,11 @@ public class InterestsContainsPredicate extends AbstractPredicate {
 
     @Override
     public int getIndexCordiality() {
-        return 40000/ (3*interests.length);
+        if (interests.length == 1) {
+            return 40000;
+        } else {
+            return (int) (40000 / Math.pow(3, interests.length));
+        }
     }
 
     @Override

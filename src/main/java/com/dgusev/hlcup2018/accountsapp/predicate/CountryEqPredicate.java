@@ -20,7 +20,7 @@ public class CountryEqPredicate extends AbstractPredicate {
         return Account.country == country;
     }
 
-    public byte  getCounty() {
+    public byte getCounty() {
         return country;
     }
 

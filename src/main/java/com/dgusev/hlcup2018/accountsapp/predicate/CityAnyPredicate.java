@@ -37,7 +37,11 @@ public class CityAnyPredicate extends AbstractPredicate {
 
     @Override
     public int getIndexCordiality() {
-        return 2200 * cities.length;
+        if (cities.length == 1) {
+            return 2200;
+        } else {
+            return (int) ((2200 * cities.length) * Math.pow(1.5, cities.length));
+        }
     }
 
     @Override

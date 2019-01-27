@@ -48,6 +48,11 @@ public class RequestHandler {
     private static final byte[] OK_START = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: ".getBytes();
     private static final byte[] HEADERS_TERMINATOR = "\r\n\r\n".getBytes();
 
+
+    public static final byte[] EMPTY_ACCOUNTS_LIST = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 16\r\n\r\n{\"accounts\": []}".getBytes();
+    public static final byte[] EMPTY_GROUPS_LIST = "HTTP/1.0 200 OK\r\nConnection: keep-alive\r\nContent-Type: application/json\r\nContent-Length: 14\r\n\r\n{\"groups\": []}".getBytes();
+
+
     private static final byte[] CONTENT_LENGTH = "Content-Length: ".getBytes();
     private static final byte[] QUERY_ID = "query_id=".getBytes();
 
@@ -55,6 +60,42 @@ public class RequestHandler {
     private static final byte[] GROUP = "/accounts/group/".getBytes();
     private static final byte[] NEW = "/accounts/new/".getBytes();
     private static final byte[] LIKES = "/accounts/likes/".getBytes();
+
+    private static final long RESPONSE_201_ADDRESS;
+    private static final long RESPONSE_202_ADDRESS;
+    private static final long RESPONSE_400_ADDRESS;
+    private static final long RESPONSE_404_ADDRESS;
+
+    private static final long EMPTY_ACCOUNTS_LIST_ADDRESS;
+    private static final long EMPTY_GROUPS_LIST_ADDRESS;
+
+
+    static {
+        RESPONSE_201_ADDRESS = UNSAFE.allocateMemory(RESPONSE_201.length);
+        for (int i = 0; i < RESPONSE_201.length; i++) {
+            UNSAFE.putByte(RESPONSE_201_ADDRESS + i, RESPONSE_201[i]);
+        }
+        RESPONSE_202_ADDRESS = UNSAFE.allocateMemory(RESPONSE_202.length);
+        for (int i = 0; i < RESPONSE_202.length; i++) {
+            UNSAFE.putByte(RESPONSE_202_ADDRESS + i, RESPONSE_202[i]);
+        }
+        RESPONSE_400_ADDRESS = UNSAFE.allocateMemory(BAD_REQUEST.length);
+        for (int i = 0; i < BAD_REQUEST.length; i++) {
+            UNSAFE.putByte(RESPONSE_400_ADDRESS + i, BAD_REQUEST[i]);
+        }
+        RESPONSE_404_ADDRESS = UNSAFE.allocateMemory(NOT_FOUND.length);
+        for (int i = 0; i < NOT_FOUND.length; i++) {
+            UNSAFE.putByte(RESPONSE_404_ADDRESS + i, NOT_FOUND[i]);
+        }
+        EMPTY_ACCOUNTS_LIST_ADDRESS = UNSAFE.allocateMemory(EMPTY_ACCOUNTS_LIST.length);
+        for (int i = 0; i < EMPTY_ACCOUNTS_LIST.length; i++) {
+            UNSAFE.putByte(EMPTY_ACCOUNTS_LIST_ADDRESS + i, EMPTY_ACCOUNTS_LIST[i]);
+        }
+        EMPTY_GROUPS_LIST_ADDRESS = UNSAFE.allocateMemory(EMPTY_GROUPS_LIST.length);
+        for (int i = 0; i < EMPTY_GROUPS_LIST.length; i++) {
+            UNSAFE.putByte(EMPTY_GROUPS_LIST_ADDRESS + i, EMPTY_GROUPS_LIST[i]);
+        }
+    }
 
     private ThreadLocal<byte[]> responseArray = new ThreadLocal<byte[]>() {
         @Override
@@ -126,84 +167,167 @@ public class RequestHandler {
                 long t1 = System.nanoTime();
                 int queryId = readQueryId(buf, queryStart, queryFinish);
                 long addr = cache[queryId];
-                addr = 0;
+                //addr = 0;
                 if (addr != 0) {
                     int size = UNSAFE.getShort(addr);
-                    UNSAFE.copyMemory(addr + 2, address, size);
-                    byteBuffer.position(size);
-                    writeResponse(socketChannel, fd, byteBuffer);
+                    if (size > 0) {
+                        if (socketChannel != null) {
+                            UNSAFE.copyMemory(addr + 2, address, size);
+                            byteBuffer.position(size);
+                            writeResponseNio(socketChannel, byteBuffer);
+                        } else {
+                            writeResponseNative(fd, addr + 2, size);
+                        }
+                    } else if (size == -1) {
+                        if (socketChannel != null) {
+                            writeEmptyAccountsNio(socketChannel, byteBuffer);
+                        } else {
+                            writeEmptyAccountsNative(fd);
+                        }
+                    } else {
+                        if (socketChannel != null) {
+                            writeEmptyGroupsNio(socketChannel, byteBuffer);
+                        } else {
+                            writeEmptyGroupsNative(fd);
+                        }
+                    }
                 } else {
                     if (equals(buf, queryStart, endPathIndex, FILTER)) {
                         Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
                         byte[] responseArr = responseArray.get();
                         int bodyLength = accountsController.accountsFilter(params, responseArr);
-                        byteBuffer.put(OK_START);
-                        encodeInt(bodyLength, byteBuffer);
-                        byteBuffer.put(HEADERS_TERMINATOR);
-                        byteBuffer.limit(byteBuffer.position() + bodyLength);
-                        byteBuffer.put(responseArr, 0, bodyLength);
-                        int position = byteBuffer.position();
-                        writeResponse(socketChannel, fd, byteBuffer);
-                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
-                        UNSAFE.putShort(cacheAddr, (short)position);
-                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
-                        cache[queryId] = cacheAddr;
-                        cache = cache;
+                        if (bodyLength > 0) {
+                            byteBuffer.put(OK_START);
+                            encodeInt(bodyLength, byteBuffer);
+                            byteBuffer.put(HEADERS_TERMINATOR);
+                            byteBuffer.limit(byteBuffer.position() + bodyLength);
+                            byteBuffer.put(responseArr, 0, bodyLength);
+                            int position = byteBuffer.position();
+                            if (socketChannel != null) {
+                                writeResponseNio(socketChannel, byteBuffer);
+                            } else {
+                                writeResponseNative(fd, byteBuffer);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                            UNSAFE.putShort(cacheAddr, (short)position);
+                            UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        } else {
+                            if (socketChannel != null) {
+                                writeEmptyAccountsNio(socketChannel, byteBuffer);
+                            } else {
+                                writeEmptyAccountsNative(fd);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2);
+                            UNSAFE.putShort(cacheAddr, (short)-1);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        }
+
                     } else if (equals(buf, queryStart, endPathIndex, GROUP)) {
                         Map<String, String> params = QueryParser.parse(buf, startParameters, queryFinish);
                         byte[] responseArr = responseArray.get();
                         int bodyLength = accountsController.group(params, responseArr);
-                        byteBuffer.put(OK_START);
-                        encodeInt(bodyLength, byteBuffer);
-                        byteBuffer.put(HEADERS_TERMINATOR);
-                        byteBuffer.limit(byteBuffer.position() + bodyLength);
-                        byteBuffer.put(responseArr, 0, bodyLength);
-                        int position = byteBuffer.position();
-                        writeResponse(socketChannel, fd, byteBuffer);
-                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
-                        UNSAFE.putShort(cacheAddr, (short)position);
-                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
-                        cache[queryId] = cacheAddr;
-                        cache = cache;
+                        if (bodyLength > 0) {
+                            byteBuffer.put(OK_START);
+                            encodeInt(bodyLength, byteBuffer);
+                            byteBuffer.put(HEADERS_TERMINATOR);
+                            byteBuffer.limit(byteBuffer.position() + bodyLength);
+                            byteBuffer.put(responseArr, 0, bodyLength);
+                            int position = byteBuffer.position();
+                            if (socketChannel != null) {
+                                writeResponseNio(socketChannel, byteBuffer);
+                            } else {
+                                writeResponseNative(fd, byteBuffer);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                            UNSAFE.putShort(cacheAddr, (short) position);
+                            UNSAFE.copyMemory(address, cacheAddr + 2, (short) position);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        } else {
+                            if (socketChannel != null) {
+                                writeEmptyGroupsNio(socketChannel, byteBuffer);
+                            } else {
+                                writeEmptyGroupsNative(fd);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2);
+                            UNSAFE.putShort(cacheAddr, (short)-2);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        }
                     } else if (contains(buf, queryStart, endPathIndex, "recommend")) {
                         int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                         int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
                         byte[] responseArr = responseArray.get();
                         int bodyLength = accountsController.recommend(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
-                        byteBuffer.put(OK_START);
-                        encodeInt(bodyLength, byteBuffer);
-                        byteBuffer.put(HEADERS_TERMINATOR);
-                        byteBuffer.limit(byteBuffer.position() + bodyLength);
-                        byteBuffer.put(responseArr, 0, bodyLength);
-                        int position = byteBuffer.position();
-                        writeResponse(socketChannel, fd, byteBuffer);
-                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
-                        UNSAFE.putShort(cacheAddr, (short)position);
-                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
-                        cache[queryId] = cacheAddr;
-                        cache = cache;
+                        if (bodyLength > 0) {
+                            byteBuffer.put(OK_START);
+                            encodeInt(bodyLength, byteBuffer);
+                            byteBuffer.put(HEADERS_TERMINATOR);
+                            byteBuffer.limit(byteBuffer.position() + bodyLength);
+                            byteBuffer.put(responseArr, 0, bodyLength);
+                            int position = byteBuffer.position();
+                            if (socketChannel != null) {
+                                writeResponseNio(socketChannel, byteBuffer);
+                            } else {
+                                writeResponseNative(fd, byteBuffer);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                            UNSAFE.putShort(cacheAddr, (short) position);
+                            UNSAFE.copyMemory(address, cacheAddr + 2, (short) position);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        } else {
+                            if (socketChannel != null) {
+                                writeEmptyAccountsNio(socketChannel, byteBuffer);
+                            } else {
+                                writeEmptyAccountsNative(fd);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2);
+                            UNSAFE.putShort(cacheAddr, (short)-1);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        }
                     } else if (contains(buf, queryStart, endPathIndex, "suggest")) {
                         int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
                         int id = decodeInt(buf, queryStart + 10, fin - queryStart - 10);
                         byte[] responseArr = responseArray.get();
                         int bodyLength = accountsController.suggest(QueryParser.parse(buf, startParameters, queryFinish), id, responseArr);
-                        byteBuffer.put(OK_START);
-                        encodeInt(bodyLength, byteBuffer);
-                        byteBuffer.put(HEADERS_TERMINATOR);
-                        byteBuffer.limit(byteBuffer.position() + bodyLength);
-                        byteBuffer.put(responseArr, 0, bodyLength);
-                        int position = byteBuffer.position();
-                        writeResponse(socketChannel, fd, byteBuffer);
-                        long cacheAddr = UNSAFE.allocateMemory(2 + position);
-                        UNSAFE.putShort(cacheAddr, (short)position);
-                        UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
-                        cache[queryId] = cacheAddr;
-                        cache = cache;
+                        if (bodyLength > 0) {
+                            byteBuffer.put(OK_START);
+                            encodeInt(bodyLength, byteBuffer);
+                            byteBuffer.put(HEADERS_TERMINATOR);
+                            byteBuffer.limit(byteBuffer.position() + bodyLength);
+                            byteBuffer.put(responseArr, 0, bodyLength);
+                            int position = byteBuffer.position();
+                            if (socketChannel != null) {
+                                writeResponseNio(socketChannel, byteBuffer);
+                            } else {
+                                writeResponseNative(fd, byteBuffer);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2 + position);
+                            UNSAFE.putShort(cacheAddr, (short) position);
+                            UNSAFE.copyMemory(address, cacheAddr + 2, (short) position);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        } else {
+                            if (socketChannel != null) {
+                                writeEmptyAccountsNio(socketChannel, byteBuffer);
+                            } else {
+                                writeEmptyAccountsNative(fd);
+                            }
+                            long cacheAddr = UNSAFE.allocateMemory(2);
+                            UNSAFE.putShort(cacheAddr, (short)-1);
+                            cache[queryId] = cacheAddr;
+                            cache = cache;
+                        }
                     } else {
                         throw NotFoundRequest.INSTANCE;
                     }
                     long t2 = System.nanoTime();
-                    if (t2 - t1 > 5000000) {
+                    if (t2 - t1 > 6000000) {
                         System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
                     }
                 }
@@ -227,12 +351,20 @@ public class RequestHandler {
                 if (equals(buf, queryStart, endPathIndex, NEW)) {
                     AccountDTO accountDTO = accountParser.parse(buf, pointer, endIndex);
                     accountService.addValidate(accountDTO);
-                    writeResponse(socketChannel, fd, byteBuffer, RESPONSE_201);
+                    if (socketChannel != null) {
+                        writeResponseNio(socketChannel, byteBuffer, RESPONSE_201);
+                    } else {
+                        writeResponseNative(fd, RESPONSE_201_ADDRESS, RESPONSE_201.length);
+                    }
                     accountService.schedule(() -> {accountService.add(accountDTO);});
                 } else if (equals(buf, queryStart, endPathIndex, LIKES)) {
                     List<LikeRequest> requests = likeParser.parse(buf, pointer, endIndex);
                     accountService.likeValidate(requests);
-                    writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
+                    if (socketChannel != null) {
+                        writeResponseNio(socketChannel, byteBuffer, RESPONSE_202);
+                    } else {
+                        writeResponseNative(fd, RESPONSE_202_ADDRESS, RESPONSE_202.length);
+                    }
                     accountService.schedule(() -> {accountService.like(requests);});
                 } else {
                     int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
@@ -245,7 +377,11 @@ public class RequestHandler {
                     AccountDTO accountDTO = accountParser.parse(buf, pointer, endIndex);
                     accountDTO.id = id;
                     accountService.updateValidate(accountDTO);
-                    writeResponse(socketChannel, fd, byteBuffer, RESPONSE_202);
+                    if (socketChannel != null) {
+                        writeResponseNio(socketChannel, byteBuffer, RESPONSE_202);
+                    } else {
+                        writeResponseNative(fd, RESPONSE_202_ADDRESS, RESPONSE_202.length);
+                    }
                     accountService.schedule(() -> {accountService.update(accountDTO);});
                 }
             } else {
@@ -259,41 +395,77 @@ public class RequestHandler {
                 }
             }
         } catch (BadRequest badRequest) {
-            writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
+            if (socketChannel != null) {
+                writeResponseNio(socketChannel, byteBuffer, BAD_REQUEST);
+            } else {
+                writeResponseNative(fd, RESPONSE_400_ADDRESS, BAD_REQUEST.length);
+            }
         } catch (NumberFormatException nfex) {
             if (buf[0] == 'P') {
                 System.out.println("1" + new String(buf, 0, length));
             }
-            writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
+            if (socketChannel != null) {
+                writeResponseNio(socketChannel, byteBuffer, BAD_REQUEST);
+            } else {
+                writeResponseNative(fd, RESPONSE_400_ADDRESS, BAD_REQUEST.length);
+            }
         } catch (NotFoundRequest notFoundRequest) {
-            writeResponse(socketChannel, fd, byteBuffer, NOT_FOUND);
+            if (socketChannel != null) {
+                writeResponseNio(socketChannel, byteBuffer, NOT_FOUND);
+            } else {
+                writeResponseNative(fd, RESPONSE_404_ADDRESS, NOT_FOUND.length);
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
-            writeResponse(socketChannel, fd, byteBuffer, BAD_REQUEST);
+            if (socketChannel != null) {
+                writeResponseNio(socketChannel, byteBuffer, BAD_REQUEST);
+            } else {
+                writeResponseNative(fd, RESPONSE_400_ADDRESS, BAD_REQUEST.length);
+            }
         }
 
     }
 
+    private void writeEmptyAccountsNio(SocketChannel socketChannel, ByteBuffer byteBuffer) throws IOException {
+        byteBuffer.put(EMPTY_ACCOUNTS_LIST);
+        byteBuffer.flip();
+        socketChannel.write(byteBuffer);
+    }
 
-    private void writeResponse(SocketChannel socketChannel, LinuxSocket fd, ByteBuffer byteBuffer, byte[] response) throws IOException {
+    private void writeEmptyAccountsNative(LinuxSocket fd) throws IOException {
+        fd.writeAddress(EMPTY_ACCOUNTS_LIST_ADDRESS, 0, EMPTY_ACCOUNTS_LIST.length);
+    }
+
+    private void writeEmptyGroupsNio(SocketChannel socketChannel, ByteBuffer byteBuffer) throws IOException {
+        byteBuffer.put(EMPTY_GROUPS_LIST);
+        byteBuffer.flip();
+        socketChannel.write(byteBuffer);
+    }
+
+    private void writeEmptyGroupsNative(LinuxSocket fd) throws IOException {
+        fd.writeAddress(EMPTY_GROUPS_LIST_ADDRESS, 0, EMPTY_GROUPS_LIST.length);
+    }
+
+    private void writeResponseNio(SocketChannel socketChannel, ByteBuffer byteBuffer, byte[] response) throws IOException {
         byteBuffer.clear();
         byteBuffer.put(response);
         byteBuffer.flip();
-        if (socketChannel != null) {
-            socketChannel.write(byteBuffer);
-        } else {
-            fd.write(byteBuffer, byteBuffer.position(), byteBuffer.limit());
-        }
+        socketChannel.write(byteBuffer);
     }
 
-    private void writeResponse(SocketChannel socketChannel, LinuxSocket fd, ByteBuffer byteBuffer) throws IOException {
-        byteBuffer.flip();
-        if (socketChannel != null) {
-            socketChannel.write(byteBuffer);
 
-        } else {
-            fd.write(byteBuffer, byteBuffer.position(), byteBuffer.limit());
-        }
+    private void writeResponseNio(SocketChannel socketChannel, ByteBuffer byteBuffer) throws IOException {
+        byteBuffer.flip();
+        socketChannel.write(byteBuffer);
+    }
+
+    private void writeResponseNative(LinuxSocket fd, ByteBuffer byteBuffer) throws IOException {
+        byteBuffer.flip();
+        fd.write(byteBuffer, byteBuffer.position(), byteBuffer.limit());
+    }
+
+    private void writeResponseNative(LinuxSocket fd, long address, int size) throws IOException {
+        fd.writeAddress(address, 0, size);
     }
 
     private int indexOf(byte[] arr, int from, int to, char val) {
