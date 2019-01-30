@@ -104,10 +104,7 @@ public class AccountsController {
         List<AbstractPredicate> predicates = predicateList.get();
         predicates.clear();
         int limit = 0;
-        List<String> fields = fieldsList.get();
-        fields.clear();
-        fields.add("id");
-        fields.add("email");
+        int fieldsMap = 0;
         int predicateMask = 0;
         boolean empty = false;
         AbstractPredicate[] predicateTemplates = predicateTemplateArray.get();
@@ -120,11 +117,8 @@ public class AccountsController {
                 limit = Integer.parseInt(parameter.getValue());
                 continue;
             }
-            String field = name.substring(0, name.indexOf("_"));
-            if (!fields.contains(field)) {
-                fields.add(field);
-            }
             if (name.startsWith("sex_")) {
+                fieldsMap|=8;
                 if (name.equals("sex_eq")) {
                     predicates.add(((SexEqPredicate)predicateTemplates[SexEqPredicate.ORDER]).setValue(ConvertorUtills.convertSex(parameter.getValue())));
                     predicateMask |=2;
@@ -146,6 +140,7 @@ public class AccountsController {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("status_")) {
+                fieldsMap|=128;
                 if (name.equals("status_eq")) {
                     predicates.add(((StatusEqPredicate)predicateTemplates[StatusEqPredicate.ORDER]).setValue(ConvertorUtills.convertStatusNumber(parameter.getValue())));
                 } else if (name.equals("status_neq")) {
@@ -155,6 +150,7 @@ public class AccountsController {
                 }
 
             } else if (name.startsWith("fname_")) {
+                fieldsMap|=1;
                 if (name.equals("fname_eq")) {
                     predicates.add(((FnameEqPredicate)predicateTemplates[FnameEqPredicate.ORDER]).setValue(dictionary.getFname(parameter.getValue())));
                 } else if (name.equals("fname_any")) {
@@ -172,6 +168,7 @@ public class AccountsController {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("sname_")) {
+                fieldsMap|=2;
                 if (name.equals("sname_eq")) {
                     predicates.add(((SnameEqPredicate)predicateTemplates[SnameEqPredicate.ORDER]).setValue(dictionary.getFname(parameter.getValue())));
                 } else if (name.equals("sname_starts")) {
@@ -183,6 +180,7 @@ public class AccountsController {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("phone_")) {
+                fieldsMap|=4;
                 if (name.equals("phone_code")) {
                     predicates.add(((PhoneCodePredicate)predicateTemplates[PhoneCodePredicate.ORDER]).setValue(parameter.getValue()));
                 } else if (name.equals("phone_null")) {
@@ -191,6 +189,7 @@ public class AccountsController {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("country_")) {
+                fieldsMap|=32;
                 if (name.equals("country_eq")) {
                     predicateMask|=1<<2;
                     byte countryIndex = dictionary.getCountry(parameter.getValue());
@@ -201,10 +200,12 @@ public class AccountsController {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("city_")) {
+                fieldsMap|=64;
                 if (name.equals("city_eq")) {
                     predicateMask|=1<<5;
                     predicates.add(((CityEqPredicate)predicateTemplates[CityEqPredicate.ORDER]).setValue(dictionary.getCity(parameter.getValue())));
                 } else if (name.equals("city_any")) {
+                    predicateMask|=1<<6;
                     String[] cities = parameter.getValue().split(",");
                     int[] values = new int[cities.length];
                     for (int i = 0; i < cities.length; i++) {
@@ -217,6 +218,7 @@ public class AccountsController {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("birth_")) {
+                fieldsMap|=16;
                 if (name.equals("birth_lt")) {
                     predicates.add(((BirthLtPredicate)predicateTemplates[BirthLtPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else if (name.equals("birth_gt")) {
@@ -254,6 +256,7 @@ public class AccountsController {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("premium_")) {
+                fieldsMap|=256;
                 if (name.equals("premium_now")) {
                     predicates.add(((PremiumNowPredicate)predicateTemplates[PremiumNowPredicate.ORDER]));
                 } else if (name.equals("premium_null")) {
@@ -279,7 +282,7 @@ public class AccountsController {
                 if (i != 0) {
                     responseBuf[index++] = ',';
                 }
-                index = accountFormatter.format(result.get(i), fields, responseBuf, index);
+                index = accountFormatter.format(result.get(i), fieldsMap, responseBuf, index);
             }
             System.arraycopy(LIST_END, 0, responseBuf, index, LIST_END.length);
             index+=LIST_END.length;

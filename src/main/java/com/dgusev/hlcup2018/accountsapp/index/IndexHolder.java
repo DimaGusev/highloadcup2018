@@ -58,6 +58,8 @@ public class IndexHolder {
     public TObjectIntMap<byte[]> phoneIndex;
     public Map<String, int[]> phoneCodeIndex;
     public TIntObjectMap<int[]> countryBirthIndex;
+    public TIntObjectMap<int[]> cityBirthYearIndex;
+
 
 
     public int[] nullCountry;
@@ -471,11 +473,7 @@ public class IndexHolder {
                     tmpStatusIndex.put(account.status, tmpStatusIndex.get(account.status) + 1);
                     if (account.interests != null) {
                         for (byte interes : account.interests) {
-                            int value = account.id;
-                            if (account.sex) {
-                                value |= 1 << 31;
-                            }
-                            interestsIndex.get(interes)[tmpInterestsIndex.get(interes)] = value;
+                            interestsIndex.get(interes)[tmpInterestsIndex.get(interes)] = account.id;
                             tmpInterestsIndex.put(interes, tmpInterestsIndex.get(interes) + 1);
                             if (account.sex) {
                                 if (account.premium) {
@@ -606,6 +604,7 @@ public class IndexHolder {
                 phoneCodeIndex = null;
                 joinedIndex = null;
                 countryBirthIndex = null;
+                cityBirthYearIndex = null;
                 TByteIntMap tmpSexIndex = new TByteIntHashMap();
                 TObjectIntMap<String> tmpPhoneCodeIndex = new TObjectIntHashMap<>();
                 int nullSnameCounter = 0;
@@ -616,6 +615,7 @@ public class IndexHolder {
                 tmpSexIndex.put((byte)0, 0);
                 TIntIntMap tmpCityIndex = new TIntIntHashMap();
                 TIntIntMap tmpCountryBirthIndex = new TIntIntHashMap();
+                TIntIntMap tmpCityBirthIndex = new TIntIntHashMap();
                 TIntIntMap tmpSnameIndex = new TIntIntHashMap();
                 TIntIntMap tmpJoinedIndex = new TIntIntHashMap();
                 phoneIndex = new TObjectIntHashMap<>();
@@ -641,6 +641,10 @@ public class IndexHolder {
                     if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                         int index = 55* account.country + (year - 1950);
                         tmpCountryBirthIndex.adjustOrPutValue(index, 1, 1);
+                    }
+                    if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                        int index = 55* account.city + (year - 1950);
+                        tmpCityBirthIndex.adjustOrPutValue(index, 1, 1);
                     }
                     if (account.joined != Integer.MIN_VALUE) {
                         int jyear = JoinedYearPredicate.calculateYear(account.joined);
@@ -710,6 +714,11 @@ public class IndexHolder {
                     countryBirthIndex.put(entry, new int[tmpCountryBirthIndex.get(entry)]);
                     tmpCountryBirthIndex.put(entry, 0);
                 }
+                cityBirthYearIndex = new TIntObjectHashMap<>();
+                for (int entry : tmpCityBirthIndex.keys()) {
+                    cityBirthYearIndex.put(entry, new int[tmpCityBirthIndex.get(entry)]);
+                    tmpCityBirthIndex.put(entry, 0);
+                }
                 snameIndex = new TIntObjectHashMap<>();
                 for (int entry : tmpSnameIndex.keys()) {
                     snameIndex.put(entry, new int[tmpSnameIndex.get(entry)]);
@@ -751,6 +760,11 @@ public class IndexHolder {
                         int index = 55* account.country + (year - 1950);
                         countryBirthIndex.get(index)[tmpCountryBirthIndex.get(index)] = account.id;
                         tmpCountryBirthIndex.increment(index);
+                    }
+                    if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                        int index = 55* account.city + (year - 1950);
+                        cityBirthYearIndex.get(index)[tmpCityBirthIndex.get(index)] = account.id;
+                        tmpCityBirthIndex.increment(index);
                     }
                     if (account.phone != null) {
                         notNullPhone[notNullPhoneCounter++] = account.id;

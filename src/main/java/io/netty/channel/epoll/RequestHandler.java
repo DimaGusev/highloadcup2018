@@ -346,7 +346,7 @@ public class RequestHandler {
                         throw NotFoundRequest.INSTANCE;
                     }
                     long t2 = System.nanoTime();
-                    if (t2 - t1 > 3500000 && queryId != -1) {
+                    if (t2 - t1 > 4000000 && queryId != -1) {
                         System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
                     }
                 }

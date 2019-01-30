@@ -40,80 +40,73 @@ public class AccountFormatter {
     @Autowired
     private Dictionary dictionary;
 
-    public int format(Account account, List<String> fields, byte[] arr, int initialPosition) {
+    public int format(Account account, int fieldsMap, byte[] arr, int initialPosition) {
         int index = initialPosition;
         arr[index++] = '{';
-        boolean first = true;
-        for (int i = 0; i < fields.size(); i++) {
-            String field = fields.get(i);
-            if (field.equals("id")) {
-                index = writeField(arr, index, first, ID);
-                index = encodeLong(arr, index, account.id);
-                first = false;
-            } else if (field.equals("email")) {
-                index = writeField(arr, index, first, EMAIL);
-                index = writeStringValue(arr, index, account.email);
-                first = false;
-            } else if (field.equals("fname")) {
-                if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                    index = writeField(arr, index, first, FNAME);
-                    index = writeStringValue(arr, index, dictionary.getFnameBytes(account.fname));
-                    first = false;
-                }
-            } else if (field.equals("sname")) {
-                if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                    index = writeField(arr, index, first, SNAME);
-                    index = writeStringValue(arr, index, dictionary.getSnameBytes(account.sname));
-                    first = false;
-                }
-            } else if (field.equals("phone")) {
-                 if (account.phone != null) {
-                     index = writeField(arr, index, first, PHONE);
-                     index = writeStringValue(arr, index, account.phone);
-                     first = false;
-                 }
-            } else if (field.equals("sex")) {
-                index = writeField(arr, index, first, SEX);
-                index = writeSex(arr, index, account.sex);
-                first = false;
-            } else if (field.equals("birth")) {
-                index = writeField(arr, index, first, BIRTH);
-                index = encodeLong(arr, index, account.birth);
-                first = false;
-            } else if (field.equals("country")) {
-                if (account.country != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
-                    index = writeField(arr, index, first, COUNTRY);
-                    index = writeStringValue(arr, index, dictionary.getCountryBytes(account.country));
-                    first = false;
-                }
-            } else if (field.equals("city")) {
-                if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
-                    index = writeField(arr, index, first, CITY);
-                    index = writeStringValue(arr, index, dictionary.getCityBytes(account.city));
-                    first = false;
-                }
-            } else if (field.equals("joined")) {
-                index = writeField(arr, index, first, JOINED);
-                index = encodeLong(arr, index, account.joined);
-                first = false;
-            } else if (field.equals("status")) {
-                index = writeField(arr, index, first, STATUS);
-                index = writeStatus(arr, index, account.status);
-                first = false;
-            } else if (field.equals("premium")) {
-                if (account.premiumStart != 0) {
-                    index = writeField(arr, index, first, PREMIUM);
-                    System.arraycopy(START, 0, arr, index, START.length);
-                    index+=START.length;
-                    index = encodeLong(arr, index, account.premiumStart);
-                    System.arraycopy(FINISH, 0, arr, index, FINISH.length);
-                    index+=FINISH.length;
-                    index = encodeLong(arr, index, account.premiumFinish);
-                    arr[index++] = '}';
-                    first = false;
-                }
+        index = writeField(arr, index, true, ID);
+        index = encodeLong(arr, index, account.id);
+        index = writeField(arr, index, false, EMAIL);
+        index = writeStringValue(arr, index, account.email);
+        if ((fieldsMap & 1) != 0) {
+            if (account.fname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                index = writeField(arr, index, false, FNAME);
+                index = writeStringValue(arr, index, dictionary.getFnameBytes(account.fname));
             }
         }
+        if ((fieldsMap & 2) != 0) {
+            if (account.sname != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                index = writeField(arr, index, false, SNAME);
+                index = writeStringValue(arr, index, dictionary.getSnameBytes(account.sname));
+            }
+        }
+        if ((fieldsMap & 4) != 0) {
+            if (account.phone != null) {
+                index = writeField(arr, index, false, PHONE);
+                index = writeStringValue(arr, index, account.phone);
+            }
+        }
+
+        if ((fieldsMap & 8) != 0) {
+            index = writeField(arr, index, false, SEX);
+            index = writeSex(arr, index, account.sex);
+        }
+
+        if ((fieldsMap & 16) != 0) {
+            index = writeField(arr, index, false, BIRTH);
+            index = encodeLong(arr, index, account.birth);
+        }
+
+        if ((fieldsMap & 32) != 0) {
+            if (account.country != Constants.DEFAULT_BYTE_NO_ENTRY_VALUE) {
+                index = writeField(arr, index, false, COUNTRY);
+                index = writeStringValue(arr, index, dictionary.getCountryBytes(account.country));
+            }
+        }
+        if ((fieldsMap & 64) != 0) {
+            if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                index = writeField(arr, index, false, CITY);
+                index = writeStringValue(arr, index, dictionary.getCityBytes(account.city));
+            }
+        }
+
+        if ((fieldsMap & 128) != 0) {
+            index = writeField(arr, index, false, STATUS);
+            index = writeStatus(arr, index, account.status);
+        }
+
+        if ((fieldsMap & 256) != 0) {
+            if (account.premiumStart != 0) {
+                index = writeField(arr, index, false, PREMIUM);
+                System.arraycopy(START, 0, arr, index, START.length);
+                index+=START.length;
+                index = encodeLong(arr, index, account.premiumStart);
+                System.arraycopy(FINISH, 0, arr, index, FINISH.length);
+                index+=FINISH.length;
+                index = encodeLong(arr, index, account.premiumFinish);
+                arr[index++] = '}';
+            }
+        }
+
         arr[index++] = '}';
         return index;
     }

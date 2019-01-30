@@ -225,13 +225,55 @@ public class AccountService {
 
             }
         }
-        List<IndexScan> indexScans = getAvailableIndexScan(predicates);
-        if (!indexScans.isEmpty()) {
+
+        if ((predicateMask & 0b01001000) == 0b01001000) {
+            BirthYearPredicate birthYearPredicate = null;
+            CityAnyPredicate cityAnyPredicate = null;
+
+            for (int i = 0; i < predicates.size(); i++) {
+                AbstractPredicate predicate = predicates.get(i);
+                if (predicate instanceof BirthYearPredicate) {
+                    birthYearPredicate = (BirthYearPredicate) predicate;
+                } else if (predicate instanceof CityAnyPredicate) {
+                    cityAnyPredicate = (CityAnyPredicate) predicate;
+                }
+            }
+            predicates.remove(birthYearPredicate);
+            predicates.remove(cityAnyPredicate);
+            CityAnyBirthYearIndexScan cityAnyBirthYearIndexScan = new CityAnyBirthYearIndexScan(indexHolder, cityAnyPredicate.getCities(), birthYearPredicate.getYear());
             AbstractPredicate[] accountPredicate = predicateArray.get();
             int predicateSize = andPredicates(predicates, accountPredicate);
             List<Account> result = ObjectPool.acquireFilterList();
             int count = 0;
-            IndexScan indexScan = new CompositeIndexScan(indexScans);
+            while (true) {
+                int next = cityAnyBirthYearIndexScan.getNext();
+                if (next == -1) {
+                    break;
+                }
+                Account account = accountIdMap[next];
+                boolean test = true;
+                for (int i = 0; i < predicateSize; i++) {
+                    if (!accountPredicate[i].test(account)) {
+                        test = false;
+                        break;
+                    }
+                }
+                if (test) {
+                    result.add(account);
+                    count++;
+                    if (count == limit) {
+                        break;
+                    }
+                }
+            }
+            return result;
+        }
+        IndexScan indexScan = getAvailableIndexScan(predicates);
+        if (indexScan != null) {
+            AbstractPredicate[] accountPredicate = predicateArray.get();
+            int predicateSize = andPredicates(predicates, accountPredicate);
+            List<Account> result = ObjectPool.acquireFilterList();
+            int count = 0;
             while (true) {
                 int next = indexScan.getNext();
                 if (next == -1) {
@@ -2747,9 +2789,8 @@ public class AccountService {
     }
 
 
-    private List<IndexScan> getAvailableIndexScan(List<AbstractPredicate> predicates) {
-        List<IndexScan> indexScans = ObjectPool.acquireIndexScanList();
-        Iterator<AbstractPredicate> predicateIterator = predicates.iterator();
+    private IndexScan getAvailableIndexScan(List<AbstractPredicate> predicates) {
+        IndexScan indexScan = null;
         AbstractPredicate usefulIndex = null;
         for (int i = 0; i < predicates.size(); i++) {
             AbstractPredicate predicate = predicates.get(i);
@@ -2764,11 +2805,11 @@ public class AccountService {
             }
         }
         if (usefulIndex != null) {
-            indexScans.add(usefulIndex.createIndexScan(indexHolder));
+            indexScan = usefulIndex.createIndexScan(indexHolder);
             predicates.remove(usefulIndex);
         }
 
-        return indexScans;
+        return indexScan;
     }
 
     private int andPredicates(List<AbstractPredicate> predicates, AbstractPredicate[] array) {
@@ -2840,13 +2881,16 @@ public class AccountService {
         if (LAST_UPDATE_TIMESTAMP == 0) {
             synchronized (this) {
                 if (LAST_UPDATE_TIMESTAMP == 0) {
-                    LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
+                    LAST_UPDATE_TIMESTAMP = System.currentTimeMillis() + 10000;
                     new Thread(new IndexUpdater()).start();
                     executorThread.start();
                 }
             }
         }
-        LAST_UPDATE_TIMESTAMP = System.currentTimeMillis();
+        long newValue = System.currentTimeMillis();
+        if (newValue > LAST_UPDATE_TIMESTAMP) {
+            LAST_UPDATE_TIMESTAMP = newValue;
+        }
     }
 
     public static class Similarity {
