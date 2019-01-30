@@ -11,10 +11,13 @@ import java.util.function.Predicate;
 
 public class CityAnyPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 3;
+
     private int[] cities;
 
-    public CityAnyPredicate(int[] cities) {
+    public CityAnyPredicate setValue(int[] cities) {
         this.cities = cities;
+        return this;
     }
 
     @Override
@@ -47,5 +50,16 @@ public class CityAnyPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new CityAnyIndexScan(indexHolder, cities);
+    }
+
+    @Override
+    public double probability() {
+       // return 0.00165 * cities.length;
+        return 0.017;
+    }
+
+    @Override
+    public double cost() {
+        return 1.4;
     }
 }

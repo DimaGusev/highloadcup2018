@@ -9,12 +9,15 @@ import java.util.function.Predicate;
 
 public class EmailDomainPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 8;
+
     private String domain;
     private byte[] atDomain;
 
-    public EmailDomainPredicate(String domain) {
+    public EmailDomainPredicate setValue(String domain) {
         this.atDomain = ("@" + domain).getBytes();
         this.domain = domain;
+        return this;
     }
 
     @Override
@@ -47,5 +50,15 @@ public class EmailDomainPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new EmailDomainIndexScan(indexHolder, domain);
+    }
+
+    @Override
+    public double probability() {
+        return 0.076923;
+    }
+
+    @Override
+    public double cost() {
+        return 2;
     }
 }

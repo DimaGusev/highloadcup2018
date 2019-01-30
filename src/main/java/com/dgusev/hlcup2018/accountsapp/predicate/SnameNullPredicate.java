@@ -10,10 +10,13 @@ import java.util.function.Predicate;
 
 public class SnameNullPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 26;
+
     private int nill;
 
-    public SnameNullPredicate(int nill) {
+    public SnameNullPredicate setValue(int nill) {
         this.nill = nill;
+        return this;
     }
 
     @Override
@@ -45,5 +48,20 @@ public class SnameNullPredicate extends AbstractPredicate {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public double probability() {
+        /*if (nill == 1) {
+            return 0.33;
+        } else {
+            return 0.67;
+        }*/
+        return 0.73;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

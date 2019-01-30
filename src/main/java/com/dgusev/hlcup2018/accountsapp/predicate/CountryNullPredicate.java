@@ -11,10 +11,13 @@ import java.util.function.Predicate;
 
 public class CountryNullPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 7;
+
     private int nill;
 
-    public CountryNullPredicate(int nill) {
+    public CountryNullPredicate setValue(int nill) {
         this.nill = nill;
+        return this;
     }
 
     @Override
@@ -45,5 +48,21 @@ public class CountryNullPredicate extends AbstractPredicate {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public double probability() {
+        /*if (nill == 1) {
+            return 0.1923;
+        } else {
+            return 0.8077;
+        }*/
+        return 0.3;
+
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

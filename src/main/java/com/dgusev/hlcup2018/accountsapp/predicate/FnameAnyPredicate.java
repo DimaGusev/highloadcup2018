@@ -11,10 +11,13 @@ import java.util.function.Predicate;
 
 public class FnameAnyPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 12;
+
     private int[] fnames;
 
-    public FnameAnyPredicate(int[] fnames) {
+    public FnameAnyPredicate setValue(int[] fnames) {
         this.fnames = fnames;
+        return this;
     }
 
     @Override
@@ -43,5 +46,16 @@ public class FnameAnyPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new FnameAnyIndexScan(indexHolder, fnames);
+    }
+
+    @Override
+    public double probability() {
+       // return 0.00926 * fnames.length;
+        return 0.034;
+    }
+
+    @Override
+    public double cost() {
+        return 1.5;
     }
 }

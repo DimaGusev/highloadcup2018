@@ -9,10 +9,13 @@ import gnu.trove.impl.Constants;
 
 public class SnameEqPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 25;
+
     private int sname;
 
-    public SnameEqPredicate(int sname) {
+    public SnameEqPredicate setValue(int sname) {
         this.sname = sname;
+        return this;
     }
 
     @Override
@@ -32,5 +35,15 @@ public class SnameEqPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new SnameEqIndexScan(indexHolder, sname);
+    }
+
+    @Override
+    public double probability() {
+        return 0.0006;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

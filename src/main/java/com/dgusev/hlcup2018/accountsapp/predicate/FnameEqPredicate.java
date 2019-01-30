@@ -10,10 +10,13 @@ import java.util.function.Predicate;
 
 public class FnameEqPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 13;
+
     private int fname;
 
-    public FnameEqPredicate(int fname) {
+    public FnameEqPredicate setValue(int fname) {
         this.fname = fname;
+        return this;
     }
 
     @Override
@@ -33,5 +36,15 @@ public class FnameEqPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new FnameEqIndexScan(indexHolder, fname);
+    }
+
+    @Override
+    public double probability() {
+        return 0.00926;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

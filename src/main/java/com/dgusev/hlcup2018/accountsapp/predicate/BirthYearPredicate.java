@@ -12,6 +12,8 @@ import java.util.function.Predicate;
 
 public class BirthYearPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 2;
+
     private static final int[] YEARS_ARRAY = new int[55];
     static {
         for (int i = 1950; i < 2005; i++) {
@@ -30,8 +32,9 @@ public class BirthYearPredicate extends AbstractPredicate {
 
     private int year;
 
-    public BirthYearPredicate(int birth) {
+    public BirthYearPredicate setValue(int birth) {
         this.year = birth;
+        return this;
     }
 
     @Override
@@ -60,5 +63,16 @@ public class BirthYearPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new BirthYearIndexScan(indexHolder, year);
+    }
+
+    @Override
+    public double probability() {
+        //return 0.018;
+        return 0.0047;
+    }
+
+    @Override
+    public double cost() {
+        return 1.1;
     }
 }

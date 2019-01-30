@@ -47,9 +47,9 @@ public class AccountsController {
     @Autowired
     private IndexHolder indexHolder;
 
-    private static final ThreadLocal<List<Predicate<Account>>> predicateList = new ThreadLocal<List<Predicate<Account>>>() {
+    private static final ThreadLocal<List<AbstractPredicate>> predicateList = new ThreadLocal<List<AbstractPredicate>>() {
         @Override
-        protected List<Predicate<Account>> initialValue() {
+        protected List<AbstractPredicate> initialValue() {
             return new ArrayList<>(10);
         }
     };
@@ -61,8 +61,47 @@ public class AccountsController {
         }
     };
 
+    private static final ThreadLocal<AbstractPredicate[]> predicateTemplateArray = new ThreadLocal<AbstractPredicate[]>() {
+        @Override
+        protected AbstractPredicate[] initialValue() {
+            AbstractPredicate[] abstractPredicates = new AbstractPredicate[30];
+            abstractPredicates[BirthGtPredicate.ORDER] = new BirthGtPredicate();
+            abstractPredicates[BirthLtPredicate.ORDER] = new BirthLtPredicate();
+            abstractPredicates[BirthYearPredicate.ORDER] = new BirthYearPredicate();
+            abstractPredicates[CityAnyPredicate.ORDER] = new CityAnyPredicate();
+            abstractPredicates[CityEqPredicate.ORDER] = new CityEqPredicate();
+            abstractPredicates[CityNullPredicate.ORDER] = new CityNullPredicate();
+            abstractPredicates[CountryEqPredicate.ORDER] = new CountryEqPredicate();
+            abstractPredicates[CountryNullPredicate.ORDER] = new CountryNullPredicate();
+            abstractPredicates[EmailDomainPredicate.ORDER] = new EmailDomainPredicate();
+            abstractPredicates[EmailEqPredicate.ORDER] = new EmailEqPredicate();
+            abstractPredicates[EmailGtPredicate.ORDER] = new EmailGtPredicate();
+            abstractPredicates[EmailLtPredicate.ORDER] = new EmailLtPredicate();
+            abstractPredicates[FnameAnyPredicate.ORDER] = new FnameAnyPredicate();
+            abstractPredicates[FnameEqPredicate.ORDER] = new FnameEqPredicate();
+            abstractPredicates[FnameNullPredicate.ORDER] = new FnameNullPredicate();
+            abstractPredicates[InterestsAnyPredicate.ORDER] = new InterestsAnyPredicate();
+            abstractPredicates[InterestsContainsPredicate.ORDER] = new InterestsContainsPredicate();
+            abstractPredicates[JoinedYearPredicate.ORDER] = new JoinedYearPredicate();
+            abstractPredicates[LikesContainsPredicate.ORDER] = new LikesContainsPredicate();
+            abstractPredicates[PhoneCodePredicate.ORDER] = new PhoneCodePredicate();
+            abstractPredicates[PhoneEqPredicate.ORDER] = new PhoneEqPredicate();
+            abstractPredicates[PhoneNullPredicate.ORDER] = new PhoneNullPredicate();
+            abstractPredicates[PremiumNowPredicate.ORDER] = new PremiumNowPredicate();
+            abstractPredicates[PremiumNullPredicate.ORDER] = new PremiumNullPredicate();
+            abstractPredicates[SexEqPredicate.ORDER] = new SexEqPredicate();
+            abstractPredicates[SnameEqPredicate.ORDER] = new SnameEqPredicate();
+            abstractPredicates[SnameNullPredicate.ORDER] = new SnameNullPredicate();
+            abstractPredicates[SnameStartsPredicate.ORDER] = new SnameStartsPredicate();
+            abstractPredicates[StatusEqPredicate.ORDER] = new StatusEqPredicate();
+            abstractPredicates[StatusNEqPredicate.ORDER] = new StatusNEqPredicate();
+            return abstractPredicates;
+        }
+    };
+
+
     public int accountsFilter(Map<String, String> allRequestParams, byte[] responseBuf) throws Exception {
-        List<Predicate<Account>> predicates = predicateList.get();
+        List<AbstractPredicate> predicates = predicateList.get();
         predicates.clear();
         int limit = 0;
         List<String> fields = fieldsList.get();
@@ -71,6 +110,7 @@ public class AccountsController {
         fields.add("email");
         int predicateMask = 0;
         boolean empty = false;
+        AbstractPredicate[] predicateTemplates = predicateTemplateArray.get();
         for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
             String name = parameter.getKey();
             if (name.equals("query_id")) {
@@ -86,65 +126,67 @@ public class AccountsController {
             }
             if (name.startsWith("sex_")) {
                 if (name.equals("sex_eq")) {
-                    predicates.add(new SexEqPredicate(ConvertorUtills.convertSex(parameter.getValue())));
+                    predicates.add(((SexEqPredicate)predicateTemplates[SexEqPredicate.ORDER]).setValue(ConvertorUtills.convertSex(parameter.getValue())));
                     predicateMask |=2;
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("email_")) {
                 if (name.equals("email_domain")) {
-                    predicates.add(new EmailDomainPredicate(parameter.getValue()));
+                    predicates.add(((EmailDomainPredicate)predicateTemplates[EmailDomainPredicate.ORDER]).setValue(parameter.getValue()));
                 } else if (name.equals("email_lt")) {
                     String value = parameter.getValue();
                     if (compareTo(value, indexHolder.minEmail) < 0) {
                         empty = true;
                     }
-                    predicates.add(new EmailLtPredicate(value));
+                    predicates.add(((EmailLtPredicate)predicateTemplates[EmailLtPredicate.ORDER]).setValue(value));
                 } else if (name.equals("email_gt")) {
-                    predicates.add(new EmailGtPredicate(parameter.getValue()));
+                    predicates.add(((EmailGtPredicate)predicateTemplates[EmailGtPredicate.ORDER]).setValue(parameter.getValue()));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("status_")) {
                 if (name.equals("status_eq")) {
-                    predicates.add(new StatusEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
+                    predicates.add(((StatusEqPredicate)predicateTemplates[StatusEqPredicate.ORDER]).setValue(ConvertorUtills.convertStatusNumber(parameter.getValue())));
                 } else if (name.equals("status_neq")) {
-                    predicates.add(new StatusNEqPredicate(ConvertorUtills.convertStatusNumber(parameter.getValue())));
+                    predicates.add(((StatusNEqPredicate)predicateTemplates[StatusNEqPredicate.ORDER]).setValue(ConvertorUtills.convertStatusNumber(parameter.getValue())));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
 
             } else if (name.startsWith("fname_")) {
                 if (name.equals("fname_eq")) {
-                    predicates.add(new FnameEqPredicate(dictionary.getFname(parameter.getValue())));
+                    predicates.add(((FnameEqPredicate)predicateTemplates[FnameEqPredicate.ORDER]).setValue(dictionary.getFname(parameter.getValue())));
                 } else if (name.equals("fname_any")) {
                     String[] fnames = parameter.getValue().split(",");
                     int[] values = new int[fnames.length];
                     for (int i = 0; i < fnames.length; i++) {
                         values[i] = dictionary.getFname(fnames[i]);
                     }
-                    predicates.add(new FnameAnyPredicate(values));
+
+                    predicates.add(((FnameAnyPredicate)predicateTemplates[FnameAnyPredicate.ORDER]).setValue(values));
                     predicateMask |=1;
                 } else if (name.equals("fname_null")) {
-                    predicates.add(new FnameNullPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((FnameNullPredicate)predicateTemplates[FnameNullPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("sname_")) {
                 if (name.equals("sname_eq")) {
-                    predicates.add(new SnameEqPredicate(dictionary.getFname(parameter.getValue())));
+                    predicates.add(((SnameEqPredicate)predicateTemplates[SnameEqPredicate.ORDER]).setValue(dictionary.getFname(parameter.getValue())));
                 } else if (name.equals("sname_starts")) {
-                    predicates.add(new SnameStartsPredicate(parameter.getValue(), dictionary));
+                    predicates.add(((SnameStartsPredicate)predicateTemplates[SnameStartsPredicate.ORDER]).setValue(parameter.getValue(), dictionary));
                 } else if (name.equals("sname_null")) {
-                    predicates.add(new SnameNullPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((SnameNullPredicate)predicateTemplates[SnameNullPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
+
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("phone_")) {
                 if (name.equals("phone_code")) {
-                    predicates.add(new PhoneCodePredicate(parameter.getValue()));
+                    predicates.add(((PhoneCodePredicate)predicateTemplates[PhoneCodePredicate.ORDER]).setValue(parameter.getValue()));
                 } else if (name.equals("phone_null")) {
-                    predicates.add(new PhoneNullPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((PhoneNullPredicate)predicateTemplates[PhoneNullPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
@@ -152,36 +194,36 @@ public class AccountsController {
                 if (name.equals("country_eq")) {
                     predicateMask|=1<<2;
                     byte countryIndex = dictionary.getCountry(parameter.getValue());
-                    predicates.add(new CountryEqPredicate(countryIndex));
+                    predicates.add(((CountryEqPredicate)predicateTemplates[CountryEqPredicate.ORDER]).setValue(countryIndex));
                 } else if (name.equals("country_null")) {
-                    predicates.add(new CountryNullPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((CountryNullPredicate)predicateTemplates[CountryNullPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("city_")) {
                 if (name.equals("city_eq")) {
                     predicateMask|=1<<5;
-                    predicates.add(new CityEqPredicate(dictionary.getCity(parameter.getValue())));
+                    predicates.add(((CityEqPredicate)predicateTemplates[CityEqPredicate.ORDER]).setValue(dictionary.getCity(parameter.getValue())));
                 } else if (name.equals("city_any")) {
                     String[] cities = parameter.getValue().split(",");
                     int[] values = new int[cities.length];
                     for (int i = 0; i < cities.length; i++) {
                         values[i] = dictionary.getCity(cities[i]);
                     }
-                    predicates.add(new CityAnyPredicate(values));
+                    predicates.add(((CityAnyPredicate)predicateTemplates[CityAnyPredicate.ORDER]).setValue(values));
                 } else if (name.equals("city_null")) {
-                    predicates.add(new CityNullPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((CityNullPredicate)predicateTemplates[CityNullPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("birth_")) {
                 if (name.equals("birth_lt")) {
-                    predicates.add(new BirthLtPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((BirthLtPredicate)predicateTemplates[BirthLtPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else if (name.equals("birth_gt")) {
-                    predicates.add(new BirthGtPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((BirthGtPredicate)predicateTemplates[BirthGtPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else if (name.equals("birth_year")) {
                     predicateMask|=1<<3;
-                    predicates.add(new BirthYearPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((BirthYearPredicate)predicateTemplates[BirthYearPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
@@ -193,28 +235,29 @@ public class AccountsController {
                     for (int i = 0; i < interests.length; i++) {
                         values[i] = dictionary.getInteres(interests[i]);
                     }
-                    predicates.add(new InterestsContainsPredicate(values));
+                    predicates.add(((InterestsContainsPredicate)predicateTemplates[InterestsContainsPredicate.ORDER]).setValue(values));
                 } else if (name.equals("interests_any")) {
                     String[] interests = parameter.getValue().split(",");
                     byte[] values = new byte[interests.length];
                     for (int i = 0; i < interests.length; i++) {
                         values[i] = dictionary.getInteres(interests[i]);
                     }
-                    predicates.add(new InterestsAnyPredicate(values));
+                    predicates.add(((InterestsAnyPredicate)predicateTemplates[InterestsAnyPredicate.ORDER]).setValue(values));
+
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("likes_")) {
                 if (name.equals("likes_contains")) {
-                    predicates.add(new LikesContainsPredicate(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray()));
+                    predicates.add(((LikesContainsPredicate)predicateTemplates[LikesContainsPredicate.ORDER]).setValue(Arrays.stream(parameter.getValue().split(",")).mapToInt(Integer::parseInt).toArray()));
                 } else {
                     throw BadRequest.INSTANCE;
                 }
             } else if (name.startsWith("premium_")) {
                 if (name.equals("premium_now")) {
-                    predicates.add(new PremiumNowPredicate());
+                    predicates.add(((PremiumNowPredicate)predicateTemplates[PremiumNowPredicate.ORDER]));
                 } else if (name.equals("premium_null")) {
-                    predicates.add(new PremiumNullPredicate(Integer.parseInt(parameter.getValue())));
+                    predicates.add(((PremiumNullPredicate)predicateTemplates[PremiumNullPredicate.ORDER]).setValue(Integer.parseInt(parameter.getValue())));
                 } else {
                     throw new BadRequest();
                 }

@@ -9,10 +9,13 @@ import java.util.function.Predicate;
 
 public class PhoneNullPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 21;
+
     private int nill;
 
-    public PhoneNullPredicate(int nill) {
+    public PhoneNullPredicate setValue(int nill) {
         this.nill = nill;
+        return this;
     }
 
     @Override
@@ -44,5 +47,20 @@ public class PhoneNullPredicate extends AbstractPredicate {
         } else  {
             return null;
         }
+    }
+
+    @Override
+    public double probability() {
+        /*if (nill == 0) {
+            return 0.41;
+        } else  {
+            return 0.59;
+        }*/
+        return 0.4875;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

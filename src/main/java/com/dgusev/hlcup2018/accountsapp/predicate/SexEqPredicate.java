@@ -8,10 +8,13 @@ import java.util.function.Predicate;
 
 public class SexEqPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 24;
+
     private boolean sex;
 
-    public SexEqPredicate(boolean sex) {
+    public SexEqPredicate setValue(boolean sex) {
         this.sex = sex;
+        return this;
     }
 
     @Override
@@ -31,5 +34,15 @@ public class SexEqPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return null;
+    }
+
+    @Override
+    public double probability() {
+        return 0.5;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

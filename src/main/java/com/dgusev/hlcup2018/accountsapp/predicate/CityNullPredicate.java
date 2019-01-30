@@ -10,10 +10,13 @@ import java.util.function.Predicate;
 
 public class CityNullPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 5;
+
     private int nill;
 
-    public CityNullPredicate(int nill) {
+    public CityNullPredicate setValue(int nill) {
         this.nill = nill;
+        return this;
     }
 
     @Override
@@ -45,5 +48,20 @@ public class CityNullPredicate extends AbstractPredicate {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public double probability() {
+        /*if (nill == 1) {
+            return 0.388;
+        } else {
+            return 0.612;
+        }*/
+        return 0.47;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

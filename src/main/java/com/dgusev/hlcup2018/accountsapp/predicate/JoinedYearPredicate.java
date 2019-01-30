@@ -12,6 +12,8 @@ import java.util.function.Predicate;
 
 public class JoinedYearPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 17;
+
     private static final int[] YEARS_ARRAY = new int[8];
     static {
         for (int i = 2010; i < 2018; i++) {
@@ -29,8 +31,9 @@ public class JoinedYearPredicate extends AbstractPredicate {
 
     private int year;
 
-    public JoinedYearPredicate(int birth) {
+    public JoinedYearPredicate setValue(int birth) {
         this.year = birth;
+        return this;
     }
 
     @Override
@@ -59,5 +62,15 @@ public class JoinedYearPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new JoinedYearIndexScan(indexHolder, year);
+    }
+
+    @Override
+    public double probability() {
+        return 0.142857;
+    }
+
+    @Override
+    public double cost() {
+        return 1.1;
     }
 }

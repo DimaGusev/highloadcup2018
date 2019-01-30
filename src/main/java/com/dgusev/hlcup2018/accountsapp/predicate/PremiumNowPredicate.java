@@ -9,6 +9,7 @@ import java.util.function.Predicate;
 
 public class PremiumNowPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 22;
 
     @Override
     public boolean test(Account account) {
@@ -23,5 +24,16 @@ public class PremiumNowPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new PremiumIndexScan(indexHolder);
+    }
+
+    @Override
+    public double probability() {
+        //return 0.156923;
+        return 0.127;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

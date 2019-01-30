@@ -8,10 +8,13 @@ import java.util.function.Predicate;
 
 public class BirthGtPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 0;
+
     private int birth;
 
-    public BirthGtPredicate(int birth) {
+    public BirthGtPredicate setValue(int birth) {
         this.birth = birth;
+        return this;
     }
 
     @Override
@@ -27,6 +30,16 @@ public class BirthGtPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return null;
+    }
+
+    @Override
+    public double probability() {
+        return 0.18;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 
 }

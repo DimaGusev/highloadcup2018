@@ -9,10 +9,13 @@ import java.util.function.Predicate;
 
 public class PhoneCodePredicate extends AbstractPredicate {
 
+    public static final int ORDER = 19;
+
     private String code;
 
-    public PhoneCodePredicate(String code) {
+    public PhoneCodePredicate setValue(String code) {
         this.code = code;
+        return this;
     }
 
     @Override
@@ -59,5 +62,16 @@ public class PhoneCodePredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new PhoneCodeIndexScan(indexHolder, code);
+    }
+
+    @Override
+    public double probability() {
+        //0.0041;
+        return 0.001;
+    }
+
+    @Override
+    public double cost() {
+        return 2.8;
     }
 }

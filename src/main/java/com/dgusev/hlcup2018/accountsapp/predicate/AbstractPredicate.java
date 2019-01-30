@@ -6,9 +6,20 @@ import com.dgusev.hlcup2018.accountsapp.model.Account;
 
 import java.util.function.Predicate;
 
-public abstract class AbstractPredicate implements Predicate<Account> {
+public abstract class AbstractPredicate {
 
     public abstract int getIndexCordiality();
 
     public abstract IndexScan createIndexScan(IndexHolder indexHolder);
+
+    public abstract double probability();
+
+    public abstract double cost();
+
+    public abstract boolean test(Account account);
+
+    public double costScore() {
+        return probability();
+       // return probability() * cost();
+    }
 }

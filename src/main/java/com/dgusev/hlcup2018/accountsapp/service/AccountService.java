@@ -10,10 +10,7 @@ import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.*;
-import gnu.trove.map.hash.TIntDoubleHashMap;
-import gnu.trove.map.hash.TIntIntHashMap;
-import gnu.trove.map.hash.TIntObjectHashMap;
-import gnu.trove.map.hash.TLongObjectHashMap;
+import gnu.trove.map.hash.*;
 import gnu.trove.set.TIntSet;
 import gnu.trove.set.TLongSet;
 import gnu.trove.set.hash.TIntHashSet;
@@ -30,6 +27,7 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 
 @Service
@@ -41,6 +39,7 @@ public class AccountService {
     private static final Set<String> ALLOWED_SEX = new HashSet<>(Arrays.asList("m", "f"));
     private static final Set<String> ALLOWED_STATUS = new HashSet<>(Arrays.asList("свободны", "всё сложно","заняты"));
     private static final TIntObjectMap<TLongList> phase2 = new TIntObjectHashMap<>(180000, 1);
+
 
 
     public static CountDownLatch countDownLatch = new CountDownLatch(1);
@@ -70,7 +69,14 @@ public class AccountService {
 
     public static volatile long LAST_UPDATE_TIMESTAMP;
 
-    public List<Account> filter(List<Predicate<Account>> predicates, int limit, int predicateMask) {
+    private static final ThreadLocal<AbstractPredicate[]> predicateArray = new ThreadLocal<AbstractPredicate[]>() {
+        @Override
+        protected AbstractPredicate[] initialValue() {
+            return new AbstractPredicate[20];
+        }
+    };
+
+    public List<Account> filter(List<AbstractPredicate> predicates, int limit, int predicateMask) {
         if (limit <= 0) {
             throw new BadRequest();
         }
@@ -78,7 +84,7 @@ public class AccountService {
             FnameAnyPredicate fnameAnyPredicate = null;
             SexEqPredicate sexEqPredicate = null;
             for (int i = 0; i < predicates.size(); i++) {
-                Predicate<Account> predicate = predicates.get(i);
+                AbstractPredicate predicate = predicates.get(i);
                 if (predicate instanceof FnameAnyPredicate) {
                     fnameAnyPredicate = (FnameAnyPredicate) predicate;
                 } else if (predicate instanceof SexEqPredicate) {
@@ -109,7 +115,7 @@ public class AccountService {
             CountryEqPredicate countryEqPredicate = null;
 
             for (int i = 0; i < predicates.size(); i++) {
-                Predicate<Account> predicate = predicates.get(i);
+                AbstractPredicate predicate = predicates.get(i);
                 if (predicate instanceof BirthYearPredicate) {
                     birthYearPredicate = (BirthYearPredicate) predicate;
                 } else if (predicate instanceof CountryEqPredicate) {
@@ -123,7 +129,9 @@ public class AccountService {
             if (indexArray == null) {
                 return Collections.EMPTY_LIST;
             }
-            Predicate<Account> accountPredicate = andPredicates(predicates);
+
+            AbstractPredicate[] accountPredicate = predicateArray.get();
+            int predicateSize = andPredicates(predicates, accountPredicate);
             List<Account> result = ObjectPool.acquireFilterList();
             int count = 0;
             int indexPosition = 0;
@@ -135,7 +143,14 @@ public class AccountService {
                 }
 
                 Account account = accountIdMap[next];
-                if (accountPredicate.test(account)) {
+                boolean test = true;
+                for (int i = 0; i < predicateSize; i++) {
+                    if (!accountPredicate[i].test(account)) {
+                        test = false;
+                        break;
+                    }
+                }
+                if (test) {
                     result.add(account);
                     count++;
                     if (count == limit) {
@@ -154,7 +169,7 @@ public class AccountService {
                 InterestsContainsPredicate interestsContainsPredicate = null;
                 AbstractPredicate usefulIndex = null;
                 for (int i = 0; i < predicates.size(); i++) {
-                    Predicate<Account> predicate =  predicates.get(i);
+                    AbstractPredicate predicate =  predicates.get(i);
                     if (predicate instanceof AbstractPredicate) {
                         if (predicate instanceof CountryEqPredicate) {
                             countryEqPredicate = (CountryEqPredicate) predicate;
@@ -180,7 +195,8 @@ public class AccountService {
                 if (usefulIndex == countryEqPredicate || usefulIndex == cityEqPredicate) {
                    IndexScan indexScan = interestsContainsPredicate.createIndexScan(indexHolder);
                    predicates.remove(interestsContainsPredicate);
-                    Predicate<Account> accountPredicate = andPredicates(predicates);
+                    AbstractPredicate[] accountPredicate = predicateArray.get();
+                    int predicateSize = andPredicates(predicates, accountPredicate);
                     List<Account> result = ObjectPool.acquireFilterList();
                     int count = 0;
                     while (true) {
@@ -189,7 +205,14 @@ public class AccountService {
                             break;
                         }
                         Account account = accountIdMap[next];
-                        if (accountPredicate.test(account)) {
+                        boolean test = true;
+                        for (int i = 0; i < predicateSize; i++) {
+                            if (!accountPredicate[i].test(account)) {
+                                test = false;
+                                break;
+                            }
+                        }
+                        if (test) {
                             result.add(account);
                             count++;
                             if (count == limit) {
@@ -204,7 +227,8 @@ public class AccountService {
         }
         List<IndexScan> indexScans = getAvailableIndexScan(predicates);
         if (!indexScans.isEmpty()) {
-            Predicate<Account> accountPredicate = andPredicates(predicates);
+            AbstractPredicate[] accountPredicate = predicateArray.get();
+            int predicateSize = andPredicates(predicates, accountPredicate);
             List<Account> result = ObjectPool.acquireFilterList();
             int count = 0;
             IndexScan indexScan = new CompositeIndexScan(indexScans);
@@ -215,7 +239,14 @@ public class AccountService {
                 }
 
                 Account account = accountIdMap[next];
-                if (accountPredicate.test(account)) {
+                boolean test = true;
+                for (int i = 0; i < predicateSize; i++) {
+                    if (!accountPredicate[i].test(account)) {
+                        test = false;
+                        break;
+                    }
+                }
+                if (test) {
                     result.add(account);
                     count++;
                     if (count == limit) {
@@ -225,12 +256,13 @@ public class AccountService {
             }
             return result;
         } else {
-            Predicate<Account> accountPredicate = andPredicates(predicates);
-            return filterSeqScan(accountPredicate, limit);
+            AbstractPredicate[] accountPredicate = predicateArray.get();
+            int predicateSize = andPredicates(predicates, accountPredicate);
+            return filterSeqScan(accountPredicate, predicateSize, limit);
         }
     }
 
-    private List<Account> filterSeqScan(Predicate<Account> predicate, int limit) {
+    private List<Account> filterSeqScan(AbstractPredicate[] predicates, int predicateSize, int limit) {
 
         List<Account> result = ObjectPool.acquireFilterList();;
         int count = 0;
@@ -239,7 +271,14 @@ public class AccountService {
         }
         for (int i = 0; i< size; i++) {
             Account account = accountList[i];
-            if (predicate.test(account)) {
+            boolean test = true;
+            for (int j = 0; j < predicateSize; j++) {
+                if (!predicates[j].test(account)) {
+                    test = false;
+                    break;
+                }
+            }
+            if (test) {
                 result.add(account);
                 count++;
                 if (count == limit) {
@@ -936,7 +975,14 @@ public class AccountService {
         for (int i = 0; i < 6; i++) {
             sizeArr[i] = 0;
         }
-        fetchRecommendations2(id, sex, account, country, city, limit, recommend, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr);
+        if (country != -1) {
+            System.out.println("Country not null");
+        }
+        if (city == -1) {
+            fetchRecommendations2(id, sex, account, country, city, limit, recommend, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr);
+        } else {
+            fetchRecommendations2City(account, country, city, limit, recommend, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr);
+        }
         Score[] result = recommendArrayResultPool.get();
         int size = fillList(account, result, limit, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr, recommend);
         AccountService.Score[] sortArray = recommendSortArray.get();
@@ -1165,6 +1211,204 @@ public class AccountService {
                         continue;
                     }
                     if (city != -1 && acc.city != city) {
+                        continue;
+                    }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
+                    result6[result6Size++] = acc;
+                    totalCount++;
+                }
+            }
+        }
+        sizeArr[0] = result1Size;
+        sizeArr[1] = result2Size;
+        sizeArr[2] = result3Size;
+        sizeArr[3] = result4Size;
+        sizeArr[4] = result5Size;
+        sizeArr[5] = result6Size;
+    }
+
+    private void fetchRecommendations2City(Account account, byte country, int city, int limit, byte[] recommend, Account[] result1, Account[] result2, Account[] result3, Account[] result4, Account[] result5, Account[] result6, int[] sizeArr) {
+
+        long[][] prio1;
+        long[][] prio2;
+        long[][] prio3;
+        long[][] prio4;
+        long[][] prio5;
+        long[][] prio6;
+
+        int result1Size = 0;
+        int result2Size = 0;
+        int result3Size = 0;
+        int result4Size = 0;
+        int result5Size = 0;
+        int result6Size = 0;
+
+        if (account.sex) {
+            prio1 = indexHolder.citySexFalsePremiumState0Index;
+            prio2 = indexHolder.citySexFalsePremiumState1Index;
+            prio3 = indexHolder.citySexFalsePremiumState2Index;
+            prio4 = indexHolder.citySexFalseNonPremiumState0Index;
+            prio5 = indexHolder.citySexFalseNonPremiumState1Index;
+            prio6 = indexHolder.citySexFalseNonPremiumState2Index;
+        } else {
+            prio1 = indexHolder.citySexTruePremiumState0Index;
+            prio2 = indexHolder.citySexTruePremiumState1Index;
+            prio3 = indexHolder.citySexTruePremiumState2Index;
+            prio4 = indexHolder.citySexTrueNonPremiumState0Index;
+            prio5 = indexHolder.citySexTrueNonPremiumState1Index;
+            prio6 = indexHolder.citySexTrueNonPremiumState2Index;
+        }
+
+        int totalCount = 0;
+
+        for (byte interes : account.interests) {
+            long address = prio1[interes][city];
+            if (address != 0) {
+                int size = UNSAFE.getShort(address);
+                address+=2;
+                for (int i = 0; i < size; i++) {
+                    int aId = UNSAFE.getInt(address);
+                    address+=4;
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
+                    result1[result1Size++] = acc;
+                    totalCount++;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            return;
+        }
+        for (byte interes : account.interests) {
+            long address = prio2[interes][city];
+            if (address != 0) {
+                int size = UNSAFE.getShort(address);
+                address+=2;
+                for (int i = 0; i < size; i++) {
+                    int aId = UNSAFE.getInt(address);
+                    address+=4;
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
+                    result2[result2Size++] = acc;
+                    totalCount++;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
+            return;
+        }
+        for (byte interes : account.interests) {
+            long address = prio3[interes][city];
+            if (address != 0) {
+                int size = UNSAFE.getShort(address);
+                address+=2;
+                for (int i = 0; i < size; i++) {
+                    int aId = UNSAFE.getInt(address);
+                    address+=4;
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
+                    result3[result3Size++] = acc;
+                    totalCount++;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
+            sizeArr[2] = result3Size;
+            return;
+        }
+        for (byte interes : account.interests) {
+            long address = prio4[interes][city];
+            if (address != 0) {
+                int size = UNSAFE.getShort(address);
+                address+=2;
+                for (int i = 0; i < size; i++) {
+                    int aId = UNSAFE.getInt(address);
+                    address+=4;
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
+                    result4[result4Size++] = acc;
+                    totalCount++;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
+            sizeArr[2] = result3Size;
+            sizeArr[3] = result4Size;
+            return;
+        }
+        for (byte interes : account.interests) {
+            long address = prio5[interes][city];
+            if (address != 0) {
+                int size = UNSAFE.getShort(address);
+                address+=2;
+                for (int i = 0; i < size; i++) {
+                    int aId = UNSAFE.getInt(address);
+                    address+=4;
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
+                        continue;
+                    }
+                    byte cnt = ++recommend[aId];
+                    if (cnt > 1) {
+                        continue;
+                    }
+                    result5[result5Size++] = acc;
+                    totalCount++;
+                }
+            }
+        }
+        if (totalCount >= limit) {
+            sizeArr[0] = result1Size;
+            sizeArr[1] = result2Size;
+            sizeArr[2] = result3Size;
+            sizeArr[3] = result4Size;
+            sizeArr[4] = result5Size;
+            return;
+        }
+        for (byte interes : account.interests) {
+            long address = prio6[interes][city];
+            if (address != 0) {
+                int size = UNSAFE.getShort(address);
+                address+=2;
+                for (int i = 0; i < size; i++) {
+                    int aId = UNSAFE.getInt(address);
+                    address+=4;
+                    Account acc = accountIdMap[aId];
+                    if (country != -1 && acc.country != country) {
                         continue;
                     }
                     byte cnt = ++recommend[aId];
@@ -1622,6 +1866,11 @@ public class AccountService {
             }
         }
         addAccountToGroups(account);
+        if (account.city != 0 && account.interests != null) {
+            for (byte interes: account.interests) {
+                addToRecommendCityIndex(account.sex, account.premium, account.status, interes, account.city, account.id);
+            }
+        }
     }
 
     private void addAccountToGroups(Account account) {
@@ -2095,6 +2344,13 @@ public class AccountService {
             emails.add(calculateHash(accountDTO.email, 0, accountDTO.email.length));
             oldAcc.email = accountDTO.email;
         }
+        if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.premiumStart != 0 || accountDTO.status != null || accountDTO.city != null) {
+            if (oldAcc.city != 0 && oldAcc.interests != null) {
+                for (byte interes: oldAcc.interests) {
+                    removeFromRecommendCityIndex(oldAcc.sex, oldAcc.premium, oldAcc.status, interes, oldAcc.city, oldAcc.id);
+                }
+            }
+        }
         if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0 || accountDTO.birth != 0) {
             removeAccountFromGroups(oldAcc);
         }
@@ -2147,6 +2403,13 @@ public class AccountService {
         }
         if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0 || accountDTO.birth != 0) {
             addAccountToGroups(oldAcc);
+        }
+        if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.premiumStart != 0 || accountDTO.status != null || accountDTO.city != null) {
+            if (oldAcc.city != 0 && oldAcc.interests != null) {
+                for (byte interes: oldAcc.interests) {
+                    addToRecommendCityIndex(oldAcc.sex, oldAcc.premium, oldAcc.status, interes, oldAcc.city, oldAcc.id);
+                }
+            }
         }
     }
 
@@ -2202,33 +2465,163 @@ public class AccountService {
             long pointer = address + 5;
             for (int i = 0; i < size; i++) {
                 int id = UNSAFE.getInt(pointer);
-                pointer+=8;
+                pointer += 8;
                 if (id < liker) {
                     insertId = i;
                     break;
                 }
-                /*else if (id == liker) {
-                    dontInsert = true;
-                    break;
-                }*/
             }
-            if (!dontInsert) {
-                long newAddress = UNSAFE.allocateMemory(1 + (size+1)*8);
-                UNSAFE.putByte(newAddress, (byte)(size + 1));
-                if (insertId == 0) {
-                    UNSAFE.copyMemory(address + 1, newAddress + 1 + 8, size * 8);
-                    UNSAFE.putLong(newAddress + 1, like);
-                } else if (insertId == size) {
-                    UNSAFE.copyMemory(address + 1, newAddress + 1, size * 8);
-                    UNSAFE.putLong(newAddress + 1 + 8*size, like);
+            long newAddress = UNSAFE.allocateMemory(1 + (size + 1) * 8);
+            UNSAFE.putByte(newAddress, (byte) (size + 1));
+            if (insertId == 0) {
+                UNSAFE.copyMemory(address + 1, newAddress + 1 + 8, size * 8);
+                UNSAFE.putLong(newAddress + 1, like);
+            } else if (insertId == size) {
+                UNSAFE.copyMemory(address + 1, newAddress + 1, size * 8);
+                UNSAFE.putLong(newAddress + 1 + 8 * size, like);
+            } else {
+                UNSAFE.copyMemory(address + 1, newAddress + 1, insertId * 8);
+                UNSAFE.copyMemory(address + 1 + insertId * 8, newAddress + 1 + (insertId + 1) * 8, (size - insertId) * 8);
+                UNSAFE.putLong(newAddress + 1 + 8 * insertId, like);
+            }
+            indexHolder.likesIndex[likee] = newAddress;
+            UNSAFE.freeMemory(address);
+        }
+    }
+
+    private void removeFromRecommendCityIndex(boolean sex, boolean premium, int state, byte interes, int city, int id) {
+        long[][] index;
+        if (sex) {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.citySexTruePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexTruePremiumState1Index;
                 } else {
-                    UNSAFE.copyMemory(address + 1, newAddress + 1, insertId * 8);
-                    UNSAFE.copyMemory(address + 1 + insertId * 8, newAddress + 1 + (insertId+1) * 8, (size - insertId) * 8);
-                    UNSAFE.putLong(newAddress + 1 + 8*insertId, like);
+                    index = indexHolder.citySexTruePremiumState2Index;
                 }
-                indexHolder.likesIndex[likee] = newAddress;
-                UNSAFE.freeMemory(address);
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.citySexTrueNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexTrueNonPremiumState1Index;
+                } else {
+                    index = indexHolder.citySexTrueNonPremiumState2Index;
+                }
             }
+        } else {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.citySexFalsePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexFalsePremiumState1Index;
+                } else {
+                    index = indexHolder.citySexFalsePremiumState2Index;
+                }
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.citySexFalseNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexFalseNonPremiumState1Index;
+                } else {
+                    index = indexHolder.citySexFalseNonPremiumState2Index;
+                }
+            }
+        }
+        removeAccount(index, interes, city, id);
+    }
+
+    private void addToRecommendCityIndex(boolean sex, boolean premium, int state, byte interes, int city, int id) {
+        long[][] index;
+        if (sex) {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.citySexTruePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexTruePremiumState1Index;
+                } else {
+                    index = indexHolder.citySexTruePremiumState2Index;
+                }
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.citySexTrueNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexTrueNonPremiumState1Index;
+                } else {
+                    index = indexHolder.citySexTrueNonPremiumState2Index;
+                }
+            }
+        } else {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.citySexFalsePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexFalsePremiumState1Index;
+                } else {
+                    index = indexHolder.citySexFalsePremiumState2Index;
+                }
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.citySexFalseNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.citySexFalseNonPremiumState1Index;
+                } else {
+                    index = indexHolder.citySexFalseNonPremiumState2Index;
+                }
+            }
+        }
+        addAccount(index, interes, city, id);
+    }
+
+    private void addAccount(long[][] index, byte interes, int city, int id) {
+        long address = index[interes][city];
+        if (address == 0) {
+            address = UNSAFE.allocateMemory(6);
+            UNSAFE.putShort(address, (short)1);
+            UNSAFE.putInt(address + 2, id);
+            index[interes][city] = address;
+        } else {
+            int oldSize = UNSAFE.getShort(address);
+            int newSize = oldSize + 1;
+            long newAddress = UNSAFE.allocateMemory(2 + newSize*4);
+            UNSAFE.copyMemory(address + 2, newAddress + 2, oldSize*4);
+            UNSAFE.putInt(newAddress + 2+ oldSize*4, id);
+            UNSAFE.putShort(newAddress, (short) newSize);
+            index[interes][city] = newAddress;
+            UNSAFE.freeMemory(address);
+        }
+    }
+
+    private void removeAccount(long[][] index, byte interes, int city, int id) {
+        long address = index[interes][city];
+        int oldSize = UNSAFE.getShort(address);
+        if (oldSize == 1) {
+            UNSAFE.freeMemory(address);
+            index[interes][city] = 0;
+        } else {
+            long newAddress = UNSAFE.allocateMemory(2 + (oldSize-1)*4);
+            UNSAFE.putShort(newAddress, (short) (oldSize - 1));
+            long position = 0;
+            for (int i = 0; i < oldSize; i++) {
+                int item = UNSAFE.getInt(address + 2 + i*4);
+                if (item == id) {
+                    position = i;
+                }
+            }
+            if (position == 0) {
+                UNSAFE.copyMemory(address + 6, newAddress + 2, (oldSize-1)*4);
+            } else if (position == oldSize - 1) {
+                UNSAFE.copyMemory(address + 2, newAddress + 2, (oldSize-1)*4);
+            } else {
+                UNSAFE.copyMemory(address + 2, newAddress + 2, position*4);
+                UNSAFE.copyMemory(address + 2 + position*4 + 4, newAddress + 2 + position*4, (oldSize - 1 - position)*4);
+            }
+            UNSAFE.freeMemory(address);
+            index[interes][city] = newAddress;
         }
     }
 
@@ -2246,21 +2639,18 @@ public class AccountService {
     }
 
 
-    private List<IndexScan> getAvailableIndexScan(List<Predicate<Account>> predicates) {
+    private List<IndexScan> getAvailableIndexScan(List<AbstractPredicate> predicates) {
         List<IndexScan> indexScans = ObjectPool.acquireIndexScanList();
-        Iterator<Predicate<Account>> predicateIterator = predicates.iterator();
+        Iterator<AbstractPredicate> predicateIterator = predicates.iterator();
         AbstractPredicate usefulIndex = null;
         for (int i = 0; i < predicates.size(); i++) {
-            Predicate<Account> predicate =  predicates.get(i);
-            if (predicate instanceof AbstractPredicate) {
-                AbstractPredicate abstractPredicate = (AbstractPredicate) predicate;
-                if (abstractPredicate.getIndexCordiality() != Integer.MAX_VALUE) {
-                    if (usefulIndex == null) {
-                        usefulIndex = abstractPredicate;
-                    } else {
-                        if (abstractPredicate.getIndexCordiality() < usefulIndex.getIndexCordiality()) {
-                            usefulIndex = abstractPredicate;
-                        }
+            AbstractPredicate predicate = predicates.get(i);
+            if (predicate.getIndexCordiality() != Integer.MAX_VALUE) {
+                if (usefulIndex == null) {
+                    usefulIndex = predicate;
+                } else {
+                    if (predicate.getIndexCordiality() < usefulIndex.getIndexCordiality()) {
+                        usefulIndex = predicate;
                     }
                 }
             }
@@ -2273,17 +2663,9 @@ public class AccountService {
         return indexScans;
     }
 
-    private Predicate<Account> andPredicates(List<Predicate<Account>> predicates) {
-        Predicate<Account> accountPredicate = null;
-        if (predicates.isEmpty()) {
-            accountPredicate = foo -> true;
-        } else {
-            accountPredicate = predicates.get(0);
-            for (int i = 1; i < predicates.size(); i++) {
-                accountPredicate = accountPredicate.and(predicates.get(i));
-            }
-        }
-        return accountPredicate;
+    private int andPredicates(List<AbstractPredicate> predicates, AbstractPredicate[] array) {
+        predicates.toArray(array);
+        return predicates.size();
     }
 
     private class IndexUpdater implements Runnable {

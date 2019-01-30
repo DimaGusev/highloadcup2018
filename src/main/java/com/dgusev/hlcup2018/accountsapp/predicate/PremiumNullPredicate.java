@@ -9,10 +9,13 @@ import java.util.function.Predicate;
 
 public class PremiumNullPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 23;
+
     private int nill;
 
-    public PremiumNullPredicate(int nill) {
+    public PremiumNullPredicate setValue(int nill) {
         this.nill = nill;
+        return this;
     }
 
     @Override
@@ -44,5 +47,20 @@ public class PremiumNullPredicate extends AbstractPredicate {
         } else {
             return null;
         }
+    }
+
+    @Override
+    public double probability() {
+        /*if (nill == 0) {
+            return 0.31;
+        } else  {
+            return 0.69;
+        }*/
+        return 0.45;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

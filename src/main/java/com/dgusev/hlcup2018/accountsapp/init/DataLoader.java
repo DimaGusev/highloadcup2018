@@ -11,6 +11,7 @@ import io.netty.channel.epoll.EpollServer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.*;
@@ -33,6 +34,9 @@ public class DataLoader implements CommandLineRunner {
 
     @Value("${data.initial.file.linux}")
     private String initFileLinux;
+
+    @Value("${warmup.enabled:false}")
+    private boolean warmUp;
 
 
     @Autowired
@@ -109,8 +113,6 @@ public class DataLoader implements CommandLineRunner {
         accountService.finishLoad();
         ObjectPool.init();
         System.out.println("Indexes created " + new Date());
-        System.gc();
-
         new Thread(() -> {
             try {
                 //nettyServer.start();
@@ -123,6 +125,24 @@ public class DataLoader implements CommandLineRunner {
                 e.printStackTrace();
             }
         }).start();
+        Thread.sleep(1000);
+        if (warmUp) {
+            System.out.println("Start warmup: " + new Date());
+            Thread warmupThread = new Thread(() -> {
+                try {
+                    for (int i = 0; i < 3; i++) {
+                        warmUp(10000);
+                    }
+
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            });
+            warmupThread.start();
+            warmupThread.join();
+            System.out.println("Finish warmup: " + new Date());
+        }
+        System.gc();
 
     }
 
@@ -197,4 +217,73 @@ public class DataLoader implements CommandLineRunner {
             return importResult;
         }
     }
+
+    private void warmUp(int limit) throws IOException {
+        InputStream inputStream = new ClassPathResource("warmup.txt").getInputStream();
+        int nextByte = 0;
+        FastClient fastClient = new FastClient("localhost", 80);
+        byte[] buf = new byte[1000];
+        int totalCount = 0;
+        while ((nextByte = inputStream.read()) != -1) {
+            if (nextByte != 'G') {
+                continue;
+            }
+            inputStream.read();
+            inputStream.read();
+            int space = inputStream.read();
+            if (space != ' ') {
+                continue;
+            }
+            int counter = 0;
+            int rByte = 0;
+            while ((rByte = inputStream.read()) != ' ') {
+                buf[counter++] = (byte) rByte;
+            }
+            int startQueryIdPosition = -1;
+            for (int i = 0; i < counter - QUERY_ID.length; i++) {
+                if (buf[i] != QUERY_ID[0]) {
+                    continue;
+                }
+                boolean equals = true;
+                for (int j = 0; j < QUERY_ID.length; j++) {
+                    if (QUERY_ID[j] != buf[i+j]) {
+                        equals = false;
+                        break;
+                    }
+                }
+                if (equals) {
+                    startQueryIdPosition = i;
+                    break;
+                }
+            }
+            if (startQueryIdPosition != -1) {
+                int i = startQueryIdPosition;
+                for (; i < counter; i++) {
+                    if (buf[i] == '&') {
+                        break;
+                    }
+                }
+                if (i == counter) {
+                    counter = startQueryIdPosition - 1;
+                } else {
+                    System.arraycopy(buf, i +1, buf, startQueryIdPosition, counter - i);
+                    counter = counter - (i-startQueryIdPosition) - 1;
+                }
+
+            }
+            try {
+                Thread.sleep(10);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+            fastClient.send(buf, 0, counter);
+            if (totalCount++ > limit) {
+                break;
+            }
+        }
+        inputStream.close();
+        fastClient.close();
+    }
+
+    private static final byte[] QUERY_ID = "query_id=".getBytes();
 }

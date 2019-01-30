@@ -10,10 +10,13 @@ import java.util.function.Predicate;
 
 public class InterestsAnyPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 15;
+
     private byte[] interests;
 
-    public InterestsAnyPredicate(byte[] interests) {
+    public InterestsAnyPredicate setValue(byte[] interests) {
         this.interests = interests;
+        return this;
     }
 
     @Override
@@ -54,5 +57,16 @@ public class InterestsAnyPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new InterestsAnyIndexScan(indexHolder, interests);
+    }
+
+    @Override
+    public double probability() {
+        //0.03076923 * interests.length
+        return 0.0719;
+    }
+
+    @Override
+    public double cost() {
+        return 2.5;
     }
 }

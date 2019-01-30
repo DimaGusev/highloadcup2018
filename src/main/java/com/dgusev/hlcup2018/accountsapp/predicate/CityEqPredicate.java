@@ -9,10 +9,14 @@ import java.util.function.Predicate;
 
 public class CityEqPredicate extends AbstractPredicate {
 
+
+    public static final int ORDER = 4;
+
     private int city;
 
-    public CityEqPredicate(int city) {
+    public CityEqPredicate setValue(int city) {
         this.city = city;
+        return this;
     }
 
     @Override
@@ -32,5 +36,16 @@ public class CityEqPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new CityEqIndexScan(indexHolder, city);
+    }
+
+    @Override
+    public double probability() {
+        //0.00165
+        return 0.0048951;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

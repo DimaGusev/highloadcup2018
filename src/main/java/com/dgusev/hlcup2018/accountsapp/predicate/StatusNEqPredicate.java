@@ -8,10 +8,13 @@ import java.util.function.Predicate;
 
 public class StatusNEqPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 29;
+
     private byte status;
 
-    public StatusNEqPredicate(byte status) {
+    public StatusNEqPredicate setValue(byte status) {
         this.status = status;
+        return this;
     }
 
     @Override
@@ -31,5 +34,15 @@ public class StatusNEqPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return null;
+    }
+
+    @Override
+    public double probability() {
+        return 0.67;
+    }
+
+    @Override
+    public double cost() {
+        return 1;
     }
 }

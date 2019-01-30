@@ -10,10 +10,13 @@ import java.util.function.Predicate;
 
 public class LikesContainsPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 18;
+
     private int[] likes;
 
-    public LikesContainsPredicate(int[] interests) {
+    public LikesContainsPredicate setValue(int[] interests) {
         this.likes = interests;
+        return this;
     }
 
     @Override
@@ -57,5 +60,15 @@ public class LikesContainsPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new LikesContainsIndexScan(indexHolder, likes);
+    }
+
+    @Override
+    public double probability() {
+        return 0.00005/likes.length;
+    }
+
+    @Override
+    public double cost() {
+        return 1.5;
     }
 }

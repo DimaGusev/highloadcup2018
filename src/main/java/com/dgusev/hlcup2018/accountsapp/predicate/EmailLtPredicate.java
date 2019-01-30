@@ -8,12 +8,15 @@ import java.util.function.Predicate;
 
 public class EmailLtPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 11;
+
     private String email;
     private byte[] emailBytes;
 
-    public EmailLtPredicate(String email) {
+    public EmailLtPredicate setValue(String email) {
         this.email = email;
         this.emailBytes = email.getBytes();
+        return this;
     }
 
     @Override
@@ -50,5 +53,15 @@ public class EmailLtPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return null;
+    }
+
+    @Override
+    public double probability() {
+        return 0.13;
+    }
+
+    @Override
+    public double cost() {
+        return 1.7;
     }
 }

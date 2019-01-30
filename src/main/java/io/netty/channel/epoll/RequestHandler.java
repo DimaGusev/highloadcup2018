@@ -166,8 +166,11 @@ public class RequestHandler {
                 int startParameters = endPathIndex + 1;
                 long t1 = System.nanoTime();
                 int queryId = readQueryId(buf, queryStart, queryFinish);
-                long addr = cache[queryId];
-                //addr = 0;
+                long addr = 0;
+                if (queryId != -1) {
+                    addr = cache[queryId];
+                }
+                addr = 0;
                 if (addr != 0) {
                     int size = UNSAFE.getShort(addr);
                     if (size > 0) {
@@ -211,8 +214,10 @@ public class RequestHandler {
                             long cacheAddr = UNSAFE.allocateMemory(2 + position);
                             UNSAFE.putShort(cacheAddr, (short)position);
                             UNSAFE.copyMemory(address, cacheAddr + 2, (short)position);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         } else {
                             if (socketChannel != null) {
                                 writeEmptyAccountsNio(socketChannel, byteBuffer);
@@ -221,8 +226,10 @@ public class RequestHandler {
                             }
                             long cacheAddr = UNSAFE.allocateMemory(2);
                             UNSAFE.putShort(cacheAddr, (short)-1);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         }
 
                     } else if (equals(buf, queryStart, endPathIndex, GROUP)) {
@@ -244,8 +251,10 @@ public class RequestHandler {
                             long cacheAddr = UNSAFE.allocateMemory(2 + position);
                             UNSAFE.putShort(cacheAddr, (short) position);
                             UNSAFE.copyMemory(address, cacheAddr + 2, (short) position);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         } else {
                             if (socketChannel != null) {
                                 writeEmptyGroupsNio(socketChannel, byteBuffer);
@@ -254,8 +263,10 @@ public class RequestHandler {
                             }
                             long cacheAddr = UNSAFE.allocateMemory(2);
                             UNSAFE.putShort(cacheAddr, (short)-2);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         }
                     } else if (contains(buf, queryStart, endPathIndex, "recommend")) {
                         int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
@@ -277,8 +288,10 @@ public class RequestHandler {
                             long cacheAddr = UNSAFE.allocateMemory(2 + position);
                             UNSAFE.putShort(cacheAddr, (short) position);
                             UNSAFE.copyMemory(address, cacheAddr + 2, (short) position);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         } else {
                             if (socketChannel != null) {
                                 writeEmptyAccountsNio(socketChannel, byteBuffer);
@@ -287,8 +300,10 @@ public class RequestHandler {
                             }
                             long cacheAddr = UNSAFE.allocateMemory(2);
                             UNSAFE.putShort(cacheAddr, (short)-1);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         }
                     } else if (contains(buf, queryStart, endPathIndex, "suggest")) {
                         int fin = indexOf(buf, queryStart + 10, queryFinish, '/');
@@ -310,8 +325,10 @@ public class RequestHandler {
                             long cacheAddr = UNSAFE.allocateMemory(2 + position);
                             UNSAFE.putShort(cacheAddr, (short) position);
                             UNSAFE.copyMemory(address, cacheAddr + 2, (short) position);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         } else {
                             if (socketChannel != null) {
                                 writeEmptyAccountsNio(socketChannel, byteBuffer);
@@ -320,14 +337,16 @@ public class RequestHandler {
                             }
                             long cacheAddr = UNSAFE.allocateMemory(2);
                             UNSAFE.putShort(cacheAddr, (short)-1);
-                            cache[queryId] = cacheAddr;
-                            cache = cache;
+                            if (queryId != -1) {
+                                cache[queryId] = cacheAddr;
+                                cache = cache;
+                            }
                         }
                     } else {
                         throw NotFoundRequest.INSTANCE;
                     }
                     long t2 = System.nanoTime();
-                    if (t2 - t1 > 6000000) {
+                    if (t2 - t1 > 4000000 && queryId != -1) {
                         System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
                     }
                 }
@@ -579,10 +598,10 @@ public class RequestHandler {
             pointer++;
         }
         pointer++;
-        if (length - pointer - 2 > contentLength ) {
+        if (length - pointer - 0 > contentLength ) {
             System.out.println(fd.intValue() + "Error, more data than needed, actual=" + (length - pointer) +",history=" + " ,header=" + contentLength + ": " + new String(buf, 0, length));
         }
-        if (length - pointer - 2  < contentLength ) {
+        if (length - pointer - 0  < contentLength ) {
             return true;
         }
         return false;

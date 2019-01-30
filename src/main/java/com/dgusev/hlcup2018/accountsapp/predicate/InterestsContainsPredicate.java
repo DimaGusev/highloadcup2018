@@ -10,10 +10,13 @@ import java.util.function.Predicate;
 
 public class InterestsContainsPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 16;
+
     private byte[] interests;
 
-    public InterestsContainsPredicate(byte[] interests) {
+    public InterestsContainsPredicate setValue(byte[] interests) {
         this.interests = interests;
+        return this;
     }
 
     @Override
@@ -58,5 +61,16 @@ public class InterestsContainsPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return new InterestsContainsIndexScan(indexHolder, interests);
+    }
+
+    @Override
+    public double probability() {
+        //return 0.03076923 / interests.length;
+        return 0.02641;
+    }
+
+    @Override
+    public double cost() {
+        return 2.2;
     }
 }

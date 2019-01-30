@@ -10,12 +10,15 @@ import java.util.function.Predicate;
 
 public class SnameStartsPredicate extends AbstractPredicate {
 
+    public static final int ORDER = 27;
+
     private String start;
     private Dictionary dictionary;
 
-    public SnameStartsPredicate(String start, Dictionary dictionary) {
+    public SnameStartsPredicate setValue(String start, Dictionary dictionary) {
         this.start = start;
         this.dictionary = dictionary;
+        return this;
     }
 
     @Override
@@ -31,5 +34,15 @@ public class SnameStartsPredicate extends AbstractPredicate {
     @Override
     public IndexScan createIndexScan(IndexHolder indexHolder) {
         return null;
+    }
+
+    @Override
+    public double probability() {
+        return 0.015873;
+    }
+
+    @Override
+    public double cost() {
+        return 2.5;
     }
 }
