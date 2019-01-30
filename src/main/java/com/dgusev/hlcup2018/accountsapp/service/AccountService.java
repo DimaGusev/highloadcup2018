@@ -903,6 +903,13 @@ public class AccountService {
         }
     };
 
+    private static final ThreadLocal<double[]> suggestSet = new ThreadLocal<double[]>() {
+        @Override
+        protected double[] initialValue() {
+            return new double[1500000];
+        }
+    };
+
     private static final ThreadLocal<List<Account>> recommendResult = new ThreadLocal<List<Account>>() {
         @Override
         protected List<Account> initialValue() {
@@ -1554,8 +1561,7 @@ public class AccountService {
 
         TIntHashSet myLikes = suggestIntSet.get();
         myLikes.clear();
-        TIntDoubleMap suggests = similarityMap.get();
-        suggests.clear();
+        double[] suggests = suggestSet.get();
         Similarity[] suggestResult = similarityListPool.get();
         int totalSize = fillSuggestResult2(account, myLikes, country, city, suggestResult, suggests);
 
@@ -1568,7 +1574,7 @@ public class AccountService {
         return result;
     }
 
-    private int fillSuggestResult2(Account account, TIntHashSet myLikes, byte country, int city, Similarity[] suggestResult, TIntDoubleMap suggests) {
+    private int fillSuggestResult2(Account account, TIntHashSet myLikes, byte country, int city, Similarity[] suggestResult, double[] suggests) {
         int myId = account.id;
         int totalSize = 0;
         for (int i = 0; i < account.likes.length; i++) {
@@ -1647,22 +1653,25 @@ public class AccountService {
                     } else {
                         delta = 1;
                     }
-                    suggests.adjustOrPutValue(accId, delta, delta);
+                    double current = suggests[accId];
+                    if (current == 0) {
+                        Similarity similarity = suggestResult[totalSize++];
+                        similarity.account = acc;
+                        suggests[accId] = delta;
+                    } else {
+                        suggests[accId] = current + delta;
+                    }
                 }
             }
         }
 
-        int[] size = new int[1];
-        size[0] = totalSize;
+        for (int i = 0; i < totalSize; i++) {
+            Similarity similarity = suggestResult[i];
+            similarity.similarity = suggests[similarity.account.id];
+            suggests[similarity.account.id] = 0;
+        }
 
-
-        suggests.forEachEntry((i,d) -> {
-            Similarity similarity = suggestResult[size[0]++];
-            similarity.account = accountIdMap[i];
-            similarity.similarity = d;
-            return true;
-        });
-        return size[0];
+        return totalSize;
     }
 
     private void sortAndFetchFromSimilar(List<Account> result, Similarity[] suggestResult, int totalSize, boolean targetSex, int limit, TIntHashSet myLikes) {

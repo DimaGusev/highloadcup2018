@@ -170,7 +170,7 @@ public class RequestHandler {
                 if (queryId != -1) {
                     addr = cache[queryId];
                 }
-                addr = 0;
+                //addr = 0;
                 if (addr != 0) {
                     int size = UNSAFE.getShort(addr);
                     if (size > 0) {
@@ -346,7 +346,7 @@ public class RequestHandler {
                         throw NotFoundRequest.INSTANCE;
                     }
                     long t2 = System.nanoTime();
-                    if (t2 - t1 > 4000000 && queryId != -1) {
+                    if (t2 - t1 > 3500000 && queryId != -1) {
                         System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
                     }
                 }
@@ -598,10 +598,10 @@ public class RequestHandler {
             pointer++;
         }
         pointer++;
-        if (length - pointer - 0 > contentLength ) {
+        if (length - pointer - 2 > contentLength ) {
             System.out.println(fd.intValue() + "Error, more data than needed, actual=" + (length - pointer) +",history=" + " ,header=" + contentLength + ": " + new String(buf, 0, length));
         }
-        if (length - pointer - 0  < contentLength ) {
+        if (length - pointer - 2  < contentLength ) {
             return true;
         }
         return false;

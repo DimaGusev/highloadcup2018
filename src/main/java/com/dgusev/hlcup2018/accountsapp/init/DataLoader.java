@@ -56,6 +56,19 @@ public class DataLoader implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        try {
+
+            Process p = Runtime.getRuntime().exec("uname -r");
+
+            BufferedReader stdInput = new BufferedReader(new
+                    InputStreamReader(p.getInputStream()));
+            String line = null;
+            while ((line = stdInput.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         String initFile = null;
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
             initFile = initFileWin;
