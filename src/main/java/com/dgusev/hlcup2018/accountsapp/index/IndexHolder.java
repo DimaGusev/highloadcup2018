@@ -31,6 +31,7 @@ import java.util.concurrent.Executors;
 
 import static com.dgusev.hlcup2018.accountsapp.model.Conts.CITY_COUNT;
 import static com.dgusev.hlcup2018.accountsapp.model.Conts.INTERES_COUNT;
+import static com.dgusev.hlcup2018.accountsapp.model.Conts.COUNTRY_COUNT;
 
 @Component
 public class IndexHolder {
@@ -74,28 +75,40 @@ public class IndexHolder {
 
     public TByteObjectMap<int[]> sexFalsePremiumState0Index;
     public long[][] citySexFalsePremiumState0Index;
+    public long[][] countrySexFalsePremiumState0Index;
     public TByteObjectMap<int[]> sexFalsePremiumState1Index;
     public long[][] citySexFalsePremiumState1Index;
+    public long[][] countrySexFalsePremiumState1Index;
     public TByteObjectMap<int[]> sexFalsePremiumState2Index;
     public long[][] citySexFalsePremiumState2Index;
+    public long[][] countrySexFalsePremiumState2Index;
     public TByteObjectMap<int[]> sexFalseNonPremiumState0Index;
     public long[][] citySexFalseNonPremiumState0Index;
+    public long[][] countrySexFalseNonPremiumState0Index;
     public TByteObjectMap<int[]> sexFalseNonPremiumState1Index;
     public long[][] citySexFalseNonPremiumState1Index;
+    public long[][] countrySexFalseNonPremiumState1Index;
     public TByteObjectMap<int[]> sexFalseNonPremiumState2Index;
     public long[][] citySexFalseNonPremiumState2Index;
+    public long[][] countrySexFalseNonPremiumState2Index;
     public TByteObjectMap<int[]> sexTruePremiumState0Index;
     public long[][] citySexTruePremiumState0Index;
+    public long[][] countrySexTruePremiumState0Index;
     public TByteObjectMap<int[]> sexTruePremiumState1Index;
     public long[][] citySexTruePremiumState1Index;
+    public long[][] countrySexTruePremiumState1Index;
     public TByteObjectMap<int[]> sexTruePremiumState2Index;
     public long[][] citySexTruePremiumState2Index;
+    public long[][] countrySexTruePremiumState2Index;
     public TByteObjectMap<int[]> sexTrueNonPremiumState0Index;
     public long[][] citySexTrueNonPremiumState0Index;
+    public long[][] countrySexTrueNonPremiumState0Index;
     public TByteObjectMap<int[]> sexTrueNonPremiumState1Index;
     public long[][] citySexTrueNonPremiumState1Index;
+    public long[][] countrySexTrueNonPremiumState1Index;
     public TByteObjectMap<int[]> sexTrueNonPremiumState2Index;
     public long[][] citySexTrueNonPremiumState2Index;
+    public long[][] countrySexTrueNonPremiumState2Index;
 
     public static final byte[] birthYear = new byte[AccountService.MAX_ID];
     public static final byte[] joinedYear = new byte[AccountService.MAX_ID];
@@ -1629,6 +1642,19 @@ public class IndexHolder {
             TByteObjectMap<TIntIntMap> tmpCitySexTrueNonPremiumState0Index = new TByteObjectHashMap<>();
             TByteObjectMap<TIntIntMap> tmpCitySexTrueNonPremiumState1Index = new TByteObjectHashMap<>();
             TByteObjectMap<TIntIntMap> tmpCitySexTrueNonPremiumState2Index = new TByteObjectHashMap<>();
+
+            TByteObjectMap<TIntIntMap> tmpCountrySexFalsePremiumState0Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexFalsePremiumState1Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexFalsePremiumState2Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexFalseNonPremiumState0Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexFalseNonPremiumState1Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexFalseNonPremiumState2Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexTruePremiumState0Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexTruePremiumState1Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexTruePremiumState2Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexTrueNonPremiumState0Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexTrueNonPremiumState1Index = new TByteObjectHashMap<>();
+            TByteObjectMap<TIntIntMap> tmpCountrySexTrueNonPremiumState2Index = new TByteObjectHashMap<>();
             for (int i = 0; i < size; i++) {
                 Account account = accounts[i];
                 if (account.interests != null) {
@@ -1644,6 +1670,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexTruePremiumState0Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexTruePremiumState0Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexTruePremiumState1Index.get(interes);
@@ -1653,6 +1687,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexTruePremiumState1Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexTruePremiumState1Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexTruePremiumState2Index.get(interes);
@@ -1661,6 +1703,14 @@ public class IndexHolder {
                                             tmpCitySexTruePremiumState2Index.put(interes, tIntIntMap);
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexTruePremiumState2Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexTruePremiumState2Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
                                     }
                                 }
                             } else  {
@@ -1673,6 +1723,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexTrueNonPremiumState0Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexTrueNonPremiumState0Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexTrueNonPremiumState1Index.get(interes);
@@ -1682,6 +1740,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexTrueNonPremiumState1Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexTrueNonPremiumState1Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexTrueNonPremiumState2Index.get(interes);
@@ -1690,6 +1756,14 @@ public class IndexHolder {
                                             tmpCitySexTrueNonPremiumState2Index.put(interes, tIntIntMap);
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexTrueNonPremiumState2Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexTrueNonPremiumState2Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
                                     }
                                 }
                             }
@@ -1704,6 +1778,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexFalsePremiumState0Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexFalsePremiumState0Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexFalsePremiumState1Index.get(interes);
@@ -1713,6 +1795,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexFalsePremiumState1Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexFalsePremiumState1Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexFalsePremiumState2Index.get(interes);
@@ -1721,6 +1811,14 @@ public class IndexHolder {
                                             tmpCitySexFalsePremiumState2Index.put(interes, tIntIntMap);
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexFalsePremiumState2Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexFalsePremiumState2Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
                                     }
                                 }
                             } else  {
@@ -1733,6 +1831,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexFalseNonPremiumState0Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexFalseNonPremiumState0Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexFalseNonPremiumState1Index.get(interes);
@@ -1742,6 +1848,14 @@ public class IndexHolder {
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexFalseNonPremiumState1Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexFalseNonPremiumState1Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         TIntIntMap tIntIntMap = tmpCitySexFalseNonPremiumState2Index.get(interes);
@@ -1750,6 +1864,14 @@ public class IndexHolder {
                                             tmpCitySexFalseNonPremiumState2Index.put(interes, tIntIntMap);
                                         }
                                         tIntIntMap.adjustOrPutValue(account.city, 1, 1);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        TIntIntMap tIntIntMap = tmpCountrySexFalseNonPremiumState2Index.get(interes);
+                                        if (tIntIntMap == null) {
+                                            tIntIntMap = new TIntIntHashMap();
+                                            tmpCountrySexFalseNonPremiumState2Index.put(interes, tIntIntMap);
+                                        }
+                                        tIntIntMap.adjustOrPutValue(account.country, 1, 1);
                                     }
                                 }
                             }
@@ -1806,6 +1928,56 @@ public class IndexHolder {
                 citySexTrueNonPremiumState2Index[i] = new long[CITY_COUNT];
             }
 
+
+            countrySexFalsePremiumState0Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexFalsePremiumState0Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexFalsePremiumState1Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexFalsePremiumState1Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexFalsePremiumState2Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexFalsePremiumState2Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexFalseNonPremiumState0Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexFalseNonPremiumState0Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexFalseNonPremiumState1Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexFalseNonPremiumState1Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexFalseNonPremiumState2Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexFalseNonPremiumState2Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexTruePremiumState0Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexTruePremiumState0Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexTruePremiumState1Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexTruePremiumState1Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexTruePremiumState2Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexTruePremiumState2Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexTrueNonPremiumState0Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexTrueNonPremiumState0Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexTrueNonPremiumState1Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexTrueNonPremiumState1Index[i] = new long[COUNTRY_COUNT];
+            }
+            countrySexTrueNonPremiumState2Index = new long[INTERES_COUNT][];
+            for (int i = 0; i < INTERES_COUNT; i++) {
+                countrySexTrueNonPremiumState2Index[i] = new long[COUNTRY_COUNT];
+            }
+            
             for (byte entry : tmpCitySexFalsePremiumState0Index.keys()) {
                 TIntIntMap tIntIntMap = tmpCitySexFalsePremiumState0Index.get(entry);
                 for (int city: tIntIntMap.keys()) {
@@ -1940,6 +2112,140 @@ public class IndexHolder {
             }
 
 
+            for (byte entry : tmpCountrySexFalsePremiumState0Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexFalsePremiumState0Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexFalsePremiumState0Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexFalsePremiumState1Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexFalsePremiumState1Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexFalsePremiumState1Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexFalsePremiumState2Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexFalsePremiumState2Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexFalsePremiumState2Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexFalseNonPremiumState0Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexFalseNonPremiumState0Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexFalseNonPremiumState0Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexFalseNonPremiumState1Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexFalseNonPremiumState1Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexFalseNonPremiumState1Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexFalseNonPremiumState2Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexFalseNonPremiumState2Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexFalseNonPremiumState2Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexTruePremiumState0Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexTruePremiumState0Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexTruePremiumState0Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexTruePremiumState1Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexTruePremiumState1Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexTruePremiumState1Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexTruePremiumState2Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexTruePremiumState2Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexTruePremiumState2Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexTrueNonPremiumState0Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexTrueNonPremiumState0Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexTrueNonPremiumState0Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexTrueNonPremiumState1Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexTrueNonPremiumState1Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexTrueNonPremiumState1Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+            for (byte entry : tmpCountrySexTrueNonPremiumState2Index.keys()) {
+                TIntIntMap tIntIntMap = tmpCountrySexTrueNonPremiumState2Index.get(entry);
+                for (int Country: tIntIntMap.keys()) {
+                    int size = tIntIntMap.get(Country);
+                    long address = UNSAFE.allocateMemory(2 + 4*size);
+                    UNSAFE.putShort(address, (short) size);
+                    countrySexTrueNonPremiumState2Index[entry][Country] = address;
+                    tIntIntMap.put(Country, 0);
+                    totalSize+=2 + 4*size;
+                }
+            }
+
+
             for (int i = 0; i < size; i++) {
                 Account account = accounts[i];
                 if (account.interests != null) {
@@ -1952,17 +2258,32 @@ public class IndexHolder {
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexTruePremiumState0Index.get(interes).get(account.city), account.id);
                                         tmpCitySexTruePremiumState0Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexTruePremiumState0Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexTruePremiumState0Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexTruePremiumState0Index.get(interes).increment(account.country);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexTruePremiumState1Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexTruePremiumState1Index.get(interes).get(account.city), account.id);
                                         tmpCitySexTruePremiumState1Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexTruePremiumState1Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexTruePremiumState1Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexTruePremiumState1Index.get(interes).increment(account.country);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexTruePremiumState2Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexTruePremiumState2Index.get(interes).get(account.city), account.id);
                                         tmpCitySexTruePremiumState2Index.get(interes).increment(account.city);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexTruePremiumState2Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexTruePremiumState2Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexTruePremiumState2Index.get(interes).increment(account.country);
                                     }
                                 }
                             } else  {
@@ -1972,17 +2293,32 @@ public class IndexHolder {
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexTrueNonPremiumState0Index.get(interes).get(account.city), account.id);
                                         tmpCitySexTrueNonPremiumState0Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexTrueNonPremiumState0Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexTrueNonPremiumState0Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexTrueNonPremiumState0Index.get(interes).increment(account.country);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexTrueNonPremiumState1Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexTrueNonPremiumState1Index.get(interes).get(account.city), account.id);
                                         tmpCitySexTrueNonPremiumState1Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexTrueNonPremiumState1Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexTrueNonPremiumState1Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexTrueNonPremiumState1Index.get(interes).increment(account.country);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexTrueNonPremiumState2Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexTrueNonPremiumState2Index.get(interes).get(account.city), account.id);
                                         tmpCitySexTrueNonPremiumState2Index.get(interes).increment(account.city);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexTrueNonPremiumState2Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexTrueNonPremiumState2Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexTrueNonPremiumState2Index.get(interes).increment(account.country);
                                     }
                                 }
                             }
@@ -1994,17 +2330,32 @@ public class IndexHolder {
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexFalsePremiumState0Index.get(interes).get(account.city), account.id);
                                         tmpCitySexFalsePremiumState0Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexFalsePremiumState0Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexFalsePremiumState0Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexFalsePremiumState0Index.get(interes).increment(account.country);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexFalsePremiumState1Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexFalsePremiumState1Index.get(interes).get(account.city), account.id);
                                         tmpCitySexFalsePremiumState1Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexFalsePremiumState1Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexFalsePremiumState1Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexFalsePremiumState1Index.get(interes).increment(account.country);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexFalsePremiumState2Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexFalsePremiumState2Index.get(interes).get(account.city), account.id);
                                         tmpCitySexFalsePremiumState2Index.get(interes).increment(account.city);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexFalsePremiumState2Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexFalsePremiumState2Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexFalsePremiumState2Index.get(interes).increment(account.country);
                                     }
                                 }
                             } else  {
@@ -2014,17 +2365,32 @@ public class IndexHolder {
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexFalseNonPremiumState0Index.get(interes).get(account.city), account.id);
                                         tmpCitySexFalseNonPremiumState0Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexFalseNonPremiumState0Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexFalseNonPremiumState0Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexFalseNonPremiumState0Index.get(interes).increment(account.country);
+                                    }
                                 } else if (account.status == 1) {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexFalseNonPremiumState1Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexFalseNonPremiumState1Index.get(interes).get(account.city), account.id);
                                         tmpCitySexFalseNonPremiumState1Index.get(interes).increment(account.city);
                                     }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexFalseNonPremiumState1Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexFalseNonPremiumState1Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexFalseNonPremiumState1Index.get(interes).increment(account.country);
+                                    }
                                 } else {
                                     if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
                                         long address = citySexFalseNonPremiumState2Index[interes][account.city];
                                         UNSAFE.putInt(address + 2 + 4*tmpCitySexFalseNonPremiumState2Index.get(interes).get(account.city), account.id);
                                         tmpCitySexFalseNonPremiumState2Index.get(interes).increment(account.city);
+                                    }
+                                    if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                        long address = countrySexFalseNonPremiumState2Index[interes][account.country];
+                                        UNSAFE.putInt(address + 2 + 4*tmpCountrySexFalseNonPremiumState2Index.get(interes).get(account.country), account.id);
+                                        tmpCountrySexFalseNonPremiumState2Index.get(interes).increment(account.country);
                                     }
                                 }
                             }

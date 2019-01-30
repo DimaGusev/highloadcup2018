@@ -955,7 +955,7 @@ public class AccountService {
 
     public List<Account> recommend(int id, byte country, int city, int limit) {
         if (limit <= 0) {
-            throw new BadRequest();
+            throw BadRequest.INSTANCE;
         }
 
         Account account = accountIdMap[id];
@@ -975,13 +975,10 @@ public class AccountService {
         for (int i = 0; i < 6; i++) {
             sizeArr[i] = 0;
         }
-        if (country != -1) {
-            System.out.println("Country not null");
-        }
-        if (city == -1) {
+        if (city == -1 && country == -1) {
             fetchRecommendations2(id, sex, account, country, city, limit, recommend, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr);
         } else {
-            fetchRecommendations2City(account, country, city, limit, recommend, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr);
+            fetchRecommendations2CityCountry(account, country, city, limit, recommend, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr);
         }
         Score[] result = recommendArrayResultPool.get();
         int size = fillList(account, result, limit, recommendArray[0], recommendArray[1], recommendArray[2], recommendArray[3], recommendArray[4], recommendArray[5], sizeArr, recommend);
@@ -1230,7 +1227,7 @@ public class AccountService {
         sizeArr[5] = result6Size;
     }
 
-    private void fetchRecommendations2City(Account account, byte country, int city, int limit, byte[] recommend, Account[] result1, Account[] result2, Account[] result3, Account[] result4, Account[] result5, Account[] result6, int[] sizeArr) {
+    private void fetchRecommendations2CityCountry(Account account, byte country, int city, int limit, byte[] recommend, Account[] result1, Account[] result2, Account[] result3, Account[] result4, Account[] result5, Account[] result6, int[] sizeArr) {
 
         long[][] prio1;
         long[][] prio2;
@@ -1246,26 +1243,48 @@ public class AccountService {
         int result5Size = 0;
         int result6Size = 0;
 
-        if (account.sex) {
-            prio1 = indexHolder.citySexFalsePremiumState0Index;
-            prio2 = indexHolder.citySexFalsePremiumState1Index;
-            prio3 = indexHolder.citySexFalsePremiumState2Index;
-            prio4 = indexHolder.citySexFalseNonPremiumState0Index;
-            prio5 = indexHolder.citySexFalseNonPremiumState1Index;
-            prio6 = indexHolder.citySexFalseNonPremiumState2Index;
+        int index = 0;
+
+        if (city != -1) {
+            if (account.sex) {
+                prio1 = indexHolder.citySexFalsePremiumState0Index;
+                prio2 = indexHolder.citySexFalsePremiumState1Index;
+                prio3 = indexHolder.citySexFalsePremiumState2Index;
+                prio4 = indexHolder.citySexFalseNonPremiumState0Index;
+                prio5 = indexHolder.citySexFalseNonPremiumState1Index;
+                prio6 = indexHolder.citySexFalseNonPremiumState2Index;
+            } else {
+                prio1 = indexHolder.citySexTruePremiumState0Index;
+                prio2 = indexHolder.citySexTruePremiumState1Index;
+                prio3 = indexHolder.citySexTruePremiumState2Index;
+                prio4 = indexHolder.citySexTrueNonPremiumState0Index;
+                prio5 = indexHolder.citySexTrueNonPremiumState1Index;
+                prio6 = indexHolder.citySexTrueNonPremiumState2Index;
+            }
+            index = city;
         } else {
-            prio1 = indexHolder.citySexTruePremiumState0Index;
-            prio2 = indexHolder.citySexTruePremiumState1Index;
-            prio3 = indexHolder.citySexTruePremiumState2Index;
-            prio4 = indexHolder.citySexTrueNonPremiumState0Index;
-            prio5 = indexHolder.citySexTrueNonPremiumState1Index;
-            prio6 = indexHolder.citySexTrueNonPremiumState2Index;
+            if (account.sex) {
+                prio1 = indexHolder.countrySexFalsePremiumState0Index;
+                prio2 = indexHolder.countrySexFalsePremiumState1Index;
+                prio3 = indexHolder.countrySexFalsePremiumState2Index;
+                prio4 = indexHolder.countrySexFalseNonPremiumState0Index;
+                prio5 = indexHolder.countrySexFalseNonPremiumState1Index;
+                prio6 = indexHolder.countrySexFalseNonPremiumState2Index;
+            } else {
+                prio1 = indexHolder.countrySexTruePremiumState0Index;
+                prio2 = indexHolder.countrySexTruePremiumState1Index;
+                prio3 = indexHolder.countrySexTruePremiumState2Index;
+                prio4 = indexHolder.countrySexTrueNonPremiumState0Index;
+                prio5 = indexHolder.countrySexTrueNonPremiumState1Index;
+                prio6 = indexHolder.countrySexTrueNonPremiumState2Index;
+            }
+            index = country;
         }
 
         int totalCount = 0;
 
         for (byte interes : account.interests) {
-            long address = prio1[interes][city];
+            long address = prio1[interes][index];
             if (address != 0) {
                 int size = UNSAFE.getShort(address);
                 address+=2;
@@ -1273,8 +1292,10 @@ public class AccountService {
                     int aId = UNSAFE.getInt(address);
                     address+=4;
                     Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
+                    if (city != -1) {
+                        if (country != -1 && acc.country != country) {
+                            continue;
+                        }
                     }
                     byte cnt = ++recommend[aId];
                     if (cnt > 1) {
@@ -1290,7 +1311,7 @@ public class AccountService {
             return;
         }
         for (byte interes : account.interests) {
-            long address = prio2[interes][city];
+            long address = prio2[interes][index];
             if (address != 0) {
                 int size = UNSAFE.getShort(address);
                 address+=2;
@@ -1298,8 +1319,10 @@ public class AccountService {
                     int aId = UNSAFE.getInt(address);
                     address+=4;
                     Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
+                    if (city != -1) {
+                        if (country != -1 && acc.country != country) {
+                            continue;
+                        }
                     }
                     byte cnt = ++recommend[aId];
                     if (cnt > 1) {
@@ -1316,7 +1339,7 @@ public class AccountService {
             return;
         }
         for (byte interes : account.interests) {
-            long address = prio3[interes][city];
+            long address = prio3[interes][index];
             if (address != 0) {
                 int size = UNSAFE.getShort(address);
                 address+=2;
@@ -1324,8 +1347,10 @@ public class AccountService {
                     int aId = UNSAFE.getInt(address);
                     address+=4;
                     Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
+                    if (city != -1) {
+                        if (country != -1 && acc.country != country) {
+                            continue;
+                        }
                     }
                     byte cnt = ++recommend[aId];
                     if (cnt > 1) {
@@ -1343,7 +1368,7 @@ public class AccountService {
             return;
         }
         for (byte interes : account.interests) {
-            long address = prio4[interes][city];
+            long address = prio4[interes][index];
             if (address != 0) {
                 int size = UNSAFE.getShort(address);
                 address+=2;
@@ -1351,8 +1376,10 @@ public class AccountService {
                     int aId = UNSAFE.getInt(address);
                     address+=4;
                     Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
+                    if (city != -1) {
+                        if (country != -1 && acc.country != country) {
+                            continue;
+                        }
                     }
                     byte cnt = ++recommend[aId];
                     if (cnt > 1) {
@@ -1371,7 +1398,7 @@ public class AccountService {
             return;
         }
         for (byte interes : account.interests) {
-            long address = prio5[interes][city];
+            long address = prio5[interes][index];
             if (address != 0) {
                 int size = UNSAFE.getShort(address);
                 address+=2;
@@ -1379,8 +1406,10 @@ public class AccountService {
                     int aId = UNSAFE.getInt(address);
                     address+=4;
                     Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
+                    if (city != -1) {
+                        if (country != -1 && acc.country != country) {
+                            continue;
+                        }
                     }
                     byte cnt = ++recommend[aId];
                     if (cnt > 1) {
@@ -1400,7 +1429,7 @@ public class AccountService {
             return;
         }
         for (byte interes : account.interests) {
-            long address = prio6[interes][city];
+            long address = prio6[interes][index];
             if (address != 0) {
                 int size = UNSAFE.getShort(address);
                 address+=2;
@@ -1408,8 +1437,10 @@ public class AccountService {
                     int aId = UNSAFE.getInt(address);
                     address+=4;
                     Account acc = accountIdMap[aId];
-                    if (country != -1 && acc.country != country) {
-                        continue;
+                    if (city != -1) {
+                        if (country != -1 && acc.country != country) {
+                            continue;
+                        }
                     }
                     byte cnt = ++recommend[aId];
                     if (cnt > 1) {
@@ -1537,47 +1568,6 @@ public class AccountService {
         return result;
     }
 
-    private int fillSuggestResult(Account account, TIntHashSet myLikes, byte country, int city, Similarity[] suggestResult, TIntHashSet suggests) {
-        int myId = account.id;
-        int totalSize = 0;
-        int prev = -1;
-        for (long like: account.likes) {
-            int lid = (int)(like >> 32);
-            if (lid != prev) {
-                myLikes.add(lid);
-                long address = indexHolder.likesIndex[lid];
-                if (address != 0) {
-                    int size = UNSAFE.getByte(address);
-                    address+=5;
-                    for (int i = 0; i < size; i++) {
-                        int l = UNSAFE.getInt(address);
-                        address+=8;
-                        if (l == myId) {
-                            continue;
-                        }
-                        Account acc = accountIdMap[l];
-                        if (acc.sex != account.sex) {
-                            continue;
-                        }
-                        if (country != -1 && acc.country != country) {
-                            continue;
-                        }
-                        if (city != -1 && acc.city != city) {
-                            continue;
-                        }
-                        if (!suggests.contains(l)) {
-                            Similarity similarity = suggestResult[totalSize++];
-                            similarity.account = acc;
-                            similarity.similarity = getSimilarity(account, acc);
-                            suggests.add(l);
-                        }
-                    }
-                }
-            }
-        }
-        return totalSize;
-    }
-
     private int fillSuggestResult2(Account account, TIntHashSet myLikes, byte country, int city, Similarity[] suggestResult, TIntDoubleMap suggests) {
         int myId = account.id;
         int totalSize = 0;
@@ -1664,6 +1654,7 @@ public class AccountService {
 
         int[] size = new int[1];
         size[0] = totalSize;
+
 
         suggests.forEachEntry((i,d) -> {
             Similarity similarity = suggestResult[size[0]++];
@@ -1869,6 +1860,11 @@ public class AccountService {
         if (account.city != 0 && account.interests != null) {
             for (byte interes: account.interests) {
                 addToRecommendCityIndex(account.sex, account.premium, account.status, interes, account.city, account.id);
+            }
+        }
+        if (account.country != 0 && account.interests != null) {
+            for (byte interes: account.interests) {
+                addToRecommendCountryIndex(account.sex, account.premium, account.status, interes, account.country, account.id);
             }
         }
     }
@@ -2351,6 +2347,13 @@ public class AccountService {
                 }
             }
         }
+        if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.premiumStart != 0 || accountDTO.status != null || accountDTO.country != null) {
+            if (oldAcc.country != 0 && oldAcc.interests != null) {
+                for (byte interes: oldAcc.interests) {
+                    removeFromRecommendCountryIndex(oldAcc.sex, oldAcc.premium, oldAcc.status, interes, oldAcc.country, oldAcc.id);
+                }
+            }
+        }
         if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.country != null || accountDTO.status != null || accountDTO.city != null || accountDTO.joined != 0 || accountDTO.birth != 0) {
             removeAccountFromGroups(oldAcc);
         }
@@ -2408,6 +2411,13 @@ public class AccountService {
             if (oldAcc.city != 0 && oldAcc.interests != null) {
                 for (byte interes: oldAcc.interests) {
                     addToRecommendCityIndex(oldAcc.sex, oldAcc.premium, oldAcc.status, interes, oldAcc.city, oldAcc.id);
+                }
+            }
+        }
+        if (accountDTO.sex != null || accountDTO.interests != null || accountDTO.premiumStart != 0 || accountDTO.status != null || accountDTO.country != null) {
+            if (oldAcc.country != 0 && oldAcc.interests != null) {
+                for (byte interes: oldAcc.interests) {
+                    addToRecommendCountryIndex(oldAcc.sex, oldAcc.premium, oldAcc.status, interes, oldAcc.country, oldAcc.id);
                 }
             }
         }
@@ -2533,6 +2543,51 @@ public class AccountService {
         removeAccount(index, interes, city, id);
     }
 
+
+    private void removeFromRecommendCountryIndex(boolean sex, boolean premium, int state, byte interes, int country, int id) {
+        long[][] index;
+        if (sex) {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.countrySexTruePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexTruePremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexTruePremiumState2Index;
+                }
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.countrySexTrueNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexTrueNonPremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexTrueNonPremiumState2Index;
+                }
+            }
+        } else {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.countrySexFalsePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexFalsePremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexFalsePremiumState2Index;
+                }
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.countrySexFalseNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexFalseNonPremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexFalseNonPremiumState2Index;
+                }
+            }
+        }
+        removeAccount(index, interes, country, id);
+    }
+
     private void addToRecommendCityIndex(boolean sex, boolean premium, int state, byte interes, int city, int id) {
         long[][] index;
         if (sex) {
@@ -2575,6 +2630,50 @@ public class AccountService {
             }
         }
         addAccount(index, interes, city, id);
+    }
+
+    private void addToRecommendCountryIndex(boolean sex, boolean premium, int state, byte interes, byte country, int id) {
+        long[][] index;
+        if (sex) {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.countrySexTruePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexTruePremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexTruePremiumState2Index;
+                }
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.countrySexTrueNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexTrueNonPremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexTrueNonPremiumState2Index;
+                }
+            }
+        } else {
+            if (premium) {
+                if (state == 0) {
+                    index = indexHolder.countrySexFalsePremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexFalsePremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexFalsePremiumState2Index;
+                }
+
+            } else {
+                if (state == 0) {
+                    index = indexHolder.countrySexFalseNonPremiumState0Index;
+                } else if (state == 1) {
+                    index = indexHolder.countrySexFalseNonPremiumState1Index;
+                } else {
+                    index = indexHolder.countrySexFalseNonPremiumState2Index;
+                }
+            }
+        }
+        addAccount(index, interes, country, id);
     }
 
     private void addAccount(long[][] index, byte interes, int city, int id) {
