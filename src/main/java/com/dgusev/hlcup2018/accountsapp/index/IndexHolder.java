@@ -2,8 +2,6 @@ package com.dgusev.hlcup2018.accountsapp.index;
 
 import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
-import com.dgusev.hlcup2018.accountsapp.model.Conts;
 import com.dgusev.hlcup2018.accountsapp.model.Group;
 import com.dgusev.hlcup2018.accountsapp.predicate.BirthYearPredicate;
 import com.dgusev.hlcup2018.accountsapp.predicate.JoinedYearPredicate;
@@ -11,14 +9,8 @@ import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
 import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
 import gnu.trove.impl.Constants;
-import gnu.trove.list.TIntList;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.*;
 import gnu.trove.map.hash.*;
-import gnu.trove.set.TIntSet;
-import gnu.trove.set.TLongSet;
-import gnu.trove.set.hash.TIntHashSet;
-import gnu.trove.set.hash.TLongHashSet;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import sun.misc.Unsafe;
@@ -29,9 +21,9 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.dgusev.hlcup2018.accountsapp.model.Conts.CITY_COUNT;
-import static com.dgusev.hlcup2018.accountsapp.model.Conts.INTERES_COUNT;
-import static com.dgusev.hlcup2018.accountsapp.model.Conts.COUNTRY_COUNT;
+import static com.dgusev.hlcup2018.accountsapp.model.Consts.CITY_COUNT;
+import static com.dgusev.hlcup2018.accountsapp.model.Consts.INTERES_COUNT;
+import static com.dgusev.hlcup2018.accountsapp.model.Consts.COUNTRY_COUNT;
 
 @Component
 public class IndexHolder {
@@ -48,6 +40,9 @@ public class IndexHolder {
     public TByteObjectMap<int[]> sexIndex;
     public TByteObjectMap<int[]> statusIndex;
     public TByteObjectMap<int[]> interestsIndex;
+    public TIntObjectMap<int[]> interests2Index;
+    public TIntObjectMap<int[]> interestsCityIndex;
+    public TIntObjectMap<int[]> interestsCountryIndex;
     public TIntObjectMap<int[]> cityIndex;
     public TIntObjectMap<int[]> joinedIndex;
     public TIntObjectMap<int[]> birthYearIndex;
@@ -605,6 +600,9 @@ public class IndexHolder {
                 joinedIndex = null;
                 countryBirthIndex = null;
                 cityBirthYearIndex = null;
+                interests2Index = null;
+                interestsCityIndex = null;
+                interestsCountryIndex = null;
                 TByteIntMap tmpSexIndex = new TByteIntHashMap();
                 TObjectIntMap<String> tmpPhoneCodeIndex = new TObjectIntHashMap<>();
                 int nullSnameCounter = 0;
@@ -618,6 +616,9 @@ public class IndexHolder {
                 TIntIntMap tmpCityBirthIndex = new TIntIntHashMap();
                 TIntIntMap tmpSnameIndex = new TIntIntHashMap();
                 TIntIntMap tmpJoinedIndex = new TIntIntHashMap();
+                TIntIntMap tmpInterests2Index = new TIntIntHashMap();
+                TIntIntMap tmpInterestsCityIndex = new TIntIntHashMap();
+                TIntIntMap tmpInterestsCountryIndex = new TIntIntHashMap();
                 phoneIndex = new TObjectIntHashMap<>();
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
@@ -692,6 +693,27 @@ public class IndexHolder {
                     if (compareTo(account.email, minEmail) < 0) {
                         minEmail = account.email;
                     }
+                    if (account.interests != null) {
+
+                        if (account.interests.length > 1) {
+                            for (int f = 0; f < account.interests.length - 1; f++) {
+                                for (int s = f + 1; s < account.interests.length; s++) {
+                                    int hash = account.interests[f] * 100 + account.interests[s];
+                                    tmpInterests2Index.adjustOrPutValue(hash, 1, 1);
+                                }
+                            }
+                        }
+                        for (byte interes : account.interests) {
+                            if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                int index = CITY_COUNT * interes + account.city;
+                                tmpInterestsCityIndex.adjustOrPutValue(index, 1, 1);
+                            }
+                            if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                int index = COUNTRY_COUNT * interes + account.country;
+                                tmpInterestsCountryIndex.adjustOrPutValue(index, 1, 1);
+                            }
+                        }
+                    }
                 }
                 sexIndex = new TByteObjectHashMap<>();
                 for (byte entry : tmpSexIndex.keys()) {
@@ -738,6 +760,21 @@ public class IndexHolder {
                 for (int entry : tmpJoinedIndex.keys()) {
                     joinedIndex.put(entry, new int[tmpJoinedIndex.get(entry)]);
                     tmpJoinedIndex.put(entry, 0);
+                }
+                interestsCityIndex = new TIntObjectHashMap<>();
+                for (int entry : tmpInterestsCityIndex.keys()) {
+                    interestsCityIndex.put(entry, new int[tmpInterestsCityIndex.get(entry)]);
+                    tmpInterestsCityIndex.put(entry, 0);
+                }
+                interestsCountryIndex = new TIntObjectHashMap<>();
+                for (int entry : tmpInterestsCountryIndex.keys()) {
+                    interestsCountryIndex.put(entry, new int[tmpInterestsCountryIndex.get(entry)]);
+                    tmpInterestsCountryIndex.put(entry, 0);
+                }
+                interests2Index = new TIntObjectHashMap<>();
+                for (int entry : tmpInterests2Index.keys()) {
+                    interests2Index.put(entry, new int[tmpInterests2Index.get(entry)]);
+                    tmpInterests2Index.put(entry, 0);
                 }
                 for (int i = 0; i < size; i++) {
                     Account account = accountDTOList[i];
@@ -790,6 +827,31 @@ public class IndexHolder {
                         int jyear = JoinedYearPredicate.calculateYear(account.joined);
                         joinedIndex.get(jyear)[tmpJoinedIndex.get(jyear)] = account.id;
                         tmpJoinedIndex.put(jyear, tmpJoinedIndex.get(jyear) + 1);
+                    }
+                    if (account.interests != null) {
+
+                        if (account.interests.length > 1) {
+                            for (int f = 0; f < account.interests.length -1; f++) {
+                                for (int s = f + 1; s < account.interests.length; s++) {
+                                    int hash = account.interests[f]*100 + account.interests[s];
+                                    interests2Index.get(hash)[tmpInterests2Index.get(hash)] = account.id;
+                                    tmpInterests2Index.increment(hash);
+                                }
+                            }
+                        }
+                        for (byte interes : account.interests) {
+                            if (account.city != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                int index = CITY_COUNT * interes + account.city;
+                                interestsCityIndex.get(index)[tmpInterestsCityIndex.get(index)] = account.id;
+                                tmpInterestsCityIndex.increment(index);
+                            }
+
+                            if (account.country != Constants.DEFAULT_INT_NO_ENTRY_VALUE) {
+                                int index = COUNTRY_COUNT * interes + account.country;
+                                interestsCountryIndex.get(index)[tmpInterestsCountryIndex.get(index)] = account.id;
+                                tmpInterestsCountryIndex.increment(index);
+                            }
+                        }
                     }
                 }
                 System.out.println("Finish init IndexHolder2 " + new Date());

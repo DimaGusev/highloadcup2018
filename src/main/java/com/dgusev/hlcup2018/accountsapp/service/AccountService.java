@@ -6,9 +6,7 @@ import com.dgusev.hlcup2018.accountsapp.model.*;
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 
-import gnu.trove.list.TIntList;
 import gnu.trove.list.TLongList;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.*;
 import gnu.trove.map.hash.*;
 import gnu.trove.set.TIntSet;
@@ -21,14 +19,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import sun.misc.Unsafe;
 
-import javax.annotation.PostConstruct;
-import java.lang.reflect.Array;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Predicate;
 
 @Service
 public class AccountService {
@@ -267,6 +261,110 @@ public class AccountService {
                 }
             }
             return result;
+        }
+        if ((predicateMask & 0b00110000) == 0b00110000) {
+            InterestsContainsPredicate interestsContainsPredicate = null;
+            CityEqPredicate cityEqPredicate = null;
+
+            for (int i = 0; i < predicates.size(); i++) {
+                AbstractPredicate predicate = predicates.get(i);
+                if (predicate instanceof InterestsContainsPredicate) {
+                    interestsContainsPredicate = (InterestsContainsPredicate) predicate;
+                } else if (predicate instanceof CityEqPredicate) {
+                    cityEqPredicate = (CityEqPredicate) predicate;
+                }
+            }
+            if (interestsContainsPredicate.getInterests().length == 1) {
+                predicates.remove(interestsContainsPredicate);
+                predicates.remove(cityEqPredicate);
+                int index = Consts.CITY_COUNT * interestsContainsPredicate.getInterests()[0] + cityEqPredicate.getCity();
+                int[] indexArray = indexHolder.interestsCityIndex.get(index);
+                if (indexArray == null) {
+                    return Collections.EMPTY_LIST;
+                }
+
+                AbstractPredicate[] accountPredicate = predicateArray.get();
+                int predicateSize = andPredicates(predicates, accountPredicate);
+                List<Account> result = ObjectPool.acquireFilterList();
+                int count = 0;
+                int indexPosition = 0;
+                final int indexSize = indexArray.length;
+                while (indexPosition < indexSize) {
+                    int next = indexArray[indexPosition++];
+                    if (next == -1) {
+                        break;
+                    }
+
+                    Account account = accountIdMap[next];
+                    boolean test = true;
+                    for (int i = 0; i < predicateSize; i++) {
+                        if (!accountPredicate[i].test(account)) {
+                            test = false;
+                            break;
+                        }
+                    }
+                    if (test) {
+                        result.add(account);
+                        count++;
+                        if (count == limit) {
+                            break;
+                        }
+                    }
+                }
+                return result;
+            }
+        }
+        if ((predicateMask & 0b00010100) == 0b00110100) {
+            InterestsContainsPredicate interestsContainsPredicate = null;
+            CountryEqPredicate countryEqPredicate = null;
+
+            for (int i = 0; i < predicates.size(); i++) {
+                AbstractPredicate predicate = predicates.get(i);
+                if (predicate instanceof InterestsContainsPredicate) {
+                    interestsContainsPredicate = (InterestsContainsPredicate) predicate;
+                } else if (predicate instanceof CountryEqPredicate) {
+                    countryEqPredicate = (CountryEqPredicate) predicate;
+                }
+            }
+            if (interestsContainsPredicate.getInterests().length == 1) {
+                predicates.remove(interestsContainsPredicate);
+                predicates.remove(countryEqPredicate);
+                int index = Consts.COUNTRY_COUNT * interestsContainsPredicate.getInterests()[0] + countryEqPredicate.getCounty();
+                int[] indexArray = indexHolder.interestsCountryIndex.get(index);
+                if (indexArray == null) {
+                    return Collections.EMPTY_LIST;
+                }
+
+                AbstractPredicate[] accountPredicate = predicateArray.get();
+                int predicateSize = andPredicates(predicates, accountPredicate);
+                List<Account> result = ObjectPool.acquireFilterList();
+                int count = 0;
+                int indexPosition = 0;
+                final int indexSize = indexArray.length;
+                while (indexPosition < indexSize) {
+                    int next = indexArray[indexPosition++];
+                    if (next == -1) {
+                        break;
+                    }
+
+                    Account account = accountIdMap[next];
+                    boolean test = true;
+                    for (int i = 0; i < predicateSize; i++) {
+                        if (!accountPredicate[i].test(account)) {
+                            test = false;
+                            break;
+                        }
+                    }
+                    if (test) {
+                        result.add(account);
+                        count++;
+                        if (count == limit) {
+                            break;
+                        }
+                    }
+                }
+                return result;
+            }
         }
         IndexScan indexScan = getAvailableIndexScan(predicates);
         if (indexScan != null) {

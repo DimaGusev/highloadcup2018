@@ -164,7 +164,7 @@ public class RequestHandler {
                 int queryFinish = indexOf(buf, queryStart, length, ' ');
                 int endPathIndex = findPathEndIndex(buf, queryStart, queryFinish);
                 int startParameters = endPathIndex + 1;
-                long t1 = System.nanoTime();
+                //long t1 = System.nanoTime();
                 int queryId = readQueryId(buf, queryStart, queryFinish);
                 long addr = 0;
                 if (queryId != -1) {
@@ -345,10 +345,10 @@ public class RequestHandler {
                     } else {
                         throw NotFoundRequest.INSTANCE;
                     }
-                    long t2 = System.nanoTime();
-                    if (t2 - t1 > 4000000 && queryId != -1) {
-                        System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
-                    }
+                    //long t2 = System.nanoTime();
+                    //if (t2 - t1 > 4000000 && queryId != -1) {
+                    //    System.out.println("Time=" + (t2 - t1) + ", query=" + new String(buf, queryStart, queryFinish));
+                   // }
                 }
 
             } else if (buf[0] == 'P') {
