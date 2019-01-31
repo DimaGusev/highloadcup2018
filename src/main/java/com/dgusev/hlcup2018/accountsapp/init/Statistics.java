@@ -1,7 +1,6 @@
 package com.dgusev.hlcup2018.accountsapp.init;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import gnu.trove.impl.Constants;
 
 import java.util.Arrays;

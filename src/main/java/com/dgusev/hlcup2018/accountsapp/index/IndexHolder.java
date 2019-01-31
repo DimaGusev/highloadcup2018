@@ -554,16 +554,6 @@ public class IndexHolder {
                 return -1;
             }
 
-            private int indexOf(byte[] values, byte ch) {
-
-                for (int i = 0; i < values.length; i++) {
-                    if (values[i] == ch) {
-                        return i;
-                    }
-                }
-                return -1;
-            }
-
             private String substring(byte[] values, int from) {
                 return substring(values, from, values.length);
             }
@@ -899,10 +889,6 @@ public class IndexHolder {
                 return -1;
             }
 
-            private String substring(byte[] values, int from) {
-                return substring(values, from, values.length);
-            }
-
             private String substring(byte[] values, int from, int to) {
                 byte[] result = new byte[to - from];
                 for (int i = from; i < to; i++) {
@@ -982,17 +968,6 @@ public class IndexHolder {
     public void resetTempListArray() {
         for (int i = 0; i < AccountService.MAX_ID; i++) {
             LIKE_TMP_ARRAY[i] = 0;
-        }
-    }
-
-
-    private void reverse(int[] array, int from, int to) {
-        int size = (to - from);
-        int half = from + size / 2;
-        for (int i = from; i < half; i++) {
-            int tmp = array[i];
-            array[i] = array[to - 1 - i];
-            array[to - 1 - i] = tmp;
         }
     }
 

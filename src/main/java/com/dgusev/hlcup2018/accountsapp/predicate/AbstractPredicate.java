@@ -4,8 +4,6 @@ import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
 import com.dgusev.hlcup2018.accountsapp.index.IndexScan;
 import com.dgusev.hlcup2018.accountsapp.model.Account;
 
-import java.util.function.Predicate;
-
 public abstract class AbstractPredicate {
 
     public abstract int getIndexCordiality();

@@ -32,17 +32,6 @@ public class LikeParser {
 
     }
 
-    private static final ThreadLocal<List<LikeRequest>> likeRequestList = new ThreadLocal<List<LikeRequest>>() {
-        @Override
-        protected List<LikeRequest> initialValue() {
-            return new ArrayList<>(200);
-        }
-    };
-
-    public List<LikeRequest> parse(byte[] array, int length) {
-        return parse(array, 0, length);
-    }
-
     public List<LikeRequest> parse(byte[] array, int from,  int length) {
         if (length - from < 2) {
             throw BAD_REQUEST;

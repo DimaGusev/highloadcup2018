@@ -1,17 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.format;
 
 import com.dgusev.hlcup2018.accountsapp.model.Account;
-import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
 import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
 import gnu.trove.impl.Constants;
-import io.netty.buffer.ByteBuf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Component
 public class AccountFormatter {
@@ -145,21 +138,6 @@ public class AccountFormatter {
         } else {
             System.arraycopy(STATUS2, 0, arr, index, STATUS2.length);
             index+=STATUS2.length;
-        }
-        arr[index++] = '\"';
-        return index;
-    }
-
-    private int writeStringValue(byte[] arr, int index, String value) {
-        arr[index++] = '\"';
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
-            if (ch < 0x7f) {
-                arr[index++] =(byte)ch;
-            } else {
-                arr[index++] =(byte) ((ch >> 6) | 0xC0);
-                arr[index++] =(byte) ((ch & 0x3F) | 0x80);
-            }
         }
         arr[index++] = '\"';
         return index;

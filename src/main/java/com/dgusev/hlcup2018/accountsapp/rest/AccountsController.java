@@ -3,33 +3,23 @@ package com.dgusev.hlcup2018.accountsapp.rest;
 import com.dgusev.hlcup2018.accountsapp.format.AccountFormatter;
 import com.dgusev.hlcup2018.accountsapp.format.GroupFormatter;
 import com.dgusev.hlcup2018.accountsapp.index.IndexHolder;
-import com.dgusev.hlcup2018.accountsapp.init.NowProvider;
 import com.dgusev.hlcup2018.accountsapp.model.*;
-import com.dgusev.hlcup2018.accountsapp.parse.AccountParser;
-import com.dgusev.hlcup2018.accountsapp.parse.LikeParser;
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
 import com.dgusev.hlcup2018.accountsapp.predicate.*;
 import com.dgusev.hlcup2018.accountsapp.service.AccountService;
 import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
 import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
-import gnu.trove.map.TObjectIntMap;
-import gnu.trove.map.hash.TObjectIntHashMap;
-import io.netty.buffer.ByteBuf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 @Component
 public class AccountsController {
 
-    public static final byte[] EMPTY_ACCOUNTS_LIST = "{\"accounts\": []}".getBytes();
     private static final byte[] ACCOUNTS_LIST_START = "{\"accounts\": [".getBytes();
     private static final byte[] LIST_END = "]}".getBytes();
-    public static final byte[] EMPTY_GROUPS_LIST = "{\"groups\": []}".getBytes();
     private static final byte[] GROUPS_LIST_START = "{\"groups\": [".getBytes();
 
     @Autowired
@@ -465,7 +455,6 @@ public class AccountsController {
         int limit = 0;
         byte country = -1;
         int city = -1;
-        List<Predicate<Account>> predicates = new ArrayList<>();
         for (Map.Entry<String, String> parameter : allRequestParams.entrySet()) {
             String name = parameter.getKey();
             if (name.equals("query_id")) {

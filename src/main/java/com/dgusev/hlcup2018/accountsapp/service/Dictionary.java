@@ -1,13 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.service;
 
-import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import gnu.trove.impl.Constants;
 import gnu.trove.map.*;
 import gnu.trove.map.hash.*;
 import org.springframework.stereotype.Component;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Component

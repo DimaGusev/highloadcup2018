@@ -1,8 +1,6 @@
 package io.netty.channel.epoll;
 
 import com.dgusev.hlcup2018.accountsapp.pool.ObjectPool;
-import com.dgusev.hlcup2018.accountsapp.service.AccountService;
-import gnu.trove.list.array.TIntArrayList;
 import gnu.trove.map.TIntObjectMap;
 import gnu.trove.map.hash.TIntObjectHashMap;
 import io.netty.channel.unix.FileDescriptor;
@@ -14,21 +12,12 @@ import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.SocketChannel;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Component
 public class EpollServer {
-
-
-   //private static final AtomicLong ATOMIC_LONG = new AtomicLong();
-
 
     @Autowired
     private RequestHandler requestHandler;
@@ -36,16 +25,6 @@ public class EpollServer {
     private Worker[] workerList;
 
     public void start() throws Exception {
-        /*new Thread(()-> {
-            while (true) {
-                try {
-                    Thread.sleep(5000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                System.out.println("T=" + ATOMIC_LONG.get());
-            }
-        }).start();*/
         boolean available = Epoll.isAvailable();
         if (!available) {
             throw new IllegalStateException("Native support is not available");
@@ -144,10 +123,7 @@ public class EpollServer {
                                             byteBuffer.flip();
                                             byteBuffer.get(buf, 0, byteBuffer.limit());
                                             byteBuffer.clear();
-                                            //long t1 = System.nanoTime();
                                             requestHandler.handleRead(null, linuxSocket, buf, cnt, byteBuffer, address);
-                                            //long t2 = System.nanoTime();
-                                           // ATOMIC_LONG.addAndGet(t2-t1);
                                         }
                                     } else if ((event & Native.EPOLLRDHUP) != 0) {
                                         System.out.println("Connection reset fd=" + clientFd);

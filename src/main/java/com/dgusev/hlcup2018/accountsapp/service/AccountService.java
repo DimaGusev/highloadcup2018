@@ -314,7 +314,7 @@ public class AccountService {
                 return result;
             }
         }
-        if ((predicateMask & 0b00010100) == 0b00110100) {
+        if ((predicateMask & 0b00010100) == 0b00010100) {
             InterestsContainsPredicate interestsContainsPredicate = null;
             CountryEqPredicate countryEqPredicate = null;
 
@@ -1677,13 +1677,6 @@ public class AccountService {
         }
     };
 
-    private static ThreadLocal<TIntDoubleMap> similarityMap = new ThreadLocal<TIntDoubleMap>() {
-        @Override
-        protected TIntDoubleMap initialValue() {
-            return new TIntDoubleHashMap();
-        }
-    };
-
     public List<Account> suggest(int id, byte country, int city, int limit) {
         Account account = accountIdMap[id];
         if (account == null) {
@@ -1856,16 +1849,6 @@ public class AccountService {
         return max;
     }
 
-    private void reverse(int[] array, int from, int to) {
-        int size = (to - from);
-        int half = from + size / 2;
-        for (int i = from; i < half; i++) {
-            int tmp = array[i];
-            array[i] = array[to - 1 - i];
-            array[to - 1 - i] = tmp;
-        }
-    }
-
     private void reverse(long[] array) {
         int size = array.length;
         int half = size / 2;
@@ -1874,55 +1857,6 @@ public class AccountService {
             array[i] = array[size - 1 - i];
             array[size - 1 - i] = tmp;
         }
-    }
-
-    public double getSimilarity(Account a1, Account a2) {
-        int index1 = 0;
-        int index2 = 0;
-        double similarity = 0;
-        int len1 = a1.likes.length;
-        int len2 = a2.likes.length;
-        while (index1 < len1 && index2 < len2) {
-            int like1 = (int)(a1.likes[index1] >> 32);
-            int like2 = (int)(a2.likes[index2] >> 32);
-            if (like1 == like2) {
-                double sum1 = (int)a1.likes[index1];
-                double sum2 = (int)a2.likes[index2];
-                int cnt1 = 1;
-                int cnt2 = 1;
-                index1++;
-                index2++;
-                while (index1 < len1 && (int)(a1.likes[index1] >> 32) == like1) {
-                    sum1+=(int)a1.likes[index1];
-                    cnt1++;
-                    index1++;
-                }
-                while (index2 < len2 && (int)(a2.likes[index2] >> 32) == like2) {
-                    sum2+=(int)a2.likes[index2];
-                    cnt2++;
-                    index2++;
-                }
-                double t1 = sum1/cnt1;
-                double t2 = sum2/cnt2;
-                if (t1 == t2) {
-                    similarity+=1;
-                } else {
-                    if (t1 > t2) {
-                        similarity += 1 / (t1 - t2);
-                    } else {
-                        similarity += 1 / (t2 - t1);
-                    }
-                }
-
-            } else {
-                if (like1 < like2) {
-                    index2++;
-                } else {
-                    index1++;
-                }
-            }
-        }
-        return similarity;
     }
 
     public synchronized void load(Account account) {

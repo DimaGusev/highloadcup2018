@@ -2,34 +2,19 @@ package com.dgusev.hlcup2018.accountsapp.parse;
 
 import com.dgusev.hlcup2018.accountsapp.model.AccountDTO;
 import com.dgusev.hlcup2018.accountsapp.model.BadRequest;
-import gnu.trove.list.TLongList;
 import gnu.trove.list.array.TLongArrayList;
 import gnu.trove.map.TLongObjectMap;
 import gnu.trove.map.hash.TLongObjectHashMap;
 import org.springframework.stereotype.Component;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 
 @Component
 public class AccountParser {
 
     private static final BadRequest BAD_REQUEST = new BadRequest();
-
-    private static Field fieldSB;
-
-    static {
-        try {
-            fieldSB = Class.forName("java.lang.AbstractStringBuilder").getDeclaredField("value");
-            fieldSB.setAccessible(true);
-        } catch (NoSuchFieldException e) {
-
-        } catch (ClassNotFoundException e) {
-        }
-    }
 
     private static TLongObjectMap<String> parametersMap = new TLongObjectHashMap<>();
 
@@ -704,14 +689,6 @@ public class AccountParser {
             }
         }
         return stringBuilder.toString();
-    }
-
-    private static byte[] getValue(StringBuilder s) {
-        try {
-            return ((byte[]) fieldSB.get(s));
-        } catch (IllegalAccessException e) {
-            return null;
-        }
     }
 
     private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};

@@ -16,12 +16,6 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class ObjectPool {
 
-    private static ThreadLocal<ArrayDeque<List<String>>> groupsPools = new ThreadLocal<ArrayDeque<List<String>>>() {
-        @Override
-        protected ArrayDeque<List<String>> initialValue() {
-            return new ArrayDeque<>(500000);
-        }
-    };
 
     private static ThreadLocal<ArrayDeque<ByteBuffer>> buffersPool = new ThreadLocal<ArrayDeque<ByteBuffer>>() {
         @Override
@@ -56,41 +50,10 @@ public class ObjectPool {
         }
     };
 
-    private static ThreadLocal<AccountService.Similarity[]> listSimilarityPool = new ThreadLocal<AccountService.Similarity[]>() {
-        @Override
-        protected AccountService.Similarity[] initialValue() {
-            return new AccountService.Similarity[10000];
-        }
-    };
-
-
     private static ThreadLocal<ArrayDeque<List<Account>>> suggestListPool = new ThreadLocal<ArrayDeque<List<Account>>>() {
         @Override
         protected ArrayDeque<List<Account>> initialValue() {
             return new ArrayDeque<>(20);
-        }
-    };
-
-
-
-    private static ThreadLocal<ArrayDeque<List<Account>>> recommendListPools = new ThreadLocal<ArrayDeque<List<Account>>>() {
-        @Override
-        protected ArrayDeque<List<Account>> initialValue() {
-            return new ArrayDeque<>(50);
-        }
-    };
-
-    private static ThreadLocal<ArrayDeque<TIntHashSet>> intHashSetPools = new ThreadLocal<ArrayDeque<TIntHashSet>>() {
-        @Override
-        protected ArrayDeque<TIntHashSet> initialValue() {
-            return new ArrayDeque<>(20);
-        }
-    };
-
-    private static ThreadLocal<byte[]> formatterPool = new ThreadLocal<byte[]>() {
-        @Override
-        protected byte[] initialValue() {
-            return new byte[10000];
         }
     };
 
@@ -100,28 +63,6 @@ public class ObjectPool {
             return new ArrayList<>(100);
         }
     };
-
-    private static ThreadLocal<List<AccountService.Score>> recommendListPool = new ThreadLocal<List<AccountService.Score>>() {
-        @Override
-        protected List<AccountService.Score> initialValue() {
-            return new ArrayList<>(100);
-        }
-    };
-
-    private static ThreadLocal<List<IndexScan>> indexScanPool = new ThreadLocal<List<IndexScan>>() {
-        @Override
-        protected List<IndexScan> initialValue() {
-            return new ArrayList<>(10);
-        }
-    };
-
-    private static ThreadLocal<int[]> likersPool = new ThreadLocal<int[]>() {
-        @Override
-        protected int[] initialValue() {
-            return new int[30000];
-        }
-    };
-
 
     public static ByteBuffer acquireBuffer() {
         ArrayDeque<ByteBuffer> local = buffersPool.get();
@@ -137,21 +78,6 @@ public class ObjectPool {
 
     public static void releaseBuffer(ByteBuffer byteBuffer) {
         buffersPool.get().addLast(byteBuffer);
-    }
-
-    public static List<Account> acquireRecommendList() {
-        ArrayDeque<List<Account>> local = recommendListPools.get();
-        List<Account> group = local.pollFirst();
-        if (group != null) {
-            group.clear();
-        } else {
-            group =  new ArrayList<>(5);
-        }
-        return group;
-    }
-
-    public static void releaseRecommendList(List<Account> group) {
-        recommendListPools.get().addLast(group);
     }
 
     public static AccountService.Score[] acquireScore() {
@@ -190,25 +116,8 @@ public class ObjectPool {
         suggestListPool.get().addLast(group);
     }
 
-    public static AccountService.Similarity[] acquireSimilarityList() {
-        return listSimilarityPool.get();
-    }
-
-
-
-    public static int[] acquireLikersArray() {
-        return likersPool.get();
-    }
-
-
     public static List<Account> acquireFilterList() {
         List<Account> list =  filterListPool.get();
-        list.clear();
-        return list;
-    }
-
-    public static List<IndexScan> acquireIndexScanList() {
-        List<IndexScan> list =  indexScanPool.get();
         list.clear();
         return list;
     }

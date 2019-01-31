@@ -1,13 +1,10 @@
 package com.dgusev.hlcup2018.accountsapp.format;
 
 import com.dgusev.hlcup2018.accountsapp.model.Group;
-import com.dgusev.hlcup2018.accountsapp.service.ConvertorUtills;
 import com.dgusev.hlcup2018.accountsapp.service.Dictionary;
-import io.netty.buffer.ByteBuf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -115,37 +112,6 @@ public class GroupFormatter {
     }
 
     private static final int POW10[] = {1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000};
-
-
-    private int writeField(byte[] arr, int index, boolean first, String field) {
-        if (!first) {
-            arr[index++] = ',';
-        }
-        arr[index++] = '\"';
-        for (int i = 0; i < field.length(); i++) {
-            arr[index++] = (byte) field.charAt(i);
-        }
-        arr[index++] = '\"';
-        arr[index++] = ':';
-        return index;
-    }
-
-
-
-    private int writeStringValue(byte[] arr, int index, String value) {
-        arr[index++] = '\"';
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
-            if (ch < 0x7f) {
-                arr[index++] =(byte)ch;
-            } else {
-                arr[index++] =(byte) ((ch >> 6) | 0xC0);
-                arr[index++] =(byte) ((ch & 0x3F) | 0x80);
-            }
-        }
-        arr[index++] = '\"';
-        return index;
-    }
 
     public static int encodeLong(byte[] arr, int index, long value) {
         if (value < 0) {
