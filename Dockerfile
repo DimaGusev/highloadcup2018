@@ -1,8 +1,5 @@
 FROM anapsix/alpine-java:8_jdk
-WORKDIR /opt
 WORKDIR /
-ADD data.zip /tmp/data/data.zip
-ADD options.txt /tmp/data/options.txt
 ENV JAVA_OPTS="-server -XX:GCTimeRatio=1000 -Xmx1165m -Xms1165m -Xmn600m -Duser.timezone=UTC -Dfile.encoding=UTF-8 -XX:+UseSerialGC -XX:CompileThreshold=1"
 EXPOSE 80
 ADD target/accounts-app-1.0.jar /opt/app.jar
